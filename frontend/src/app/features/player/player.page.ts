@@ -1,10 +1,10 @@
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
 import { AuthService } from '../../core/services/auth.service';
-import { CourseDetail, InteractiveQuiz, Lesson, LessonOutline } from '../../core/models/learning';
+import { CourseDetail, CourseProgress, InteractiveQuiz, Lesson, LessonOutline, LessonResource } from '../../core/models/learning';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { AiTutorDrawerComponent } from '../ai/ai-tutor-drawer.component';
 import { LessonExtrasComponent } from './lesson-extras.component';
@@ -22,7 +22,6 @@ import { NetworkService } from '../../core/services/network.service';
 export class PlayerPage implements OnInit, OnDestroy {
   private readonly api = inject(LearningService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   readonly auth = inject(AuthService);
   private readonly privacy = inject(PrivacyService);
   readonly offline = inject(OfflineService);
@@ -48,6 +47,12 @@ export class PlayerPage implements OnInit, OnDestroy {
   readonly wm = signal({ x: 10, y: 10, text: '' });
   readonly quiz = signal<InteractiveQuiz | null>(null);
   readonly quizMsg = signal('');
+  /** Curriculum panel (course map): progress per lesson, downloadable files, manual lesson choice. */
+  readonly progress = signal<CourseProgress | null>(null);
+  readonly resMap = signal<Record<string, LessonResource[]>>({});
+  readonly curriculumOpen = signal(true);
+  /** Set when the lesson ends or is marked complete: shows the learner-controlled "up next" card. No automatic navigation. */
+  readonly showUpNext = signal(false);
   speed = 1;
   private quizzes: InteractiveQuiz[] = [];
   private answered = new Set<string>();
@@ -62,11 +67,23 @@ export class PlayerPage implements OnInit, OnDestroy {
   private studyStarted = 0;
 
   ngOnInit(): void {
+    this.curriculumOpen.set(typeof matchMedia === 'function' ? matchMedia('(min-width: 992px)').matches : true); // desktop: map open; phone: toggled
     this.studyStarted = Date.now();
     void this.privacy.enable(); // native screenshot and recording protection while a lesson is open
     void this.offline.load().then(() => this.load());
     this.moveWatermark();
     this.wmTimer = setInterval(() => this.moveWatermark(), 7000); // the mark keeps moving so it cannot be cropped out of one corner
+    // Navigating to another lesson reuses this component: reload for the new lesson instead of showing the old one.
+    this.route.paramMap.subscribe((m) => {
+      const id = m.get('lessonId');
+      if (this.lesson() && id && id !== this.lesson()!.id) { void this.flush(false); this.resetLessonState(); this.studyStarted = Date.now(); void this.load(); }
+    });
+  }
+  private resetLessonState(): void {
+    if (this.url) { URL.revokeObjectURL(this.url); this.url = null; }
+    this.mediaUrl.set(null); this.safeUrl.set(null); this.lesson.set(null);
+    this.slides.set([]); this.slideIx.set(0); this.quizzes = []; this.answered.clear(); this.quiz.set(null);
+    this.showUpNext.set(false); this.lastSaved = 0; this.dlMsg.set('');
   }
   ngOnDestroy(): void {
     if (this.timer) clearInterval(this.timer);
@@ -100,7 +117,7 @@ export class PlayerPage implements OnInit, OnDestroy {
         }
         if (!this.offlineMode() && ['Video', 'Audio', 'Pdf'].includes(lesson.lessonType)) this.setMedia(await this.api.streamBlob(this.lessonId));
       }
-      this.lesson.set(lesson); this.course.set(course);
+      this.lesson.set(lesson); this.course.set(course); void this.loadCurriculum(course);
       if (lesson.lessonType === 'InteractiveSlides') { this.slides.set(await this.api.slides(this.lessonId).catch(() => [])); this.slideIx.set(0); }
       if (lesson.lessonType === 'Video') { this.quizzes = this.offlineMode() ? [] : await this.api.interactiveQuizzes(this.lessonId).catch(() => []); }
       if (!this.timer) this.timer = setInterval(() => void this.flush(false), 15000);
@@ -140,7 +157,28 @@ export class PlayerPage implements OnInit, OnDestroy {
   }
   slide(): LessonSlide | null { return this.slides()[this.slideIx()] ?? null; }
   go(d: number): void { const n = this.slideIx() + d; if (n >= 0 && n < this.slides().length) this.slideIx.set(n); }
-  async complete(): Promise<void> { await this.flush(true); const n = this.next(); if (n) await this.router.navigate(['/app/learn', this.courseId, n.id]); }
+  /** Media ended: record completion and offer the next lesson. The learner chooses when to move on; nothing navigates by itself. */
+  async onEnded(): Promise<void> { await this.flush(true); this.showUpNext.set(true); void this.refreshProgress(); }
+  /** Manual "mark complete": records completion and reveals the up-next card; navigation stays with the learner. */
+  async complete(): Promise<void> { await this.flush(true); this.showUpNext.set(true); void this.refreshProgress(); }
+  private async refreshProgress(): Promise<void> { try { this.progress.set(await this.api.courseProgress(this.courseId)); } catch { /* progress panel keeps the last known state */ } }
+  private async loadCurriculum(c: CourseDetail): Promise<void> {
+    void this.refreshProgress();
+    const entries = await Promise.all(c.sections.flatMap((s) => s.lessons.map(async (l) => {
+      try { return [l.id, await this.api.resources(l.id)] as const; } catch { return [l.id, [] as LessonResource[]] as const; } // locked or empty lessons just show no files
+    })));
+    this.resMap.set(Object.fromEntries(entries));
+  }
+  lessonDone(id: string): boolean { return this.progress()?.lessons.find((x) => x.lessonId === id)?.status === 'Completed'; }
+  async downloadResource(lessonId: string, r: LessonResource, ev: Event): Promise<void> {
+    ev.stopPropagation(); ev.preventDefault();
+    try {
+      const blob = await this.api.resourceBlob(lessonId, r.id); const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = r.fileName || r.title; a.click(); URL.revokeObjectURL(a.href);
+    } catch { /* the global toast shows the API message */ }
+  }
+  resSize(b: number): string { return b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`; }
+  dur(s: number | null): string { return s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : ''; }
 
   next(): LessonOutline | null {
     const all = (this.course()?.sections ?? []).flatMap((s) => s.lessons);

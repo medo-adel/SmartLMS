@@ -9,6 +9,7 @@
         @for (i of items(); track i.path) {
           <ion-item button detail="false" [routerLink]="i.path" routerLinkActive="active" (click)="closeMenu()">
             <ion-icon slot="start" [name]="i.icon"></ion-icon><ion-label>{{ i.label | t }}</ion-label>
+            @if (i.path === '/app/cart' && cartState.count() > 0) { <span slot="end" class="count" [attr.aria-label]="cartState.count()">{{ cartState.count() }}</span> }
           </ion-item>
         }
       </ion-list>

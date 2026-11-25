@@ -28,3 +28,4 @@ ion-tab-button ion-icon, .more ion-icon { font-size: 1.3rem; }
 .more { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; border: 0; background: transparent; color: var(--app-muted); font-family: inherit; cursor: pointer; }
 @media (min-width: 992px) { .mobile-tabs { display: none; } }
 .offline-bar { display: flex; gap: .5rem; align-items: center; justify-content: center; padding: .45rem .8rem; background: var(--app-warn-bg); color: var(--app-warn); font-size: .85rem; font-weight: 600; }
+.count { background: var(--ion-color-primary, #0f766e); color: #fff; border-radius: 999px; min-inline-size: 1.25rem; block-size: 1.25rem; display: inline-grid; place-items: center; font-size: .75rem; font-weight: 700; padding-inline: .3rem; }
