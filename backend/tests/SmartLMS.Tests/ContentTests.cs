@@ -188,6 +188,31 @@ public sealed class ContentTests : IClassFixture<ApiFactory>
         var s2 = await Raw($"/lessons/{pdfL}/stream", st, t); Assert.Equal(200, s2.Status); Assert.Equal("application/pdf", s2.Type); Assert.Equal(pdfb, s2.Body);
     }
 
+    [Fact]
+    public async Task Locked_lesson_resource_lists_follow_lesson_access_rules()
+    {
+        // the student curriculum map fetches each lesson's file list up front; locked lessons must answer like the locked lesson itself
+        var t = await NewTenant(); var inst = await Instructor(t); var st = await Student(t);
+        var (c, sec, open) = await Course(t, inst, true, "ByDate");
+        var drip = Id(await Post($"/sections/{sec}/lessons", new { title = "Drip", lessonType = "Article", contentMarkdown = "x", dripUnlockAtUtc = DateTime.UtcNow.AddDays(7) }, inst, t));
+        var gated = Id(await Post($"/sections/{sec}/lessons", new { title = "Gated", lessonType = "Article", contentMarkdown = "x", prerequisiteLessonId = open }, inst, t));
+        var hidden = Id(await Post($"/sections/{sec}/lessons", new { title = "Hidden", lessonType = "Article", contentMarkdown = "x", isPublished = false }, inst, t));
+        var pdf = System.Text.Encoding.ASCII.GetBytes("%PDF-1.4 r");
+        Assert.Equal(200, (await _c.Upload($"/lessons/{drip}/resources", pdf, "d.pdf", inst.Token, t.Slug, inst.Dev)).Status);
+        Assert.Equal(200, (await _c.Upload($"/lessons/{gated}/resources", pdf, "g.pdf", inst.Token, t.Slug, inst.Dev)).Status);
+        Assert.Equal(200, (await _c.Upload($"/lessons/{hidden}/resources", pdf, "h.pdf", inst.Token, t.Slug, inst.Dev)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st, t)).Status);
+        Assert.Equal(200, (await Get($"/lessons/{open}/resources", st, t)).Status);   // open lesson: files listed
+        Assert.Equal(403, (await Get($"/lessons/{drip}/resources", st, t)).Status);   // drip-locked
+        Assert.Equal(403, (await Get($"/lessons/{gated}/resources", st, t)).Status);  // prerequisite not completed
+        Assert.Equal(404, (await Get($"/lessons/{hidden}/resources", st, t)).Status); // unpublished reads as not found, like the lesson
+        Assert.Equal(200, (await Get($"/lessons/{drip}/resources", inst, t)).Status); // the author still sees every list
+        Assert.Equal(200, (await Get($"/lessons/{hidden}/resources", inst, t)).Status);
+        // completing the prerequisite opens the gated list without any other change
+        Assert.Equal(200, (await Put($"/lessons/{open}/progress", new { lastPositionSeconds = 0, watchedSecondsDelta = 30, completed = true, playbackSpeed = 1.0 }, st, t)).Status);
+        Assert.Equal(200, (await Get($"/lessons/{gated}/resources", st, t)).Status);
+    }
+
     private async Task<Who> WithRole(T t, string role)
     {
         var email = $"x{U()}@mail.test";

@@ -50,6 +50,9 @@ p.on('request', (rq) => { void (async () => {
   const h = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'content-type': 'application/json' };
   if (rq.method() === 'OPTIONS') return rq.respond({ status: 204, headers: h });
   const les = pp.match(/^\/lessons\/(les-\d)(\/.*)?$/);
+  if (les && les[1] === 'les-3' && rq.method() === 'GET' && (!les[2] || les[2] === '/resources' || les[2] === '/stream')) {
+    return rq.respond({ status: 403, headers: h, body: JSON.stringify({ success: false, data: null, message: 'LESSON_LOCKED_DRIP', errors: [] }) }); // locked like the real backend
+  }
   if (rq.method() === 'GET' && les && !les[2]) return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok(mkLesson(lessons.find((l) => l.id === les[1])))) });
   if (rq.method() === 'GET' && les && les[2] === '/stream') return rq.respond({ status: 200, headers: { ...h, 'content-type': 'video/webm' }, body: webm });
   if (rq.method() === 'GET' && les && les[2] === '/resources') return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok(resources[les[1]] ?? [])) });
@@ -114,11 +117,21 @@ const afterNext = await p.evaluate(() => { const pg = [...document.querySelector
 check('up-next click navigates to Lesson Two', afterNext.url === '/app/learn/c-1/les-2');
 check('player reloaded for the new lesson (not stale)', afterNext.title === 'Lesson Two' && afterNext.current.includes('Lesson Two'));
 
-// 4b. learner picks any lesson from the map directly
-await p.evaluate(() => { const pg = [...document.querySelectorAll('app-player')].find((e) => e.offsetParent !== null) ?? document; const a = [...pg.querySelectorAll('.cur-les .cur-link')].find((e) => e.textContent.includes('Lesson Three')); a?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+// 4b. the map never lists files for a locked lesson, and opening it shows the lock screen (backend refused)
+const lockedRow = await p.evaluate(() => { const pg = [...document.querySelectorAll('app-player')].find((e) => e.offsetParent !== null) ?? document; const row = [...pg.querySelectorAll('.cur-les')].find((e) => e.textContent.includes('Lesson Three')); return row?.querySelectorAll('.cur-file').length ?? -1; });
+check('locked lesson shows no files in the map', lockedRow === 0);
+// rapid choice: Two then immediately Three — a stale response must not paint over the final lesson
+await p.evaluate(() => { // both clicks in one context: the first navigation must not stop the second choice
+  const pg = [...document.querySelectorAll('app-player')].find((e) => e.offsetParent !== null) ?? document;
+  const two = [...pg.querySelectorAll('.cur-les .cur-link')].find((e) => e.textContent.includes('Lesson Two'));
+  const three = [...pg.querySelectorAll('.cur-les .cur-link')].find((e) => e.textContent.includes('Lesson Three'));
+  two?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  three?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+});
 await sleep(2500);
-const afterPick = await p.evaluate(() => { const pg = [...document.querySelectorAll('app-player')].find((e) => e.offsetParent !== null) ?? document; return { url: location.pathname, title: pg.querySelector('.head h1')?.textContent.trim() ?? '' }; });
-check('map click opens Lesson Three directly', afterPick.url === '/app/learn/c-1/les-3' && afterPick.title === 'Lesson Three');
+const afterPick = await p.evaluate(() => { const pg = [...document.querySelectorAll('app-player')].find((e) => e.offsetParent !== null) ?? document; return { url: location.pathname, lock: (pg.textContent || '').includes('الدرس مقفول'), stale: (pg.querySelector('.head h1')?.textContent ?? '').includes('Lesson Two') }; });
+check('locked lesson opens the lock screen, not the content', afterPick.url === '/app/learn/c-1/les-3' && afterPick.lock);
+check('rapid lesson switches leave no stale lesson rendered', !afterPick.stale);
 
 // 5. cart badge from the API on load
 const badge = await p.evaluate(() => document.querySelector('ion-item[ng-reflect-router-link="/app/cart"] .count, ion-item .count')?.textContent?.trim() ?? '');

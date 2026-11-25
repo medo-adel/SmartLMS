@@ -9,6 +9,8 @@ const server = http.createServer((q, r) => { let p = path.join(dist, decodeURICo
 const ok = (data) => ({ success: true, data, message: null, errors: [] });
 const cart = { items: [{ id: 'ci-1', itemType: 'Course', itemId: 'c-9', description: 'Another course', price: 100, currency: 'EGP', available: true }, { id: 'ci-2', itemType: 'Course', itemId: 'c-10', description: 'Third course', price: 50, currency: 'EGP', available: true }], subtotal: 150, currency: 'EGP' };
 const deletes = [];
+const posts = [];
+const paidCourse = { id: 'c-9', title: 'Paid Course', slug: 'paid-course', shortDescription: null, level: 'Beginner', language: null, estimatedHours: null, pricingModel: 'OneTime', price: 100, currency: 'EGP', description: null, status: 'Published', sections: [] };
 const fx = {
   'GET /tenants/current/branding': ok({ name: 'Test Academy', slug: 'demo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#f59e0b', accentColor: '#7c3aed', defaultLanguage: 'ar', featureFlags: [] }),
   'GET /me/devices': ok([]), 'GET /notifications': ok([]),
@@ -28,6 +30,10 @@ p.on('request', (rq) => {
   const h = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'content-type': 'application/json' };
   if (rq.method() === 'OPTIONS') return rq.respond({ status: 204, headers: h });
   if (rq.method() === 'GET' && pp === '/cart') return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok({ ...cart, subtotal: cart.items.reduce((a, i) => a + i.price, 0) })) });
+  if (rq.method() === 'POST' && pp === '/cart/items') { posts.push(rq.postData() ?? ''); cart.items.push({ id: 'ci-3', itemType: 'Course', itemId: 'c-9', description: 'Paid Course', price: 100, currency: 'EGP', available: true }); return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok({})) }); }
+  if (rq.method() === 'POST' && pp === '/orders/checkout') { cart.items = []; return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok({ orderId: 'o-1', status: 'Paid', subtotal: 150, discountTotal: 0, total: 150, currency: 'EGP', paymentId: null })) }); }
+  if (rq.method() === 'GET' && pp === '/courses/c-9') return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok(paidCourse)) });
+  if (rq.method() === 'GET' && pp === '/me/enrollments') return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok([])) });
   const del = pp.match(/^\/cart\/items\/(ci-\d)$/);
   if (rq.method() === 'DELETE' && del) { deletes.push(del[1]); cart.items = cart.items.filter((i) => i.id !== del[1]); return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok({})) }); }
   const f = fx[rq.method() + ' ' + pp] ?? fx['GET ' + pp];
@@ -58,6 +64,41 @@ check('badge updated to 1 after remove', (await badge()) === '1');
 await p.reload({ waitUntil: 'networkidle0' }); await sleep(1500);
 check('badge stays 1 after a full reload (from the API)', (await badge()) === '1');
 await p.screenshot({ path: path.join(out, 'cart-badge-ar.png') });
+
+// add path: adding a paid course bumps the badge
+await p.goto('http://127.0.0.1:4312/app/courses/c-9', { waitUntil: 'networkidle0' }); await sleep(1500);
+await p.evaluate(() => { const b = [...document.querySelectorAll('ion-button')].find((x) => (x.textContent || '').includes('أضف للسلة')); b?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+await sleep(1500);
+check('add-to-cart hit POST /cart/items for the course', posts.length === 1 && /c-9/.test(posts[0]));
+check('badge bumped to 2 after add', (await badge()) === '2');
+
+// checkout path: a paid order empties the cart and the badge disappears
+await p.goto('http://127.0.0.1:4312/app/cart', { waitUntil: 'networkidle0' }); await sleep(1500);
+await p.evaluate(() => { const b = [...document.querySelectorAll('ion-button')].find((x) => (x.textContent || '').includes('إتمام الشراء')); b?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+await sleep(1800);
+check('badge clears after a successful checkout', (await badge()) === '(hidden)');
+
+// role switch: a non-Student session never renders the badge
+const p2 = await (await browser.createBrowserContext()).newPage();
+await p2.setViewport({ width: 1280, height: 800 });
+p2.setRequestInterception(true);
+p2.on('request', (rq) => {
+  if (!rq.url().startsWith('https://localhost:7200/api/v1')) return rq.continue();
+  const u = new URL(rq.url()); const pp = u.pathname.replace('/api/v1', '');
+  const h = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'content-type': 'application/json' };
+  if (rq.method() === 'OPTIONS') return rq.respond({ status: 204, headers: h });
+  const f = fx[rq.method() + ' ' + pp] ?? fx['GET ' + pp];
+  return rq.respond({ status: 200, headers: h, body: JSON.stringify(f ?? ok({ id: 'x' })) });
+});
+await p2.evaluateOnNewDocument(() => {
+  localStorage.setItem('CapacitorStorage.seeded', '1');
+  localStorage.setItem('CapacitorStorage.lang', 'ar');
+  localStorage.setItem('CapacitorStorage.tenantKey', 'demo');
+  localStorage.setItem('CapacitorStorage.session', JSON.stringify({ accessToken: 'a', refreshToken: 'r', user: { id: 'u-inst', tenantId: 't-1', fullName: 'Instructor One', email: 'inst@demo.test', phoneNumber: null, preferredLanguage: 'ar', isActive: true, emailConfirmed: true, roles: ['Instructor'], lastLoginAtUtc: null } }));
+});
+await p2.goto('http://127.0.0.1:4312/app/courses', { waitUntil: 'networkidle0' }); await sleep(1500);
+check('no badge in a non-Student session', (await p2.evaluate(() => document.querySelector('.count')?.textContent ?? '(hidden)')) === '(hidden)');
+await p2.close();
 
 check('no page errors', consoleProblems.length === 0);
 if (consoleProblems.length) console.log(consoleProblems.join('\n'));
