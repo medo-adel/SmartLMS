@@ -41,4 +41,15 @@ public sealed class EmailPickupTests
         await sender.SendAsync("new-user@example.test", "EmailVerification", "482913", CancellationToken.None);
         Assert.False(Directory.Exists(dir));
     }
+
+    [Fact]
+    public void Smtp_host_wins_over_pickup_directory()
+    {
+        // When both are configured (user-secrets SMTP over the dev appsettings pickup), mail goes to the
+        // real server and the mode endpoint says mailbox - the local outbox never silently overrides.
+        var both = Options.Create(new EmailOptions { Enabled = true, Host = "smtp.gmail.com", FromAddress = "a@b.c", PickupDirectory = "storage/dev-mail" });
+        Assert.Equal("mailbox", new SmtpEmailTransport(both).DeliveryMode);
+        var pickupOnly = Options.Create(new EmailOptions { Enabled = true, FromAddress = "a@b.c", PickupDirectory = "storage/dev-mail" });
+        Assert.Equal("local-outbox", new SmtpEmailTransport(pickupOnly).DeliveryMode);
+    }
 }

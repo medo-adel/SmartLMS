@@ -111,8 +111,12 @@ two ways in Development, no email account needed:
   2. Every outgoing email is saved as a real .eml file under
      backend/src/SmartLMS.API/storage/dev-mail (Email:PickupDirectory).
      Open the newest file in any mail viewer to read the code.
-To send real email instead, set Email:Host/Port/UserName/Password in
-user-secrets and remove Email:PickupDirectory.
+To send real email instead, run backend\SETUP-EMAIL.ps1 once: it asks for
+the Gmail address and app password (typed into the window, never stored
+in any project file) and writes them to dotnet user-secrets. A configured
+SMTP host automatically overrides the local dev-mail folder. To configure
+SMTP by hand instead, set Email:Host/Port/UseSsl/UserName/Password/
+FromAddress in user-secrets and clear Email:PickupDirectory.
 Keep this terminal open.
 
 7. Optional: your own service keys (only if you want them)

@@ -87,9 +87,16 @@ export class AuthService {
     }));
     if (!res.success) throw new Error(res.message ?? 'registration failed');
   }
+  /** How verification codes actually leave the server (GET /auth/mail-delivery): mailbox | local-outbox | disabled. Drives truthful copy on the code step. */
+  async mailDeliveryMode(): Promise<'mailbox' | 'local-outbox' | 'disabled'> {
+    try {
+      const res = await firstValueFrom(this.http.get<ApiResponse<{ mode: string }>>(`${environment.apiBaseUrl}/auth/mail-delivery`));
+      const m = res.data?.mode;
+      return m === 'mailbox' || m === 'local-outbox' ? m : 'disabled';
+    } catch { return 'mailbox'; } // older backend without the route: keep the original inbox copy
+  }
   /** Resends an email-verification code (POST /auth/otp/request). The response is identical whether or not the address is registered. */
-  async resendVerification(email: string): Promise<void> {
-    const res = await firstValueFrom(this.http.post<ApiResponse<unknown>>(`${environment.apiBaseUrl}/auth/otp/request`, { destination: email, purpose: 'EmailVerification' }));
+  async resendVerification(email: string): Promise<void> {    const res = await firstValueFrom(this.http.post<ApiResponse<unknown>>(`${environment.apiBaseUrl}/auth/otp/request`, { destination: email, purpose: 'EmailVerification' }));
     if (!res.success) throw new Error(res.message ?? 'request failed');
   }
   async verifyEmail(email: string, code: string): Promise<void> {

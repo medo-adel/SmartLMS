@@ -14,6 +14,7 @@ const fx = {
   'GET /tenants/current/branding': ok({ name: 'Nile Academy', slug: 'demo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#f59e0b', accentColor: '#7c3aed', defaultLanguage: 'ar', featureFlags: [] }),
   'GET /me/devices': ok([]), 'GET /notifications': ok([]),
   'GET /learning-paths/manage': ok([]), 'GET /learning-paths': ok([]), 'GET /courses/mine': ok([]),
+  'GET /auth/mail-delivery': ok({ mode: 'local-outbox' }),
 };
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const p = await (await browser.createBrowserContext()).newPage();
@@ -92,6 +93,17 @@ await p2.screenshot({ path: path.join(out, 'register-role-ar.png') }); console.l
 check('register page shows the account-type select', reg.hasSelect);
 check('register roles are exactly Student+Parent, Student default', reg.options.join(',') === 'Student,Parent' && reg.value === 'Student');
 check('register page explains staff accounts come from the academy', reg.hint);
+
+// Truthful code-step copy: with a local-outbox backend the UI must NOT promise an inbox.
+await p2.evaluate(() => {
+  const set = (name, v) => { const el = document.querySelector(`ion-input[name="${name}"] input`); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+  set('fullName', 'Flow Student'); set('academy', 'demo'); set('email', 'flow@demo.test'); set('password', 'Str0ngPassw0rd');
+});
+await p2.evaluate(() => { [...document.querySelectorAll('ion-button')].find((b) => b.type === 'submit').click(); });
+await sleep(1200);
+const sent = await p2.evaluate(() => (document.querySelector('.ok')?.textContent ?? '').trim());
+await p2.screenshot({ path: path.join(out, 'register-code-step-ar.png') }); console.log('shot register-code-step-ar');
+check('local-outbox mode: copy points at console/dev-mail, not the inbox', sent.includes('dev-mail') && !sent.includes('بريدك الإلكتروني'));
 
 console.log(results.join('\n'));
 await browser.close(); server.close();

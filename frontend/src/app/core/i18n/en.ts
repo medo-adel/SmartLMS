@@ -392,6 +392,8 @@ Object.assign(EN, {
   'reg.submit': 'Create account',
   'reg.code': 'Verification code',
   'reg.codeSent': 'Check your email for the code.',
+  'reg.codeSentLocal': 'This server saves emails locally instead of sending them. Read the code from the API console or the newest file in storage/dev-mail.',
+  'reg.codeSentOff': 'This server has no email delivery set up. Ask your academy administrator for the code.',
   'reg.verify': 'Verify email',
   'reg.done': 'Your account is ready. You can sign in now.',
   'reg.toLogin': 'Back to sign in',
