@@ -1038,3 +1038,13 @@ Object.assign(AR, {
   "reg.resend": "أعد إرسال الرمز",
 });
 
+
+Object.assign(AR, {
+  "common.needAcademy": "اختر أكاديمية من صفحة الأكاديميات لعرض بياناتها.",
+  "common.goTenants": "فتح الأكاديميات",
+  "ten.enter": "دخول السياق",
+  "ten.inContext": "السياق الحالي",
+  "ten.exitContext": "الخروج من سياق الأكاديمية",
+  "ten.entered": "تم الدخول لسياق الأكاديمية.",
+  "ten.exited": "تم الرجوع لسياق المنصة.",
+});

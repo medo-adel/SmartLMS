@@ -3,6 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { AdminService } from '../../core/services/admin.service';
+import { TenantService } from '../../core/services/tenant.service';
 import { Tenant } from '../../core/models/models';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
@@ -10,6 +11,7 @@ import { TranslatePipe } from '../../core/pipes/translate.pipe';
 @Component({ selector: 'app-tenants', imports: [DatePipe, FormsModule, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './tenants.page.html', styleUrl: './tenants.page.scss' })
 export class TenantsPage implements OnInit {
   private readonly api = inject(AdminService);
+  readonly tenant = inject(TenantService);
   readonly items = signal<Tenant[] | null>(null);
   readonly failed = signal(false);
   readonly info = signal('');
@@ -58,6 +60,19 @@ export class TenantsPage implements OnInit {
       this.editing.set(''); this.info.set('saved'); await this.load();
     } catch { /* toast by interceptor */ }
   }
+
+  /** Enter an academy's context: an explicit, time-boxed support-access grant for THIS academy (the button sits on its row), then tenant calls carry its key. */
+  async enter(t: Tenant): Promise<void> {
+    this.info.set('');
+    try {
+      const r = await this.api.grantSupport(t.id, this.minutes);
+      this.granted.update((g) => ({ ...g, [t.id]: r.expiresAtUtc }));
+      await this.tenant.setTenant(t.slug);
+      this.info.set('entered');
+    } catch { /* toast by interceptor */ }
+  }
+  /** Leave the academy context: back to platform context (no X-Tenant-Id). The backend grant itself stays time-boxed. */
+  async exitContext(): Promise<void> { this.info.set(''); await this.tenant.setTenant(''); this.info.set('exited'); }
 
   async grant(id: string): Promise<void> {
     this.info.set('');

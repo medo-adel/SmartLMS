@@ -2,6 +2,12 @@
 <div class="pg">
   <h1>{{ 'cm.title' | t }}</h1>
 
+  @if (noContext()) {
+    <div class="pn">
+      <p class="mut">{{ 'common.needAcademy' | t }}</p>
+      <ion-button routerLink="/app/tenants">{{ 'common.goTenants' | t }}</ion-button>
+    </div>
+  } @else {
   <div class="tabs2">
     <button type="button" [class.on]="tab() === 'threads'" (click)="tab.set('threads')">{{ 'cm.threads' | t }}</button>
     <button type="button" [class.on]="tab() === 'announcements'" (click)="tab.set('announcements')">{{ 'cm.announcements' | t }}</button>
@@ -201,5 +207,6 @@
     }
   }
 
+  }
 </div>
 </ion-content>

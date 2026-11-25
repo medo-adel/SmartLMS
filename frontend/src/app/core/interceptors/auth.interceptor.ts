@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { from, switchMap, catchError, throwError } from 'rxjs';
@@ -10,6 +10,9 @@ import { TenantService } from '../services/tenant.service';
 const isApi = (url: string) => url.startsWith(environment.apiBaseUrl);
 const isAuthCall = (url: string) => /\/auth\/(login|refresh|register|forgot-password|reset-password)$/.test(url);
 
+/** Set on requests that must go out without X-Tenant-Id even when an academy is selected (platform login retry). */
+export const SKIP_TENANT = new HttpContextToken<boolean>(() => false);
+
 /** Adds X-Tenant-Id, X-Device-Id and the JWT; on a 401 refreshes once (single-flight) and retries. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (!isApi(req.url)) return next(req);
@@ -18,7 +21,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     let headers = r.headers;
     // No tenant key = platform context (SuperAdmin). The API treats a missing header as platform login.
     const tk = tenant.tenantKey();
-    if (tk) headers = headers.set('X-Tenant-Id', tk);
+    if (tk && !r.context.get(SKIP_TENANT)) headers = headers.set('X-Tenant-Id', tk);
     if (device.fingerprintSync) headers = headers.set('X-Device-Id', device.fingerprintSync);
     const token = auth.accessToken;
     if (token) headers = headers.set('Authorization', `Bearer ${token}`);

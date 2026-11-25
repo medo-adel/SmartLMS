@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response';
@@ -8,6 +8,7 @@ import { Session, TokenResponse, User, DashboardKind } from '../models/models';
 import { StorageService } from './storage.service';
 import { DeviceService } from './device.service';
 import { TenantService } from './tenant.service';
+import { SKIP_TENANT } from '../interceptors/auth.interceptor';
 
 const KEY = 'session';
 
@@ -53,11 +54,29 @@ export class AuthService {
   }
   async login(email: string, password: string): Promise<void> {
     const d = await this.device.init();
-    const res = await firstValueFrom(this.http.post<ApiResponse<TokenResponse>>(`${environment.apiBaseUrl}/auth/login`, {
-      email, password, device: { fingerprint: d.fingerprint, deviceType: d.deviceType, platform: d.platform, deviceName: d.deviceName },
-    }));
+    const body = { email, password, device: { fingerprint: d.fingerprint, deviceType: d.deviceType, platform: d.platform, deviceName: d.deviceName } };
+    try {
+      await this.loginWith(body, false);
+    } catch (err) {
+      // Platform sign-in under a stale academy key: the API scopes user names per tenant, so a SuperAdmin
+      // resolves to nothing under X-Tenant-Id (401 INVALID_CREDENTIALS, no lockout increment: no account
+      // matched). Retry once without the tenant header, on EXACTLY that code: arbitrary 401s, network
+      // errors and locked accounts never trigger the retry. If the retry also fails, the caller sees the
+      // ORIGINAL error. A tenant user with a wrong password gets the same 401 either way: the headerless
+      // retry matches no account (names are tenant-scoped), so it never touches the lockout counter.
+      const code = err instanceof HttpErrorResponse ? (err.error as { code?: string } | null)?.code : undefined;
+      if (!(err instanceof HttpErrorResponse) || err.status !== 401 || code !== 'INVALID_CREDENTIALS' || !this.tenant.tenantKey()) throw err;
+      try { await this.loginWith(body, true); } catch { throw err; }
+    }
+  }
+  private async loginWith(body: unknown, skipTenant: boolean): Promise<void> {
+    const options = skipTenant ? { context: new HttpContext().set(SKIP_TENANT, true) } : {};
+    const res = await firstValueFrom(this.http.post<ApiResponse<TokenResponse>>(`${environment.apiBaseUrl}/auth/login`, body, options));
     if (!res.success || !res.data) throw new Error(res.message ?? 'login failed');
     await this.setSession(res.data);
+    // A fresh platform login (no tenant on the token) must not inherit a previous user's academy:
+    // a stale X-Tenant-Id would both break platform routes and send SuperAdmin calls to the wrong tenant.
+    if (!res.data.user.tenantId) await this.tenant.setTenant('');
     await this.tenant.loadBranding();
   }
   /** Self-service sign-up inside the current academy (X-Tenant-Id from the interceptor). The API emails a verification code. */

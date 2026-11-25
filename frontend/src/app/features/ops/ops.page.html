@@ -1,11 +1,19 @@
 <ion-content>
 <div class="pg">
   <h1>{{ 'ops.title' | t }}</h1>
+  @if (noContext()) {
+    <div class="pn">
+      <p class="mut">{{ 'common.needAcademy' | t }}</p>
+      <ion-button routerLink="/app/tenants">{{ 'common.goTenants' | t }}</ion-button>
+    </div>
+  } @else {
   <div class="tabs2">
     <button type="button" [class.on]="tab() === 'audit'" (click)="go('audit')">{{ 'ops.audit' | t }}</button>
-    <button type="button" [class.on]="tab() === 'bin'" (click)="go('bin')">{{ 'ops.bin' | t }}</button>
-    <button type="button" [class.on]="tab() === 'keys'" (click)="go('keys')">{{ 'ops.keys' | t }}</button>
-    <button type="button" [class.on]="tab() === 'hooks'" (click)="go('hooks')">{{ 'ops.hooks' | t }}</button>
+    @if (!isPlatform()) {
+      <button type="button" [class.on]="tab() === 'bin'" (click)="go('bin')">{{ 'ops.bin' | t }}</button>
+      <button type="button" [class.on]="tab() === 'keys'" (click)="go('keys')">{{ 'ops.keys' | t }}</button>
+      <button type="button" [class.on]="tab() === 'hooks'" (click)="go('hooks')">{{ 'ops.hooks' | t }}</button>
+    }
   </div>
   @if (msg()) { <p [class.ok]="msg() !== 'common.error' && msg() !== 'ops.errKey'" [class.err]="msg() === 'common.error' || msg() === 'ops.errKey'">{{ msg() | t }}</p> }
 
@@ -175,6 +183,7 @@
         </div>
       </div>
     }
+  }
   }
 </div>
 </ion-content>
