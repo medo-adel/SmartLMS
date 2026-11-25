@@ -19,6 +19,9 @@ export class BuilderPage implements OnInit {
   readonly failed = signal(false);
   readonly busy = signal(false);
   readonly info = signal('');
+  /** Last action error, shown on screen. Silent catches hid real failures (wrong file type, validation, server down) behind a dead button. */
+  readonly err = signal('');
+  private showErr(e: unknown): void { this.info.set(''); this.err.set(e instanceof Error && e.message ? e.message : 'request failed'); }
   title = ''; short = '';
   sectionTitle = '';
   lessonTitle = ''; lessonType = 'Video'; lessonText = ''; lessonUrl = ''; sectionId = '';
@@ -47,31 +50,31 @@ export class BuilderPage implements OnInit {
   }
   async open1(id: string): Promise<void> {
     this.selected = id; this.draft.set(null);
-    try { const d = await this.api.course(id); this.detail.set(d); this.price = { model: d.pricingModel, amount: d.price ?? 0, currency: d.currency ?? 'EGP', days: null }; this.sectionId = d.sections[0]?.id ?? ''; void this.loadStaffAndPrereqs(id); } catch { /* toast */ }
+    try { const d = await this.api.course(id); this.detail.set(d); this.price = { model: d.pricingModel, amount: d.price ?? 0, currency: d.currency ?? 'EGP', days: null }; this.sectionId = d.sections[0]?.id ?? ''; void this.loadStaffAndPrereqs(id); } catch (e) { this.showErr(e); }
   }
   async create(): Promise<void> {
     if (!this.title.trim()) return;
-    try { await this.api.createCourse(this.title.trim(), this.short.trim()); this.title = ''; this.short = ''; await this.load(); } catch { /* toast */ }
+    try { await this.api.createCourse(this.title.trim(), this.short.trim()); this.title = ''; this.short = ''; await this.load(); } catch (e) { this.showErr(e); }
   }
   async addSection(): Promise<void> {
     if (!this.sectionTitle.trim() || !this.selected) return;
-    try { await this.api.addSection(this.selected, this.sectionTitle.trim()); this.sectionTitle = ''; await this.open1(this.selected); } catch { /* toast */ }
+    try { await this.api.addSection(this.selected, this.sectionTitle.trim()); this.sectionTitle = ''; await this.open1(this.selected); } catch (e) { this.showErr(e); }
   }
   async addLesson(): Promise<void> {
     if (!this.lessonTitle.trim() || !this.sectionId) return;
     try {
       await this.api.addLesson(this.sectionId, this.lessonTitle.trim(), this.lessonType, this.lessonText.trim() || null, this.lessonUrl.trim() || null);
       this.lessonTitle = ''; this.lessonText = ''; this.lessonUrl = ''; await this.open1(this.selected);
-    } catch { /* toast */ }
+    } catch (e) { this.showErr(e); }
   }
   async upload(lessonId: string, ev: Event): Promise<void> {
     const file = (ev.target as HTMLInputElement).files?.[0]; if (!file) return;
     this.busy.set(true);
-    try { await this.api.uploadLessonMedia(lessonId, file); this.info.set('✓'); } catch { /* toast */ }
+    try { await this.api.uploadLessonMedia(lessonId, file); this.info.set('✓'); this.err.set(''); } catch (e) { this.showErr(e); }
     this.busy.set(false);
   }
-  async index(lessonId: string): Promise<void> { try { await this.api.queueIngest(lessonId); this.info.set('✓'); } catch { /* toast */ } }
-  async submitApproval(): Promise<void> { try { await this.api.submitForApproval(this.selected); this.info.set('✓'); await this.load(); } catch { /* toast */ } }
+  async index(lessonId: string): Promise<void> { try { await this.api.queueIngest(lessonId); this.info.set('✓'); this.err.set(''); } catch (e) { this.showErr(e); } }
+  async submitApproval(): Promise<void> { try { await this.api.submitForApproval(this.selected); this.info.set('✓'); this.err.set(''); await this.load(); } catch (e) { this.showErr(e); } }
 
   // ---- staff (GET/PUT /courses/{id}/staff) and prerequisites (GET/PUT /courses/{id}/prerequisites) ------------------
   readonly staff = signal<CourseStaffRow[] | null>(null);
@@ -90,7 +93,7 @@ export class BuilderPage implements OnInit {
     try {
       const st = await this.api.courseStaff(id); this.staff.set(st);
       this.staffDraft.set(st.map((r) => ({ userId: r.userId, fullName: r.fullName, staffRole: r.staffRole })));
-    } catch { /* toast */ }
+    } catch (e) { this.showErr(e); }
     try {
       const pr = await this.api.prerequisites(id); this.prereqs.set(pr); this.prereqDraft.set(pr.map((x) => x.courseId));
     } catch (e) {
@@ -100,7 +103,7 @@ export class BuilderPage implements OnInit {
   }
   async searchStaff(): Promise<void> {
     if (this.staffSearch.trim().length < 2) { this.staffMatches.set([]); return; }
-    try { this.staffMatches.set((await this.admin.users(this.staffSearch.trim(), '')).items.slice(0, 8)); } catch { /* toast */ }
+    try { this.staffMatches.set((await this.admin.users(this.staffSearch.trim(), '')).items.slice(0, 8)); } catch (e) { this.showErr(e); }
   }
   addStaff(u: User): void {
     if (this.staffDraft().some((x) => x.userId === u.id)) return;
@@ -112,8 +115,8 @@ export class BuilderPage implements OnInit {
     const p = this.pendingStaff(); if (!p || !this.selected) return;
     try {
       await this.api.setCourseStaff(this.selected, p.map((x) => ({ userId: x.userId, staffRole: x.staffRole })));
-      this.pendingStaff.set(null); this.info.set('✓'); await this.loadStaffAndPrereqs(this.selected);
-    } catch { /* toast */ }
+      this.pendingStaff.set(null); this.info.set('✓'); this.err.set(''); await this.loadStaffAndPrereqs(this.selected);
+    } catch (e) { this.showErr(e); }
   }
   togglePrereq(id: string): void {
     this.prereqDraft.update((l) => l.includes(id) ? l.filter((x) => x !== id) : [...l, id]);
@@ -124,13 +127,13 @@ export class BuilderPage implements OnInit {
     const p = this.pendingPrereq(); if (!p || !this.selected) return;
     try {
       await this.api.setPrerequisites(this.selected, p);
-      this.pendingPrereq.set(null); this.info.set('✓'); await this.loadStaffAndPrereqs(this.selected);
-    } catch { /* toast */ }
+      this.pendingPrereq.set(null); this.info.set('✓'); this.err.set(''); await this.loadStaffAndPrereqs(this.selected);
+    } catch (e) { this.showErr(e); }
   }
   async makeQuiz(): Promise<void> {
     if (!this.quizLesson) return;
     this.busy.set(true); this.draft.set(null);
-    try { this.draft.set(await this.api.generateQuiz(this.quizLesson, this.mcq, this.open, this.cards)); } catch { /* toast */ }
+    try { this.draft.set(await this.api.generateQuiz(this.quizLesson, this.mcq, this.open, this.cards)); } catch (e) { this.showErr(e); }
     this.busy.set(false);
   }
   get lessons(): { id: string; title: string }[] { return (this.detail()?.sections ?? []).flatMap((s) => s.lessons.map((l) => ({ id: l.id, title: l.title }))); }
@@ -139,17 +142,17 @@ export class BuilderPage implements OnInit {
   startRename(id: string, title: string): void { this.editSection.set(id); this.secName = title; }
   async saveSection(id: string): Promise<void> {
     const sec = this.detail()?.sections.find((x) => x.id === id); if (!sec || !this.secName.trim()) return;
-    try { await this.api.updateSection(id, this.secName.trim(), sec.description, sec.sortOrder); this.editSection.set(''); await this.refresh(); } catch { /* toast */ }
+    try { await this.api.updateSection(id, this.secName.trim(), sec.description, sec.sortOrder); this.editSection.set(''); await this.refresh(); } catch (e) { this.showErr(e); }
   }
   async removeSection(id: string): Promise<void> {
     if (this.confirmDelete() !== id) { this.confirmDelete.set(id); return; }
     this.confirmDelete.set('');
-    try { await this.api.deleteSection(id); await this.refresh(); } catch { /* toast */ }
+    try { await this.api.deleteSection(id); await this.refresh(); } catch (e) { this.showErr(e); }
   }
   async removeLesson(id: string): Promise<void> {
     if (this.confirmDelete() !== id) { this.confirmDelete.set(id); return; }
     this.confirmDelete.set('');
-    try { await this.api.deleteLesson(id); await this.refresh(); } catch { /* toast */ }
+    try { await this.api.deleteLesson(id); await this.refresh(); } catch (e) { this.showErr(e); }
   }
   /** New order after moving the item at index i by delta (-1 up, +1 down); null at the ends. */
   static moved(ids: string[], i: number, delta: number): string[] | null {
@@ -158,34 +161,34 @@ export class BuilderPage implements OnInit {
   }
   async moveSection(i: number, delta: number): Promise<void> {
     const ids = BuilderPage.moved((this.detail()?.sections ?? []).map((x) => x.id), i, delta); if (!ids) return;
-    try { await this.api.orderSections(this.selected, ids); await this.refresh(); } catch { /* toast */ }
+    try { await this.api.orderSections(this.selected, ids); await this.refresh(); } catch (e) { this.showErr(e); }
   }
   async moveLesson(sectionId: string, i: number, delta: number): Promise<void> {
     const sec = this.detail()?.sections.find((x) => x.id === sectionId); if (!sec) return;
     const ids = BuilderPage.moved(sec.lessons.map((x) => x.id), i, delta); if (!ids) return;
-    try { await this.api.orderLessons(sectionId, ids); await this.refresh(); } catch { /* toast */ }
+    try { await this.api.orderLessons(sectionId, ids); await this.refresh(); } catch (e) { this.showErr(e); }
   }
   async startEditLesson(id: string): Promise<void> {
     try {
       const l = await this.api.lesson(id); this.loadedLesson = l; this.lessonPrice = null; this.lesName = l.title; this.lesText = l.contentMarkdown ?? ''; this.lesUrl = l.externalUrl ?? ''; this.editLesson.set(id); this.chapterLesson.set('');
-    } catch { /* toast */ }
+    } catch (e) { this.showErr(e); }
   }
   async saveLesson(sortOrder: number): Promise<void> {
     const l = this.loadedLesson; if (!l || !this.lesName.trim()) return;
-    try { await this.api.updateLesson(l.id, l, this.lesName.trim(), this.lesText.trim() || null, this.lesUrl.trim() || null, sortOrder); this.editLesson.set(''); await this.refresh(); } catch { /* toast */ }
+    try { await this.api.updateLesson(l.id, l, this.lesName.trim(), this.lesText.trim() || null, this.lesUrl.trim() || null, sortOrder); this.editLesson.set(''); await this.refresh(); } catch (e) { this.showErr(e); }
   }
   startChapters(id: string): void { this.chapterLesson.set(id); this.editLesson.set(''); this.chapters = [{ title: '', startSeconds: 0 }]; }
   addChapter(): void { this.chapters = [...this.chapters, { title: '', startSeconds: 0 }]; }
   dropChapter(i: number): void { this.chapters = this.chapters.filter((_, k) => k !== i); }
   async saveChapters(): Promise<void> {
     const rows = this.chapters.filter((c) => c.title.trim()).map((c) => ({ title: c.title.trim(), startSeconds: Math.max(0, Math.floor(Number(c.startSeconds) || 0)) })).sort((a, b) => a.startSeconds - b.startSeconds);
-    try { await this.api.setChapters(this.chapterLesson(), rows); this.info.set('✓'); this.chapterLesson.set(''); } catch { /* toast */ }
+    try { await this.api.setChapters(this.chapterLesson(), rows); this.info.set('✓'); this.err.set(''); this.chapterLesson.set(''); } catch (e) { this.showErr(e); }
   }
   async savePricing(): Promise<void> {
-    try { await this.api.setPricing(this.selected, this.price.model, this.price.model === 'OneTime' ? Number(this.price.amount) : 0, this.price.currency || null, this.price.days ? Number(this.price.days) : null); this.info.set('✓'); await this.refresh(); } catch { /* toast */ }
+    try { await this.api.setPricing(this.selected, this.price.model, this.price.model === 'OneTime' ? Number(this.price.amount) : 0, this.price.currency || null, this.price.days ? Number(this.price.days) : null); this.info.set('✓'); this.err.set(''); await this.refresh(); } catch (e) { this.showErr(e); }
   }
   async saveLessonPrice(id: string): Promise<void> {
-    try { await this.api.setLessonPrice(id, this.lessonPrice && this.lessonPrice > 0 ? Number(this.lessonPrice) : null); this.info.set('✓'); } catch { /* toast */ }
+    try { await this.api.setLessonPrice(id, this.lessonPrice && this.lessonPrice > 0 ? Number(this.lessonPrice) : null); this.info.set('✓'); this.err.set(''); } catch (e) { this.showErr(e); }
   }
   /** Slides are plain title, text and optional image link; the API stores each slide as JSON and replaces the whole deck on save. */
   async startSlides(id: string): Promise<void> {
@@ -196,12 +199,12 @@ export class BuilderPage implements OnInit {
   dropSlide(i: number): void { this.slideRows.update((r) => r.filter((_, k) => k !== i)); }
   async saveSlides(): Promise<void> {
     const deck = this.slideRows().filter((r) => r.title.trim() || r.body.trim()).map((r) => ({ title: r.title.trim(), body: r.body.trim(), ...(r.imageUrl.trim().startsWith('https://') ? { imageUrl: r.imageUrl.trim() } : {}) }));
-    try { await this.api.setSlides(this.slideLesson(), deck); this.info.set('✓'); this.slideLesson.set(''); } catch { /* toast */ }
+    try { await this.api.setSlides(this.slideLesson(), deck); this.info.set('✓'); this.err.set(''); this.slideLesson.set(''); } catch (e) { this.showErr(e); }
   }
   async uploadResource(lessonId: string, ev: Event): Promise<void> {
     const input = ev.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
     this.busy.set(true);
-    try { await this.api.uploadResource(lessonId, file, this.resTitle.trim() || null, true); this.info.set('✓'); this.resTitle = ''; } catch { /* toast */ }
+    try { await this.api.uploadResource(lessonId, file, this.resTitle.trim() || null, true); this.info.set('✓'); this.err.set(''); this.resTitle = ''; } catch (e) { this.showErr(e); }
     input.value = ''; this.busy.set(false);
   }
 }

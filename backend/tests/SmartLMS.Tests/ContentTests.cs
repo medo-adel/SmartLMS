@@ -169,6 +169,25 @@ public sealed class ContentTests : IClassFixture<ApiFactory>
         Assert.Equal(200, (await Raw($"/lessons/{vid}/resources/{hid}/download", inst, t)).Status);
     }
 
+    [Fact]
+    public async Task Audio_and_pdf_lessons_accept_only_matching_media()
+    {
+        var t = await NewTenant(); var inst = await Instructor(t); var st = await Student(t);
+        var (c, sec, _) = await Course(t, inst, true);
+        var aud = Id(await Post($"/sections/{sec}/lessons", new { title = "A", lessonType = "Audio", isPublished = true }, inst, t));
+        var pdfL = Id(await Post($"/sections/{sec}/lessons", new { title = "P", lessonType = "Pdf", isPublished = true }, inst, t));
+        var mp3 = new byte[] { (byte)'I', (byte)'D', (byte)'3', 4, 0, 0, 0, 0, 0, 0x21, 1, 2, 3 };
+        var pdfb = System.Text.Encoding.ASCII.GetBytes("%PDF-1.7 body");
+        var mp4 = new byte[] { 0, 0, 0, 24, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0, 9, 9 };
+        Assert.Equal(400, (await _c.Upload($"/lessons/{aud}/media", mp4, "v.mp4", inst.Token, t.Slug, inst.Dev)).Status);   // video bytes rejected on an audio lesson
+        Assert.Equal(200, (await _c.Upload($"/lessons/{aud}/media", mp3, "a.mp3", inst.Token, t.Slug, inst.Dev)).Status);
+        Assert.Equal(400, (await _c.Upload($"/lessons/{pdfL}/media", mp3, "a.mp3", inst.Token, t.Slug, inst.Dev)).Status);
+        Assert.Equal(200, (await _c.Upload($"/lessons/{pdfL}/media", pdfb, "d.pdf", inst.Token, t.Slug, inst.Dev)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st, t)).Status);
+        var s1 = await Raw($"/lessons/{aud}/stream", st, t); Assert.Equal(200, s1.Status); Assert.Equal("audio/mpeg", s1.Type); Assert.Equal(mp3, s1.Body);
+        var s2 = await Raw($"/lessons/{pdfL}/stream", st, t); Assert.Equal(200, s2.Status); Assert.Equal("application/pdf", s2.Type); Assert.Equal(pdfb, s2.Body);
+    }
+
     private async Task<Who> WithRole(T t, string role)
     {
         var email = $"x{U()}@mail.test";
