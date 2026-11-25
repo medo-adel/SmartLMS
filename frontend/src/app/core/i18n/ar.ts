@@ -133,6 +133,7 @@ Object.assign(AR, {
   'cat.open': 'عرض الكورس',
   'cat.free': 'مجاني',
   'cat.empty': 'لا توجد كورسات مطابقة.',
+  'cat.manageMine': "كورساتي وإنشاء كورس",
   'course.enroll': 'اشترك',
   'course.addCart': 'أضف للسلة',
   'course.enrolled': 'أنت مشترك في هذا الكورس.',

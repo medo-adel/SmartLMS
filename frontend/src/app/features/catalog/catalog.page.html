@@ -1,13 +1,13 @@
 <ion-content>
 <div class="pg">
-  <div class="row2"><h1>{{ 'cat.title' | t }}</h1><span class="row2"><ion-button size="small" fill="outline" routerLink="/app/paths">{{ 'paths.title' | t }}</ion-button>@if (auth.hasRole('Student')) { <ion-button size="small" fill="outline" routerLink="/app/downloads">{{ 'nav.downloads' | t }}</ion-button> }</span></div>
+  <div class="row2"><h1>{{ 'cat.title' | t }}</h1><span class="row2">@if (auth.hasRole('Instructor', 'TenantAdmin')) { <ion-button size="small" routerLink="/app/build">{{ 'cat.manageMine' | t }}</ion-button> }<ion-button size="small" fill="outline" routerLink="/app/paths">{{ 'paths.title' | t }}</ion-button>@if (auth.hasRole('Student')) { <ion-button size="small" fill="outline" routerLink="/app/downloads">{{ 'nav.downloads' | t }}</ion-button> }</span></div>
   <form class="row2 bar searchbar" (ngSubmit)="load()">
     <input class="fld" name="q" [(ngModel)]="search" [placeholder]="'cat.search' | t" />
     <ion-button type="submit">{{ 'cat.search' | t }}</ion-button>
   </form>
   @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
   @else if (items() === null) { <div class="cards" aria-busy="true"><div class="pn sk" style="min-height:14rem"></div><div class="pn sk" style="min-height:14rem"></div><div class="pn sk" style="min-height:14rem"></div></div> }
-  @else if (items()!.length === 0) { <div class="empty"><p>{{ 'cat.empty' | t }}</p></div> }
+  @else if (items()!.length === 0) { <div class="empty"><p>{{ 'cat.empty' | t }}</p>@if (auth.hasRole('Instructor', 'TenantAdmin')) { <ion-button size="small" routerLink="/app/build">{{ 'cat.manageMine' | t }}</ion-button> }</div> }
   @else {
     <div class="cards">
       @for (c of items(); track c.id) {

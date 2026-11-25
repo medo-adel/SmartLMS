@@ -14,6 +14,7 @@ const fx = {
   'GET /tenants/current/branding': ok({ name: 'Nile Academy', slug: 'demo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#f59e0b', accentColor: '#7c3aed', defaultLanguage: 'ar', featureFlags: [] }),
   'GET /me/devices': ok([]), 'GET /notifications': ok([]),
   'GET /learning-paths/manage': ok([]), 'GET /learning-paths': ok([]), 'GET /courses/mine': ok([]),
+  'GET /courses': ok({ items: [], totalCount: 0 }),
   'GET /auth/mail-delivery': ok({ mode: 'local-outbox' }),
 };
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
@@ -104,6 +105,16 @@ await sleep(1200);
 const sent = await p2.evaluate(() => (document.querySelector('.ok')?.textContent ?? '').trim());
 await p2.screenshot({ path: path.join(out, 'register-code-step-ar.png') }); console.log('shot register-code-step-ar');
 check('local-outbox mode: copy points at console/dev-mail, not the inbox', sent.includes('dev-mail') && !sent.includes('بريدك الإلكتروني'));
+
+// Discoverability: a staff member must find course creation from the catalog even when it is empty.
+await p.goto('http://127.0.0.1:4312/app/courses', { waitUntil: 'networkidle0' }); await sleep(1200);
+const cta = await p.evaluate(() => { const a = [...document.querySelectorAll('ion-button, a')].filter((b) => (b.getAttribute('href') ?? '').includes('/app/build')); return a.length; });
+check('empty catalog shows a create/manage-courses CTA for staff (multi-role session)', cta >= 2); // header + empty state
+await p.screenshot({ path: path.join(out, 'catalog-staff-cta-ar.png') }); console.log('shot catalog-staff-cta-ar');
+await p.goto('http://127.0.0.1:4312/app/build', { waitUntil: 'networkidle0' }); await sleep(1200);
+const buildOk = await p.evaluate(() => document.querySelectorAll('input, ion-input').length > 0 && !document.querySelector('.err'));
+check('builder page renders for the instructor (create-course form reachable)', buildOk);
+await p.screenshot({ path: path.join(out, 'builder-create-ar.png') }); console.log('shot builder-create-ar');
 
 console.log(results.join('\n'));
 await browser.close(); server.close();
