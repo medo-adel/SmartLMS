@@ -78,6 +78,15 @@ public sealed class PlatformContextTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Mail_delivery_endpoint_reports_disabled_without_email_config()
+    {
+        // The register UI reads this so it never promises an inbox this server cannot deliver to.
+        var r = await _c.Get("/auth/mail-delivery");
+        Assert.True(r.Status == 200, r.Body.ToString());
+        Assert.Equal("disabled", r.Data.GetProperty("mode").GetString());
+    }
+
+    [Fact]
     public async Task Support_access_granted_revoked_and_expired_envelopes()
     {
         var sa3 = "sa3" + U();

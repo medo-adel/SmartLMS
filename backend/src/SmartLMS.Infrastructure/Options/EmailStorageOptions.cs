@@ -16,7 +16,7 @@ public sealed class EmailOptions
     public string FromAddress { get; set; } = string.Empty;
     public string FromName { get; set; } = "SmartLMS";
 
-    /// <summary>Local development outbox: when set (and Enabled is true), messages are written as .eml files into this folder instead of using SMTP. No server or account needed; open the newest file to read the code. Relative paths resolve against the API's working directory.</summary>
+    /// <summary>Local development outbox: used only when Enabled is true AND Host is empty. Messages are written as .eml files into this folder instead of using SMTP. No server or account needed; open the newest file to read the code. Relative paths resolve against the API's working directory.</summary>
     public string PickupDirectory { get; set; } = string.Empty;
 }
 

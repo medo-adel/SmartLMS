@@ -83,6 +83,9 @@ public sealed class MailFlowTests : IClassFixture<MailFlowFactory>
         var login = await _c.Post("/auth/login", new { email, password = PW, device = Device("fs" + U()) }, tenant: slug);
         Assert.Equal(200, login.Status);
         Assert.Contains("Student", login.Data.GetProperty("user").GetProperty("roles").EnumerateArray().Select(r => r.GetString()));
+
+        var mode = await _c.Get("/auth/mail-delivery");
+        Assert.Equal("local-outbox", mode.Data.GetProperty("mode").GetString());
     }
 
     [Fact]

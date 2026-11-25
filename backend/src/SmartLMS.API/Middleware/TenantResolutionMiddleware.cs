@@ -94,8 +94,9 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, IMemoryCach
                 }
                 tenantContext.Set(resolved.Id, false);
             }
-            else if (IsPlatformLogin(path))
+            else if (IsPlatformLogin(path) || path.Equals("/api/v1/auth/mail-delivery", StringComparison.OrdinalIgnoreCase))
             {
+                // Platform-scope auth routes that need no tenant: login/refresh, and the mail-delivery mode probe.
                 tenantContext.Set(null, true);
             }
             else if (ctx.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>() is not null)

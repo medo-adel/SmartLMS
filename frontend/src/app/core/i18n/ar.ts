@@ -1036,6 +1036,8 @@ Object.assign(AR, {
   "ord.total": "الإجمالي",
   "ord.invoiceNo": "الفاتورة",
   "reg.resend": "أعد إرسال الرمز",
+  "reg.codeSentLocal": "هذا الخادم يحفظ الرسائل محليًا بدل إرسالها. اقرأ الكود من نافذة الـAPI أو من أحدث ملف في storage/dev-mail.",
+  "reg.codeSentOff": "لم تُضبط خدمة البريد على هذا الخادم. اطلب الكود من مسؤول الأكاديمية.",
   "reg.role": "نوع الحساب",
   "reg.roleStudent": "طالب",
   "reg.roleParent": "ولي أمر",

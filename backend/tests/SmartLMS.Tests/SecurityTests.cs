@@ -270,6 +270,7 @@ public sealed class SecurityTests : IClassFixture<ApiFactory>
     {
         public List<EmailMessage> Sent { get; } = [];
         public bool IsEnabled => enabled;
+        public string DeliveryMode => enabled ? "mailbox" : "disabled";
         public Task SendAsync(EmailMessage m, CancellationToken ct) { Sent.Add(m); return Task.CompletedTask; }
     }
 

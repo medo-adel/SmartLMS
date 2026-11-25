@@ -11,6 +11,7 @@ namespace SmartLMS.Infrastructure.Services;
 public sealed class DisabledEmailTransport(ILogger<DisabledEmailTransport> logger) : IEmailTransport
 {
     public bool IsEnabled => false;
+    public string DeliveryMode => "disabled";
 
     public Task SendAsync(EmailMessage message, CancellationToken ct)
     {
@@ -23,12 +24,14 @@ public sealed class DisabledEmailTransport(ILogger<DisabledEmailTransport> logge
 public sealed class SmtpEmailTransport(IOptions<EmailOptions> options) : IEmailTransport
 {
     public bool IsEnabled => true;
+    // A configured SMTP host always wins: the local outbox is a development fallback, never a silent override.
+    public string DeliveryMode => string.IsNullOrWhiteSpace(options.Value.Host) && !string.IsNullOrWhiteSpace(options.Value.PickupDirectory) ? "local-outbox" : "mailbox";
 
     public async Task SendAsync(EmailMessage message, CancellationToken ct)
     {
         var o = options.Value;
         using var client = new SmtpClient();
-        if (!string.IsNullOrWhiteSpace(o.PickupDirectory))
+        if (string.IsNullOrWhiteSpace(o.Host) && !string.IsNullOrWhiteSpace(o.PickupDirectory))
         {
             // Local development outbox: real .eml files, no server. The directory is created if missing.
             client.DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory;

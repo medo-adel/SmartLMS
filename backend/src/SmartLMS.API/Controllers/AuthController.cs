@@ -10,8 +10,12 @@ namespace SmartLMS.API.Controllers;
 
 [Route("api/v1/auth")]
 [EnableRateLimiting("auth")]
-public sealed class AuthController(IAuthService auth) : ApiControllerBase
+public sealed class AuthController(IAuthService auth, IEmailTransport mail) : ApiControllerBase
 {
+    /// <summary>Tells the UI how verification codes actually leave this server, so it never promises mailbox delivery it cannot make. Exposes only the mode word, never hosts, paths or accounts.</summary>
+    [HttpGet("mail-delivery"), AllowAnonymous]
+    public ActionResult<ApiResponse<object>> MailDelivery() => Success<object>(new { mode = mail.DeliveryMode });
+
     [HttpPost("register"), AllowAnonymous]
     public async Task<ActionResult<ApiResponse<UserDto>>> Register(RegisterRequest request, CancellationToken ct) =>
         StatusCode(StatusCodes.Status201Created, ApiResponse<UserDto>.Ok(await auth.RegisterAsync(request, ct), "Registered. Verify your email with the code we sent."));

@@ -73,6 +73,8 @@ public sealed record EmailMessage(string To, string Subject, string Body);
 public interface IEmailTransport
 {
     bool IsEnabled { get; }
+    /// <summary>How messages leave the server: "mailbox" (real SMTP), "local-outbox" (.eml files on the server), or "disabled" (nothing is sent). Lets the UI tell the truth about where a code went without exposing hosts or paths.</summary>
+    string DeliveryMode { get; }
     Task SendAsync(EmailMessage message, CancellationToken ct);
 }
 

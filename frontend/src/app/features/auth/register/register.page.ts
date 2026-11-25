@@ -41,13 +41,19 @@ export class RegisterPage {
     this.error.set(e instanceof HttpErrorResponse && e.status !== 0 ? (e.error?.message ?? this.i18n.t('common.error')) : this.i18n.t('err.network'));
   }
 
+  /** Truthful copy for the code step: only promise an inbox when the server actually sends mail. */
+  private async showCodeSent(): Promise<void> {
+    const mode = await this.auth.mailDeliveryMode();
+    this.info.set(this.i18n.t(mode === 'mailbox' ? 'reg.codeSent' : mode === 'local-outbox' ? 'reg.codeSentLocal' : 'reg.codeSentOff'));
+  }
+
   async submitForm(): Promise<void> {
     this.error.set(''); this.info.set('');
     const email = this.email.trim();
     if (this.isForgot) {
       if (!/^\S+@\S+\.\S+$/.test(email)) { this.error.set(this.i18n.t('login.invalid')); return; }
       this.busy.set(true);
-      try { await this.auth.forgotPassword(email); this.step = 'code'; this.info.set(this.i18n.t('reg.codeSent')); }
+      try { await this.auth.forgotPassword(email); this.step = 'code'; await this.showCodeSent(); }
       catch (e) { this.fail(e); } finally { this.busy.set(false); }
       return;
     }
@@ -56,7 +62,7 @@ export class RegisterPage {
     try {
       await this.tenant.setTenant(this.academy);
       await this.auth.register({ fullName: this.fullName.trim(), email, password: this.password, phoneNumber: this.phone.trim() || null, preferredLanguage: this.i18n.lang(), role: this.role });
-      this.step = 'code'; this.info.set(this.i18n.t('reg.codeSent'));
+      this.step = 'code'; await this.showCodeSent();
     } catch (e) { this.fail(e); } finally { this.busy.set(false); }
   }
 
@@ -75,7 +81,7 @@ export class RegisterPage {
   /** Resend the verification code (POST /auth/otp/request). Register only: forgot-password resubmits its own form. */
   async resend(): Promise<void> {
     this.error.set(''); this.busy.set(true);
-    try { await this.auth.resendVerification(this.email.trim()); this.info.set(this.i18n.t('reg.codeSent')); }
+    try { await this.auth.resendVerification(this.email.trim()); await this.showCodeSent(); }
     catch (e) { this.fail(e); } finally { this.busy.set(false); }
   }
 }
