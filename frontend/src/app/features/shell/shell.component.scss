@@ -4,12 +4,14 @@ ion-content { --background: var(--app-bg); }
 .brand img { block-size: 2.4rem; max-inline-size: 8rem; object-fit: contain; }
 .brand .mono { flex: none; inline-size: 2.5rem; block-size: 2.5rem; border-radius: 14px; display: grid; place-items: center; color: var(--ion-color-primary-contrast); font-size: 1.1rem; background: linear-gradient(145deg, var(--ion-color-primary), var(--brand-end)); }
 .brand strong { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-ion-list { padding: .25rem .85rem; background: transparent; }
+/* Menu taller than the viewport: brand stays on top, the list scrolls, the account card stays pinned at the bottom in flow (an absolute footer hid the last entries and blocked scrolling). */
+ion-content::part(scroll) { display: flex; flex-direction: column; }
+ion-list { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; padding: .25rem .85rem; background: transparent; }
 ion-item { --border-radius: 999px; --padding-start: 1rem; --inner-padding-end: .5rem; margin-block-end: .2rem; --min-height: 2.9rem; --color: var(--app-text-2); font-weight: 600; font-size: .95rem; --background-hover: var(--app-card-2); --background-hover-opacity: 1; }
 ion-item ion-icon { margin-inline-end: .8rem; font-size: 1.25rem; color: var(--app-muted); }
 ion-item.active { --background: var(--ion-color-primary); --color: var(--ion-color-primary-contrast); --background-hover: var(--ion-color-primary); box-shadow: 0 8px 18px -8px rgba(var(--ion-color-primary-rgb), .7); }
 ion-item.active ion-icon { color: var(--ion-color-primary-contrast); }
-.who { position: absolute; inset-inline: .85rem; inset-block-end: .85rem; padding: .75rem; display: flex; align-items: center; gap: .6rem; border-radius: 20px; background: var(--app-card); border: 1px solid var(--app-border); box-shadow: var(--app-shadow); }
+.who { flex: none; margin: .85rem; padding: .75rem; display: flex; align-items: center; gap: .6rem; border-radius: 20px; background: var(--app-card); border: 1px solid var(--app-border); box-shadow: var(--app-shadow); }
 .me { flex: 1; display: flex; align-items: center; gap: .6rem; font-weight: 700; font-size: .9rem; color: var(--app-text); min-inline-size: 0; }
 .me span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .avatar { flex: none; inline-size: 2.3rem; block-size: 2.3rem; border-radius: 50%; display: grid; place-items: center; background: var(--app-tint); color: var(--app-ink); font-weight: 800; }

@@ -955,6 +955,11 @@ Object.assign(EN, {
   'ord.total': 'Total',
   'ord.invoiceNo': 'Invoice',
   'reg.resend': 'Resend the code',
+  'reg.role': 'Account type',
+  'reg.roleStudent': 'Student',
+  'reg.roleParent': 'Parent',
+  'reg.roleHint': 'Self sign-up creates a Student or Parent account only. Instructor and admin accounts are created by your academy.',
+  'reg.noEmail': 'No email? Check spam, then resend. If it still does not arrive, your academy may not have email set up yet.',
 });
 
 
