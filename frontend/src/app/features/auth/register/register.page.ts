@@ -44,7 +44,8 @@ export class RegisterPage {
   /** Truthful copy for the code step: only promise an inbox when the server actually sends mail. */
   private async showCodeSent(): Promise<void> {
     const mode = await this.auth.mailDeliveryMode();
-    this.info.set(this.i18n.t(mode === 'mailbox' ? 'reg.codeSent' : mode === 'local-outbox' ? 'reg.codeSentLocal' : 'reg.codeSentOff'));
+    const key = mode === 'mailbox' ? 'reg.codeSent' : mode === 'local-outbox' ? 'reg.codeSentLocal' : mode === 'disabled' ? 'reg.codeSentOff' : 'reg.codeSentUnknown';
+    this.info.set(this.i18n.t(key));
   }
 
   async submitForm(): Promise<void> {
