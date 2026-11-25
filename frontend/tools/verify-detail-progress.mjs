@@ -12,14 +12,20 @@ const lessons = [
   { id: 'les-1', title: 'Lesson One', lessonType: 'Video', durationSeconds: 120, sortOrder: 0, isFreePreview: false },
   { id: 'les-2', title: 'Lesson Two', lessonType: 'Pdf', durationSeconds: 600, sortOrder: 1, isFreePreview: false },
   { id: 'les-3', title: 'Lesson Three', lessonType: 'Article', durationSeconds: null, sortOrder: 2, isFreePreview: false },
-  { id: 'les-4', title: 'Lesson Four', lessonType: 'Pdf', durationSeconds: 300, sortOrder: 3, isFreePreview: false },
 ];
+// Reachable by direct URL only (not in the published outline): failure fixtures for the player checks below.
+const extra = [
+  { id: 'les-4', title: 'Lesson Four', lessonType: 'Pdf', durationSeconds: 300, sortOrder: 3, isFreePreview: false },
+  { id: 'les-5', title: 'Lesson Five', lessonType: 'Pdf', durationSeconds: 300, sortOrder: 4, isFreePreview: false },
+];
+const allLessons = [...lessons, ...extra];
 const course = { id: 'c-1', title: 'Test Course', slug: 'test-course', shortDescription: null, level: 'Beginner', language: null, estimatedHours: null, pricingModel: 'Free', price: 0, currency: 'EGP', description: null, status: 'Published', sections: [{ id: 'sec-1', title: 'Section One', description: null, sortOrder: 0, lessons }] };
 const progress = { courseId: 'c-1', progressPercent: 33.3, status: 'Active', lessons: [
   { lessonId: 'les-1', status: 'InProgress', lastPositionSeconds: 60, watchedSeconds: 60 },
   { lessonId: 'les-2', status: 'Completed', lastPositionSeconds: 0, watchedSeconds: 0 },
 ] };
 const puts = []; // captured progress PUTs { lesson, body }
+let slowStream = false;
 const fx = {
   'GET /tenants/current/branding': ok({ name: 'Test Academy', slug: 'demo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#f59e0b', accentColor: '#7c3aed', defaultLanguage: 'ar', featureFlags: [] }),
   'GET /me/devices': ok([]), 'GET /notifications': ok([]),
@@ -43,9 +49,11 @@ p.on('request', (rq) => { void (async () => {
   const put = pp.match(/^\/lessons\/(les-\d)\/progress$/);
   if (rq.method() === 'PUT' && put) { puts.push({ lesson: put[1], body: rq.postData() ?? '' }); return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok(progress)) }); }
   const les = pp.match(/^\/lessons\/(les-\d)(\/.*)?$/);
-  if (les && rq.method() === 'GET' && !les[2]) return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok({ ...lessons.find((l) => l.id === les[1]), contentMarkdown: 'body', externalUrl: null })) });
+  if (les && rq.method() === 'GET' && !les[2]) return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok({ ...allLessons.find((l) => l.id === les[1]), contentMarkdown: 'body', externalUrl: null })) });
   if (les && rq.method() === 'GET' && les[2] === '/stream') {
     if (les[1] === 'les-4') return rq.respond({ status: 404, headers: h, body: JSON.stringify({ success: false, data: null, message: 'missing', errors: [] }) });
+    if (les[1] === 'les-5') return rq.respond({ status: 200, headers: { ...h, 'content-type': 'application/pdf' }, body: '' }); // blank body: not a viewed PDF
+    if (les[1] === 'les-2' && slowStream) { await sleep(1500); } // stale-route check: the answer arrives after the learner moved on
     return rq.respond({ status: 200, headers: { ...h, 'content-type': 'application/pdf' }, body: Buffer.from('%PDF-1.4 fixture') });
   }
   if (les && rq.method() === 'GET' && les[2] === '/resources') return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok([])) });
@@ -100,6 +108,16 @@ const pdfPut = puts.find((x) => x.lesson === 'les-2');
 check('PDF successful view sent completion', !!pdfPut && pdfPut.body.includes('"completed":true'));
 await p.goto('http://127.0.0.1:4312/app/learn/c-1/les-4', { waitUntil: 'networkidle0' }); await sleep(2500);
 check('failed PDF load sent no completion', !puts.some((x) => x.lesson === 'les-4'));
+await p.goto('http://127.0.0.1:4312/app/learn/c-1/les-5', { waitUntil: 'networkidle0' }); await sleep(2500);
+check('blank PDF body sent no completion', !puts.some((x) => x.lesson === 'les-5'));
+
+// stale route: open the PDF, switch to another lesson before its slow fetch returns -> the late response is dropped
+slowStream = true;
+await p.goto('http://127.0.0.1:4312/app/learn/c-1/les-2', { waitUntil: 'networkidle0' }); await sleep(400);
+const putsBeforeStale = puts.filter((x) => x.lesson === 'les-2').length;
+await p.evaluate(() => { const pg = [...document.querySelectorAll('app-player')].find((e) => e.offsetParent !== null) ?? document; const a = [...pg.querySelectorAll('.cur-les .cur-link')].find((e) => e.textContent.includes('Lesson One')); a?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+await sleep(2500); // the slow les-2 stream resolves here, after the learner is on Lesson One
+check('stale PDF response after switching lessons sent no completion', puts.filter((x) => x.lesson === 'les-2').length === putsBeforeStale);
 check('no page errors', consoleProblems.length === 0);
 if (consoleProblems.length) console.log(consoleProblems.join('\n'));
 console.log(results.join('\n'));

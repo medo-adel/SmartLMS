@@ -114,21 +114,28 @@ export class PlayerPage implements OnInit, OnDestroy {
     try {
       const saved = this.offline.entry(this.lessonId);
       let lesson: Lesson, course: CourseDetail;
-      if (!this.net.online() && saved) { ({ lesson, course } = saved); if (seq !== this.loadSeq) return; await this.useOffline(saved); }
+      let pdfShown = false; // becomes true only when this lesson's own PDF bytes really arrived
+      if (!this.net.online() && saved) { ({ lesson, course } = saved); if (seq !== this.loadSeq) return; await this.useOffline(saved); pdfShown = true; }
       else {
         try { [lesson, course] = await Promise.all([this.api.lesson(this.lessonId), this.api.course(this.courseId)]); }
         catch (e) {
           if ((e as { status?: number }).status !== 0 || !saved) throw e;
           ({ lesson, course } = saved); await this.useOffline(saved); // the network dropped: fall back to the downloaded copy
+          pdfShown = true;
         }
         if (seq !== this.loadSeq) return; // navigated away while loading: drop the stale response
-        if (!this.offlineMode() && ['Video', 'Audio', 'Pdf'].includes(lesson.lessonType)) this.setMedia(await this.api.streamBlob(this.lessonId));
+        if (!this.offlineMode() && ['Video', 'Audio', 'Pdf'].includes(lesson.lessonType)) {
+          const blob = await this.api.streamBlob(this.lessonId); // authenticated, enrollment-checked fetch of THIS lesson's file; a failure throws
+          this.setMedia(blob);
+          pdfShown = blob.size > 0; // a blank body is not a viewed PDF
+        }
       }
       if (seq !== this.loadSeq) return;
       this.lesson.set(lesson); this.course.set(course); void this.loadCurriculum(course, seq);
-      // A PDF counts as viewed once its file has actually loaded (not on navigation intent or a failed load):
-      // record completion like a finished video. Offline viewing queues the record and replays it when online.
-      if (lesson.lessonType === 'Pdf') void this.flush(true).then(() => this.refreshProgress());
+      // A PDF counts as viewed only after its own authenticated fetch returned real bytes while still on this
+      // lesson (never on navigation intent, a stale response, a failed fetch or a blank body). Offline viewing
+      // queues the record and replays it when online.
+      if (lesson.lessonType === 'Pdf' && pdfShown) void this.flush(true).then(() => this.refreshProgress());
       if (lesson.lessonType === 'InteractiveSlides') { this.slides.set(await this.api.slides(this.lessonId).catch(() => [])); this.slideIx.set(0); }
       if (lesson.lessonType === 'Video' && seq === this.loadSeq) { this.quizzes = this.offlineMode() ? [] : await this.api.interactiveQuizzes(this.lessonId).catch(() => []); }
       if (!this.timer) this.timer = setInterval(() => void this.flush(false), 15000);
