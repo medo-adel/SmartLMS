@@ -3,7 +3,7 @@ import { Component, computed, effect, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { IonSplitPane, IonMenu, IonContent, IonList, IonItem, IonIcon, IonLabel, IonTabs, IonTabBar, IonTabButton, IonButton, MenuController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { chatbubblesOutline, clipboardOutline, createOutline, ellipsisHorizontalOutline, homeOutline, notificationsOutline, personOutline, logOutOutline, bookOutline, gitBranchOutline, sparklesOutline, walletOutline, cartOutline, constructOutline } from 'ionicons/icons';
+import { chatbubblesOutline, clipboardOutline, createOutline, ellipsisHorizontalOutline, homeOutline, notificationsOutline, personOutline, logOutOutline, bookOutline, gitBranchOutline, sparklesOutline, walletOutline, cartOutline, constructOutline, trophyOutline, cashOutline, shieldCheckmarkOutline } from 'ionicons/icons';
 import { AuthService } from '../../core/services/auth.service';
 import { OfflineService } from '../../core/services/offline.service';
 import { NetworkService } from '../../core/services/network.service';
@@ -62,7 +62,7 @@ export class ShellComponent {
   openMenu(): Promise<boolean> { return this.menu.open('sidebar'); }
   closeMenu(): Promise<boolean> { return this.menu.close('sidebar'); }
   constructor() {
-    addIcons({ 'chatbubbles-outline': chatbubblesOutline, 'clipboard-outline': clipboardOutline, 'create-outline': createOutline, 'ellipsis-horizontal-outline': ellipsisHorizontalOutline, 'download-outline': downloadOutline, 'cloud-offline-outline': cloudOfflineOutline, 'pricetags-outline': pricetagsOutline, 'business-outline': businessOutline, 'people-outline': peopleOutline, 'checkmark-done-outline': checkmarkDoneOutline, 'settings-outline': settingsOutline, 'card-outline': cardOutline, 'help-circle-outline': helpCircleOutline, 'receipt-outline': receiptOutline, 'home-outline': homeOutline, 'notifications-outline': notificationsOutline, 'person-outline': personOutline, 'log-out-outline': logOutOutline, 'book-outline': bookOutline, 'git-branch-outline': gitBranchOutline, 'sparkles-outline': sparklesOutline, 'wallet-outline': walletOutline, 'cart-outline': cartOutline, 'construct-outline': constructOutline });
+    addIcons({ 'chatbubbles-outline': chatbubblesOutline, 'clipboard-outline': clipboardOutline, 'create-outline': createOutline, 'ellipsis-horizontal-outline': ellipsisHorizontalOutline, 'download-outline': downloadOutline, 'cloud-offline-outline': cloudOfflineOutline, 'pricetags-outline': pricetagsOutline, 'business-outline': businessOutline, 'people-outline': peopleOutline, 'checkmark-done-outline': checkmarkDoneOutline, 'settings-outline': settingsOutline, 'card-outline': cardOutline, 'help-circle-outline': helpCircleOutline, 'receipt-outline': receiptOutline, 'home-outline': homeOutline, 'notifications-outline': notificationsOutline, 'person-outline': personOutline, 'log-out-outline': logOutOutline, 'book-outline': bookOutline, 'git-branch-outline': gitBranchOutline, 'sparkles-outline': sparklesOutline, 'wallet-outline': walletOutline, 'cart-outline': cartOutline, 'construct-outline': constructOutline, 'trophy-outline': trophyOutline, 'cash-outline': cashOutline, 'shield-checkmark-outline': shieldCheckmarkOutline });
     // replay progress saved offline whenever the device is online and someone is signed in
     effect(() => { if (this.auth.user()) { void this.sync.refreshPending(); if (this.net.online()) void this.sync.flush(); } });
   }

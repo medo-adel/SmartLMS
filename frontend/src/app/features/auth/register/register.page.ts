@@ -26,6 +26,8 @@ export class RegisterPage {
   readonly mode: Mode;
   step: 'form' | 'code' | 'done' = 'form';
   fullName = ''; email = ''; password = ''; phone = ''; academy = this.tenant.tenantKey();
+  /** Public sign-up creates exactly one of these two roles (API-enforced); staff roles come from the academy admin. */
+  role: 'Student' | 'Parent' = 'Student';
   code = ''; newPassword = '';
   readonly busy = signal(false);
   readonly error = signal('');
@@ -53,7 +55,7 @@ export class RegisterPage {
     this.busy.set(true);
     try {
       await this.tenant.setTenant(this.academy);
-      await this.auth.register({ fullName: this.fullName.trim(), email, password: this.password, phoneNumber: this.phone.trim() || null, preferredLanguage: this.i18n.lang() });
+      await this.auth.register({ fullName: this.fullName.trim(), email, password: this.password, phoneNumber: this.phone.trim() || null, preferredLanguage: this.i18n.lang(), role: this.role });
       this.step = 'code'; this.info.set(this.i18n.t('reg.codeSent'));
     } catch (e) { this.fail(e); } finally { this.busy.set(false); }
   }

@@ -105,9 +105,14 @@ Confirm the prompt, then restart any open browser windows.
 
 The API listens on https://localhost:7200 (and http://localhost:5057).
 On first run it creates the database, migrates, and seeds the demo
-tenant plus your admin from step 4. Verification codes (OTP) are
-written to this API console in Development (Otp:LogCodes), so you can
-read login/verification codes from the console while testing.
+tenant plus your admin from step 4. Verification codes (OTP) reach you
+two ways in Development, no email account needed:
+  1. They are written to this API console (Otp:LogCodes).
+  2. Every outgoing email is saved as a real .eml file under
+     backend/src/SmartLMS.API/storage/dev-mail (Email:PickupDirectory).
+     Open the newest file in any mail viewer to read the code.
+To send real email instead, set Email:Host/Port/UserName/Password in
+user-secrets and remove Email:PickupDirectory.
 Keep this terminal open.
 
 7. Optional: your own service keys (only if you want them)
@@ -142,10 +147,14 @@ is already allowed by the backend.
 With both terminals running:
 1. Log in as the tenant admin you seeded in step 4
    (email + password, tenant "demo" is preselected).
-2. Register an instructor and a student from the app's registration
-   page (choose the role; Student is the default). Each registration
-   sends an email-verification code: read it from the API console
-   (step 6), enter it, then log in.
+2. Register a student (or parent) from the app's registration page:
+   self sign-up creates Student or Parent accounts only (account type is
+   chosen on the form; Student is the default). Each registration sends
+   an email-verification code: read it from the API console or the newest
+   .eml file in storage\dev-mail (step 6), enter it, then log in.
+   Instructor accounts are NOT self-registered: as the tenant admin, open
+   the Users page, add the user with the Instructor role and a temporary
+   password, and share that password with them privately.
 3. As the instructor: create a course, add a section and a lesson,
    submit for approval.
 4. As the tenant admin: approve and publish the course.

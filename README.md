@@ -179,4 +179,4 @@ This is a development implementation, not a production or security certification
 - Nothing was run end to end against a live .NET API, SQL Server and the AI service together. UI screenshots use a mock API.
 - Offline downloads, Privacy Screen, biometric login and the voice tutor were not tested on a device.
 - Docker files were not run. No penetration test was done. `pip-audit` still reports advisories in `chromadb` and `filelock` with no installable fix; why they do not apply to the embedded use here is in SECURITY_AUDIT.md.
-- No Register screen yet, so the `?ref=` referral link is unused; the admin affiliate form needs a pasted user ID; no SignalR client in the app; TA and SuperAdmin have no dashboard.
+- The `?ref=` referral link is unused; the admin affiliate form needs a pasted user ID; no SignalR client in the app; TA and SuperAdmin have no dashboard.

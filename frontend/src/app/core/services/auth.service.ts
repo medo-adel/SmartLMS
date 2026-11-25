@@ -79,11 +79,11 @@ export class AuthService {
     if (!res.data.user.tenantId) await this.tenant.setTenant('');
     await this.tenant.loadBranding();
   }
-  /** Self-service sign-up inside the current academy (X-Tenant-Id from the interceptor). The API emails a verification code. */
-  async register(input: { fullName: string; email: string; password: string; phoneNumber?: string | null; preferredLanguage?: string | null }): Promise<void> {
+  /** Self-service sign-up inside the current academy (X-Tenant-Id from the interceptor). The API emails a verification code. Public registration allows Student or Parent only; the API rejects anything else. */
+  async register(input: { fullName: string; email: string; password: string; phoneNumber?: string | null; preferredLanguage?: string | null; role?: 'Student' | 'Parent' }): Promise<void> {
     const res = await firstValueFrom(this.http.post<ApiResponse<unknown>>(`${environment.apiBaseUrl}/auth/register`, {
       fullName: input.fullName, email: input.email, password: input.password,
-      phoneNumber: input.phoneNumber ?? null, preferredLanguage: input.preferredLanguage ?? null,
+      phoneNumber: input.phoneNumber ?? null, preferredLanguage: input.preferredLanguage ?? null, role: input.role ?? null,
     }));
     if (!res.success) throw new Error(res.message ?? 'registration failed');
   }

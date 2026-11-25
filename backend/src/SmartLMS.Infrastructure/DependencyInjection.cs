@@ -58,7 +58,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailTransport>(sp =>
         {
             var o = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value;
-            return o.Enabled && !string.IsNullOrWhiteSpace(o.Host) && !string.IsNullOrWhiteSpace(o.FromAddress)
+            return o.Enabled && !string.IsNullOrWhiteSpace(o.FromAddress) && (!string.IsNullOrWhiteSpace(o.Host) || !string.IsNullOrWhiteSpace(o.PickupDirectory))
                 ? ActivatorUtilities.CreateInstance<SmtpEmailTransport>(sp)
                 : ActivatorUtilities.CreateInstance<DisabledEmailTransport>(sp);
         });

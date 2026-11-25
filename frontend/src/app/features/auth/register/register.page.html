@@ -25,6 +25,12 @@
         @if (!isForgot) {
           <ion-input name="password" type="password" autocomplete="new-password" fill="outline" labelPlacement="stacked" [label]="'login.password' | t" [(ngModel)]="password"></ion-input>
           <ion-input name="phone" type="tel" inputmode="tel" autocomplete="tel" fill="outline" labelPlacement="stacked" [label]="'reg.phone' | t" [(ngModel)]="phone"></ion-input>
+          <label class="hint" for="regRole">{{ 'reg.role' | t }}</label>
+          <select class="fld" id="regRole" name="regRole" [(ngModel)]="role">
+            <option value="Student">{{ 'reg.roleStudent' | t }}</option>
+            <option value="Parent">{{ 'reg.roleParent' | t }}</option>
+          </select>
+          <p class="muted hint">{{ 'reg.roleHint' | t }}</p>
         }
         @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
         <ion-button type="submit" expand="block" [disabled]="busy()">
@@ -45,6 +51,7 @@
           @if (busy()) { <ion-spinner name="crescent" color="light"></ion-spinner> } @else { {{ (isForgot ? 'forgot.reset' : 'reg.verify') | t }} }
         </ion-button>
         @if (!isForgot) { <ion-button type="button" fill="clear" expand="block" [disabled]="busy()" (click)="resend()">{{ 'reg.resend' | t }}</ion-button> }
+        <p class="muted hint">{{ 'reg.noEmail' | t }}</p>
       </form>
     }
 

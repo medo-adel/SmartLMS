@@ -27,8 +27,19 @@ public sealed class SmtpEmailTransport(IOptions<EmailOptions> options) : IEmailT
     public async Task SendAsync(EmailMessage message, CancellationToken ct)
     {
         var o = options.Value;
-        using var client = new SmtpClient(o.Host, o.Port) { EnableSsl = o.UseSsl, DeliveryMethod = SmtpDeliveryMethod.Network };
-        if (!string.IsNullOrEmpty(o.UserName)) client.Credentials = new NetworkCredential(o.UserName, o.Password);
+        using var client = new SmtpClient();
+        if (!string.IsNullOrWhiteSpace(o.PickupDirectory))
+        {
+            // Local development outbox: real .eml files, no server. The directory is created if missing.
+            client.DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory;
+            client.PickupDirectoryLocation = Path.GetFullPath(o.PickupDirectory);
+            Directory.CreateDirectory(client.PickupDirectoryLocation);
+        }
+        else
+        {
+            client.Host = o.Host; client.Port = o.Port; client.EnableSsl = o.UseSsl; client.DeliveryMethod = SmtpDeliveryMethod.Network;
+            if (!string.IsNullOrEmpty(o.UserName)) client.Credentials = new NetworkCredential(o.UserName, o.Password);
+        }
         using var mail = new MailMessage(new MailAddress(o.FromAddress, o.FromName), new MailAddress(message.To)) { Subject = message.Subject, Body = message.Body, IsBodyHtml = false };
         await client.SendMailAsync(mail, ct);
     }
