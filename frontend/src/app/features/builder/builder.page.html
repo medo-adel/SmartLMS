@@ -2,6 +2,7 @@
 <div class="pg">
   <div class="row2"><h1>{{ 'build.title' | t }}</h1><ion-button size="small" fill="outline" routerLink="/app/orders">{{ 'nav.orders' | t }}</ion-button></div>
   @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @if (err()) { <p class="err">{{ err() }}</p> }
   @else if (courses() === null) { <div class="pn sk" aria-busy="true"></div> }
   @else {
     <div class="layout2 cols">
@@ -105,8 +106,8 @@
                 <ion-button size="small" fill="outline" (click)="startEditLesson(l.id)">{{ 'build.edit' | t }}</ion-button>
                 @if (l.lessonType === 'InteractiveSlides') { <ion-button size="small" fill="outline" (click)="startSlides(l.id)">{{ 'build.slides' | t }}</ion-button> }
                 @if (l.lessonType === 'Video' || l.lessonType === 'Audio') { <ion-button size="small" fill="outline" (click)="startChapters(l.id)">{{ 'build.chapters' | t }}</ion-button> }
-                @if (l.lessonType === 'Video' || l.lessonType === 'Audio' || l.lessonType === 'Pdf') { <label class="up">{{ 'build.upload' | t }}<input type="file" (change)="upload(l.id, $event)" /></label> }
-                <label class="up">{{ 'build.resource' | t }}<input type="file" (change)="uploadResource(l.id, $event)" /></label>
+                @if (l.lessonType === 'Video' || l.lessonType === 'Audio' || l.lessonType === 'Pdf') { <label class="up">{{ 'build.upload' | t }}<input type="file" [attr.accept]="l.lessonType === 'Video' ? 'video/mp4,video/webm' : l.lessonType === 'Audio' ? 'audio/mpeg' : 'application/pdf'" (change)="upload(l.id, $event)" /></label> }
+                <label class="up">{{ 'build.resource' | t }}<input type="file" accept=".pdf,.png,.jpg,.jpeg,.zip" (change)="uploadResource(l.id, $event)" /></label>
                 <ion-button size="small" fill="outline" (click)="index(l.id)">{{ 'build.index' | t }}</ion-button>
                 <ion-button size="small" fill="clear" color="danger" (click)="removeLesson(l.id)">{{ confirmDelete() === l.id ? ('build.sure' | t) : ('build.delete' | t) }}</ion-button>
               </span></div>
