@@ -111,6 +111,13 @@
                 <ion-button size="small" fill="outline" (click)="index(l.id)">{{ 'build.index' | t }}</ion-button>
                 <ion-button size="small" fill="clear" color="danger" (click)="removeLesson(l.id)">{{ confirmDelete() === l.id ? ('build.sure' | t) : ('build.delete' | t) }}</ion-button>
               </span></div>
+            @if (resMap()[l.id]?.length) {
+              <ul class="reslist">
+                @for (r of resMap()[l.id]; track r.id) {
+                  <li><span>{{ r.fileName || r.title }} <small class="mut">({{ resSize(r.sizeBytes) }})</small></span><ion-button size="small" fill="clear" (click)="downloadResource(l.id, r)">{{ 'ex.download' | t }}</ion-button></li>
+                }
+              </ul>
+            }
             @if (editLesson() === l.id) {
               <form class="row2 gap" (ngSubmit)="saveLesson(li)">
                 <input class="fld" name="en" [(ngModel)]="lesName" />
