@@ -52,6 +52,7 @@ Object.assign(EN, {
   'cat.open': 'View course',
   'cat.free': 'Free',
   'cat.empty': 'No courses match.',
+  'cat.manageMine': 'My courses & create',
   'course.enroll': 'Enroll',
   'course.addCart': 'Add to cart',
   'course.enrolled': 'You are enrolled.',
