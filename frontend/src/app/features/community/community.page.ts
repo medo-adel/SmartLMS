@@ -1,20 +1,35 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { AuthService } from '../../core/services/auth.service';
+import { TenantService } from '../../core/services/tenant.service';
 import { LearningService } from '../../core/services/learning.service';
 import { CommunityService } from '../../core/services/community.service';
 import { Enrollment, MyCourse } from '../../core/models/learning';
 import { AnnouncementRow, ChatMessage, ChatRoom, LiveAttendanceRow, LiveSessionRow, ThreadDetail, ThreadRow } from '../../core/models/community';
 
 /** Community: per-course discussion threads (all course members) and announcements (staff post, everyone reads). */
-@Component({ selector: 'app-community', imports: [DatePipe, FormsModule, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './community.page.html', styleUrl: './community.page.scss' })
+@Component({ selector: 'app-community', imports: [DatePipe, FormsModule, RouterLink, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './community.page.html', styleUrl: './community.page.scss' })
 export class CommunityPage implements OnInit {
   private readonly learn = inject(LearningService);
   private readonly api = inject(CommunityService);
   readonly auth = inject(AuthService);
+  private readonly tenant = inject(TenantService);
+  /** SuperAdmin without a selected academy: community is tenant-scoped, so require an academy context first. */
+  readonly needsAcademy = computed(() => this.auth.hasRole('SuperAdmin') && !this.tenant.tenantKey());
+  /** Set when the backend rejects the current academy context (expired/revoked grant, inactive/unknown academy). */
+  readonly contextLost = signal(false);
+  /** No usable academy context: never selected, or the backend rejected it. */
+  readonly noContext = computed(() => this.needsAcademy() || this.contextLost());
+  private onLoadError(err: unknown, fallback: () => void): void {
+    const code = err instanceof HttpErrorResponse ? err.error?.code : null;
+    if (code === 'SUPPORT_ACCESS_REQUIRED' || code === 'TENANT_REQUIRED' || code === 'TENANT_MISMATCH' || code === 'TENANT_INACTIVE' || code === 'TENANT_NOT_FOUND') this.contextLost.set(true);
+    else fallback();
+  }
 
   readonly tab = signal<'threads' | 'announcements' | 'chat' | 'live'>('threads');
   readonly courses = signal<{ id: string; title: string }[] | null>(null);
@@ -49,7 +64,7 @@ export class CommunityPage implements OnInit {
   lvTitle = ''; lvProvider = 'Zoom'; lvUrl = ''; lvStart = ''; lvEnd = '';
   readonly providers = ['Zoom', 'GoogleMeet', 'Jitsi'];
 
-  ngOnInit(): void { void this.init(); }
+  ngOnInit(): void { if (this.needsAcademy()) return; void this.init(); }
   private async init(): Promise<void> {
     try {
       this.announcements.set(await this.api.announcements());
@@ -57,13 +72,14 @@ export class CommunityPage implements OnInit {
       this.courses.set(this.auth.hasRole('Instructor', 'TenantAdmin')
         ? (await this.learn.myCourses()).map((c: MyCourse) => ({ id: c.id, title: c.title }))
         : (await this.learn.myEnrollments()).map((e: Enrollment) => ({ id: e.courseId, title: e.title })));
-    } catch { this.failed.set(true); }
+    } catch (e) { this.onLoadError(e, () => this.failed.set(true)); }
+    if (this.contextLost()) return;
     this.loadRooms();
   }
 
   // ---- chat ----
   async loadRooms(): Promise<void> {
-    try { this.rooms.set(await this.api.rooms()); } catch { this.rooms.set([]); }
+    try { this.rooms.set(await this.api.rooms()); } catch (e) { this.onLoadError(e, () => this.rooms.set([])); }
   }
 
   async openChat(r: ChatRoom): Promise<void> {

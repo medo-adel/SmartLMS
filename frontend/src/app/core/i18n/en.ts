@@ -957,3 +957,13 @@ Object.assign(EN, {
   'reg.resend': 'Resend the code',
 });
 
+
+Object.assign(EN, {
+  'common.needAcademy': 'Select an academy from the Academies page to view its data.',
+  'common.goTenants': 'Open academies',
+  'ten.enter': 'Enter context',
+  'ten.inContext': 'Current context',
+  'ten.exitContext': 'Exit academy context',
+  'ten.entered': 'Academy context entered.',
+  'ten.exited': 'Back to platform context.',
+});

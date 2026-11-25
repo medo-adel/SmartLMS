@@ -1,14 +1,33 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
+import { AuthService } from '../../core/services/auth.service';
+import { TenantService } from '../../core/services/tenant.service';
 import { FinanceService, ApiKeyCreated, ApiKeyRow, AuditPage, BinView, WebhookCreated, WebhookDeliveries, WebhookRow } from '../../core/services/finance.service';
 
 /** Ops: audit logs (TenantAdmin + SuperAdmin), recycle bin with two-tap restore, API keys with one-time key display (TenantAdmin). */
-@Component({ selector: 'app-ops', imports: [DatePipe, FormsModule, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './ops.page.html', styleUrl: './ops.page.scss' })
+@Component({ selector: 'app-ops', imports: [DatePipe, FormsModule, RouterLink, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './ops.page.html', styleUrl: './ops.page.scss' })
 export class OpsPage implements OnInit {
   private readonly api = inject(FinanceService);
+  readonly auth = inject(AuthService);
+  readonly tenant = inject(TenantService);
+  /** SuperAdmin without a selected academy: tenant routes need an academy context (support access from the academies page). */
+  readonly needsAcademy = computed(() => this.auth.hasRole('SuperAdmin') && !this.tenant.tenantKey());
+  /** Backend guards: recycle bin, API keys and webhooks are TenantAdmin-only; SuperAdmin (even in academy context) sees the audit tab only. */
+  readonly isPlatform = computed(() => this.auth.hasRole('SuperAdmin'));
+  /** Set when the backend rejects the current academy context (expired/revoked grant, inactive/unknown academy): show the way back to academy selection. */
+  readonly contextLost = signal(false);
+  /** No usable academy context: never selected, or the backend rejected it. */
+  readonly noContext = computed(() => this.needsAcademy() || this.contextLost());
+  private onLoadError(err: unknown, fallback: () => void): void {
+    const code = err instanceof HttpErrorResponse ? err.error?.code : null;
+    if (code === 'SUPPORT_ACCESS_REQUIRED' || code === 'TENANT_REQUIRED' || code === 'TENANT_MISMATCH' || code === 'TENANT_INACTIVE' || code === 'TENANT_NOT_FOUND') this.contextLost.set(true);
+    else fallback();
+  }
   readonly tab = signal<'audit' | 'bin' | 'keys' | 'hooks'>('audit');
   readonly audit = signal<AuditPage | null>(null);
   readonly bin = signal<BinView | null>(null);
@@ -22,7 +41,11 @@ export class OpsPage implements OnInit {
   keyName = ''; keyScopes = ''; keyExpiry = '';
   readonly auditActions = ['Create', 'Update', 'Delete', 'Restore', 'Login', 'Export'];
 
-  ngOnInit(): void { void this.loadAudit(); void this.loadBin(); void this.loadKeys(); void this.loadHooks(); }
+  ngOnInit(): void {
+    if (this.needsAcademy()) return; // platform context: no tenant calls without an academy selected
+    void this.loadAudit();
+    if (!this.isPlatform()) { void this.loadBin(); void this.loadKeys(); void this.loadHooks(); }
+  }
 
   go(t: 'audit' | 'bin' | 'keys' | 'hooks'): void { this.msg.set(''); this.pendingRestore.set(null); this.pendingRevoke.set(null); this.newKey.set(null); this.newHook.set(null); this.pendingHookDelete.set(null); this.editHook.set(''); this.tab.set(t); }
 
@@ -32,11 +55,11 @@ export class OpsPage implements OnInit {
         entity: this.fEntity.trim() || undefined, action: this.fAction || undefined,
         from: this.fFrom ? new Date(this.fFrom).toISOString() : undefined, page,
       }));
-    } catch { this.msg.set('common.error'); }
+    } catch (e) { this.onLoadError(e, () => this.msg.set('common.error')); }
   }
 
   async loadBin(): Promise<void> {
-    try { this.bin.set(await this.api.recycleBin(this.binEntity || undefined)); } catch { this.msg.set('common.error'); }
+    try { this.bin.set(await this.api.recycleBin(this.binEntity || undefined)); } catch (e) { this.onLoadError(e, () => this.msg.set('common.error')); }
   }
 
   reviewRestore(entity: string, id: string, name: string): void { this.pendingRestore.set({ entity, id, name }); }
@@ -46,7 +69,7 @@ export class OpsPage implements OnInit {
     try { await this.api.restore(p.entity, p.id); this.pendingRestore.set(null); this.msg.set('ops.restored'); await this.loadBin(); } catch { /* toast */ }
   }
 
-  async loadKeys(): Promise<void> { try { this.keys.set(await this.api.apiKeys()); } catch { /* toast */ } }
+  async loadKeys(): Promise<void> { try { this.keys.set(await this.api.apiKeys()); } catch (e) { this.onLoadError(e, () => { /* toast */ }); } }
 
   async createKey(): Promise<void> {
     const scopes = this.keyScopes.split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -77,7 +100,7 @@ export class OpsPage implements OnInit {
   hookUrl = ''; hookActive = true; hookTypes: Record<string, boolean> = { 'order.paid': true, 'enrollment.created': false, 'payment.manual.approved': false, 'voucher.batch.ready': false, '*': false };
   editUrl = ''; editActive = true; editTypes: Record<string, boolean> = {};
 
-  async loadHooks(): Promise<void> { try { this.hooks.set(await this.api.webhooks()); } catch { /* toast */ } }
+  async loadHooks(): Promise<void> { try { this.hooks.set(await this.api.webhooks()); } catch (e) { this.onLoadError(e, () => { /* toast */ }); } }
   private pickedTypes(m: Record<string, boolean>): string[] { return Object.keys(m).filter((k) => m[k]); }
   async createHook(): Promise<void> {
     const types = this.pickedTypes(this.hookTypes);

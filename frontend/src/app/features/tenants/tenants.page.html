@@ -38,6 +38,8 @@
       @if (info() === 'saved') { <p class="ok">{{ 'ten.saved' | t }}</p> }
       @if (info() === 'granted') { <p class="ok">{{ 'ten.grant' | t }} ✓</p> }
       @if (info() === 'revoked') { <p class="ok">{{ 'ten.revoked' | t }}</p> }
+      @if (info() === 'entered') { <p class="ok">{{ 'ten.entered' | t }}</p> }
+      @if (info() === 'exited') { <p class="ok">{{ 'ten.exited' | t }}</p> }
       @for (t of items(); track t.id) {
         <div class="rv">
           <span>
@@ -45,10 +47,16 @@
             <span class="tag" [class.off]="!t.isActive">{{ t.isActive ? ('ten.active' | t) : ('ten.inactive' | t) }}</span><br />
             <small class="mut" dir="ltr">{{ t.defaultLanguage }} · {{ t.timeZoneId }} · {{ t.currency }} · mob {{ t.maxMobileDevices }} · web {{ t.maxWebDevices }}</small>
             @if (granted()[t.id]) { <br /><small class="ok">{{ 'ten.grantedUntil' | t }}: {{ granted()[t.id] | date: 'medium' }}</small> }
+            @if (tenant.tenantKey() === t.slug) { <br /><small class="ok">{{ 'ten.inContext' | t }}</small> }
           </span>
           <span class="row2">
             <ion-button size="small" fill="outline" (click)="editing() === t.id ? editing.set('') : startEdit(t)">{{ 'ten.edit' | t }}</ion-button>
             <ion-button size="small" fill="outline" (click)="supportFor.set(supportFor() === t.id ? '' : t.id)">{{ 'ten.support' | t }}</ion-button>
+            @if (tenant.tenantKey() === t.slug) {
+              <ion-button size="small" fill="clear" color="danger" (click)="exitContext()">{{ 'ten.exitContext' | t }}</ion-button>
+            } @else {
+              <ion-button size="small" (click)="enter(t)">{{ 'ten.enter' | t }}</ion-button>
+            }
           </span>
         </div>
 
