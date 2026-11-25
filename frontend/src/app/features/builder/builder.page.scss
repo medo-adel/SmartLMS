@@ -11,3 +11,5 @@ textarea { flex-basis: 100%; }
 form.row2 { margin-block: .6rem; }
 .sec { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .4rem; }
 .stack { display: grid; gap: .5rem; }
+.reslist { list-style: none; margin: 4px 0 8px; padding: 0; }
+.reslist li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 8px; }

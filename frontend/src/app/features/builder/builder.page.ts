@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
-import { AiQuizDraft, CourseDetail, CourseStaffRow, Lesson, MyCourse } from '../../core/models/learning';
+import { AiQuizDraft, CourseDetail, CourseStaffRow, Lesson, LessonResource, MyCourse } from '../../core/models/learning';
 import { AdminService } from '../../core/services/admin.service';
 import { User } from '../../core/models/models';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
@@ -21,6 +21,8 @@ export class BuilderPage implements OnInit {
   readonly info = signal('');
   /** Last action error, shown on screen. Silent catches hid real failures (wrong file type, validation, server down) behind a dead button. */
   readonly err = signal('');
+  /** Uploaded attachments per lesson id. The picker clears after upload, so without this list a successful upload looked like the file was removed. */
+  readonly resMap = signal<Record<string, LessonResource[]>>({});
   private showErr(e: unknown): void { this.info.set(''); this.err.set(e instanceof Error && e.message ? e.message : 'request failed'); }
   title = ''; short = '';
   sectionTitle = '';
@@ -50,7 +52,7 @@ export class BuilderPage implements OnInit {
   }
   async open1(id: string): Promise<void> {
     this.selected = id; this.draft.set(null);
-    try { const d = await this.api.course(id); this.detail.set(d); this.price = { model: d.pricingModel, amount: d.price ?? 0, currency: d.currency ?? 'EGP', days: null }; this.sectionId = d.sections[0]?.id ?? ''; void this.loadStaffAndPrereqs(id); } catch (e) { this.showErr(e); }
+    try { const d = await this.api.course(id); this.detail.set(d); this.price = { model: d.pricingModel, amount: d.price ?? 0, currency: d.currency ?? 'EGP', days: null }; this.sectionId = d.sections[0]?.id ?? ''; void this.loadStaffAndPrereqs(id); void this.loadResources(d); } catch (e) { this.showErr(e); }
   }
   async create(): Promise<void> {
     if (!this.title.trim()) return;
@@ -204,7 +206,26 @@ export class BuilderPage implements OnInit {
   async uploadResource(lessonId: string, ev: Event): Promise<void> {
     const input = ev.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
     this.busy.set(true);
-    try { await this.api.uploadResource(lessonId, file, this.resTitle.trim() || null, true); this.info.set('✓'); this.err.set(''); this.resTitle = ''; } catch (e) { this.showErr(e); }
+    try {
+      await this.api.uploadResource(lessonId, file, this.resTitle.trim() || null, true);
+      this.info.set('✓'); this.err.set(''); this.resTitle = ''; await this.refreshResources(lessonId);
+    } catch (e) { this.showErr(e); }
     input.value = ''; this.busy.set(false);
   }
+  private async loadResources(d: CourseDetail): Promise<void> {
+    const entries = await Promise.all(d.sections.flatMap((s) => s.lessons.map(async (l) => {
+      try { return [l.id, await this.api.resources(l.id)] as const; } catch { return [l.id, [] as LessonResource[]] as const; }
+    })));
+    this.resMap.set(Object.fromEntries(entries));
+  }
+  private async refreshResources(lessonId: string): Promise<void> {
+    try { const list = await this.api.resources(lessonId); this.resMap.update((m) => ({ ...m, [lessonId]: list })); } catch { /* the upload itself succeeded; the list refresh is best-effort */ }
+  }
+  async downloadResource(lessonId: string, r: LessonResource): Promise<void> {
+    try {
+      const blob = await this.api.resourceBlob(lessonId, r.id); const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = r.fileName || r.title; a.click(); URL.revokeObjectURL(a.href);
+    } catch (e) { this.showErr(e); }
+  }
+  resSize(b: number): string { return b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`; }
 }
