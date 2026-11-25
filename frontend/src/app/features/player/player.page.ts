@@ -126,6 +126,9 @@ export class PlayerPage implements OnInit, OnDestroy {
       }
       if (seq !== this.loadSeq) return;
       this.lesson.set(lesson); this.course.set(course); void this.loadCurriculum(course, seq);
+      // A PDF counts as viewed once its file has actually loaded (not on navigation intent or a failed load):
+      // record completion like a finished video. Offline viewing queues the record and replays it when online.
+      if (lesson.lessonType === 'Pdf') void this.flush(true).then(() => this.refreshProgress());
       if (lesson.lessonType === 'InteractiveSlides') { this.slides.set(await this.api.slides(this.lessonId).catch(() => [])); this.slideIx.set(0); }
       if (lesson.lessonType === 'Video' && seq === this.loadSeq) { this.quizzes = this.offlineMode() ? [] : await this.api.interactiveQuizzes(this.lessonId).catch(() => []); }
       if (!this.timer) this.timer = setInterval(() => void this.flush(false), 15000);

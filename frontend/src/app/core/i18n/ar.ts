@@ -139,6 +139,8 @@ Object.assign(AR, {
   'course.enrolled': 'أنت مشترك في هذا الكورس.',
   'course.start': 'افتح الدرس',
   'course.preview': 'معاينة مجانية',
+  'course.inProgress': 'قيد التقدم',
+  'course.done': 'مكتمل',
   'course.exams': 'الاختبارات',
   'course.takeExam': 'ابدأ الاختبار',
   'course.outline': 'محتوى الكورس',

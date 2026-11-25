@@ -103,6 +103,45 @@ public sealed class LmsTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Per_lesson_fractional_and_overall_progress_persist()
+    {
+        var t = await NewTenant(); var inst = await Instructor(t); var st = await Student(t);
+        var (c, s, l1) = await Course(t, inst, publish: false);
+        var l2 = Id(await Post($"/sections/{s}/lessons", new { title = "L2", lessonType = "Pdf", durationSeconds = 600 }, inst, t));
+        Assert.Equal(200, (await Post($"/courses/{c}/submit-for-approval", null, inst, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/approve", null, t.Admin, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st, t)).Status);
+
+        // before any heartbeat the progress read has no rows for these lessons (never invented)
+        var p0 = await Get($"/courses/{c}/progress", st, t);
+        Assert.Equal(0, p0.Data.GetProperty("lessons").GetArrayLength());
+        Assert.Equal(0.0, p0.Data.GetProperty("progressPercent").GetDouble());
+
+        // partial watch: InProgress with the position kept, course percent still 0
+        Assert.Equal(200, (await Put($"/lessons/{l1}/progress", new { lastPositionSeconds = 60, watchedSecondsDelta = 60, completed = false }, st, t)).Status);
+        var p1 = await Get($"/courses/{c}/progress", st, t);
+        var row1 = p1.Data.GetProperty("lessons").EnumerateArray().Single(x => x.GetProperty("lessonId").GetString() == l1);
+        Assert.Equal("InProgress", row1.GetProperty("status").GetString());
+        Assert.Equal(60, row1.GetProperty("lastPositionSeconds").GetInt32());
+        Assert.Equal(0.0, p1.Data.GetProperty("progressPercent").GetDouble());
+
+        // completing one of two lessons moves the course to 50%
+        Assert.Equal(200, (await Put($"/lessons/{l1}/progress", new { lastPositionSeconds = 60, watchedSecondsDelta = 0, completed = true }, st, t)).Status);
+        var p2 = await Get($"/courses/{c}/progress", st, t);
+        Assert.Equal(50.0, p2.Data.GetProperty("progressPercent").GetDouble());
+        Assert.Equal("Completed", p2.Data.GetProperty("lessons").EnumerateArray().Single(x => x.GetProperty("lessonId").GetString() == l1).GetProperty("status").GetString());
+
+        // the PDF "successful view" call (completed=true, no watch time) finishes the course at 100% and it persists on re-read
+        Assert.Equal(200, (await Put($"/lessons/{l2}/progress", new { lastPositionSeconds = 0, watchedSecondsDelta = 0, completed = true }, st, t)).Status);
+        var p3 = await Get($"/courses/{c}/progress", st, t);
+        Assert.Equal(100.0, p3.Data.GetProperty("progressPercent").GetDouble());
+        Assert.Equal("Completed", p3.Data.GetProperty("status").GetString());
+        var p4 = await Get($"/courses/{c}/progress", st, t);
+        Assert.Equal(100.0, p4.Data.GetProperty("progressPercent").GetDouble());
+        Assert.Equal(2, p4.Data.GetProperty("lessons").EnumerateArray().Count(x => x.GetProperty("status").GetString() == "Completed"));
+    }
+
+    [Fact]
     public async Task Role_and_ownership_boundaries()
     {
         var t = await NewTenant(); var a = await Instructor(t); var b = await Instructor(t); var st = await Student(t);
