@@ -162,7 +162,7 @@
             <ion-button type="submit">{{ 'build.lesson' | t }}</ion-button>
           </form>
         }
-        <ion-button fill="outline" (click)="submitApproval()">{{ 'build.submit' | t }}</ion-button>
+        <ion-button fill="outline" (click)="submitApproval()" [disabled]="submitting()">{{ (submitting() ? 'build.submitting' : 'build.submit') | t }}</ion-button>
         @if (info()) { <span class="ok">{{ info() }}</span> }
       </section>
       <section class="pn side-c">

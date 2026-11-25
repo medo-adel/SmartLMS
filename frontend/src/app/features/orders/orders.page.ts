@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -14,6 +14,8 @@ export class OrdersPage implements OnInit {
   readonly subs = signal<{ id: string; planName: string; price: number; currency: string; billingPeriod: string; status: string; startedAtUtc: string; currentPeriodEndUtc: string; cancelledAtUtc: string | null }[] | null>(null);
   readonly pendingCancel = signal<{ id: string; planName: string; currentPeriodEndUtc: string } | null>(null);
   readonly orders = signal<OrderRow[] | null>(null);
+  /** GET /orders is Student-only on the API; instructors land here for the affiliate panel, so the list never loads for them. */
+  readonly isStudent = computed(() => this.auth.hasRole('Student'));
   readonly aff = signal<AffiliateMe | null>(null);
   readonly noAff = signal(false);
   readonly failed = signal(false);
@@ -26,8 +28,8 @@ export class OrdersPage implements OnInit {
   }
   async load(): Promise<void> {
     this.failed.set(false);
-    const [o, a] = await Promise.allSettled([this.api.orders(), this.api.affiliate()]);
-    if (o.status === 'fulfilled') this.orders.set(o.value.items); else this.failed.set(true);
+    const [o, a] = await Promise.allSettled([this.isStudent() ? this.api.orders() : Promise.resolve(null), this.api.affiliate()]);
+    if (o.status === 'fulfilled') this.orders.set(o.value ? o.value.items : []); else this.failed.set(true);
     if (a.status === 'fulfilled') this.aff.set(a.value); else this.noAff.set(true); // 404 NOT_AN_AFFILIATE is normal
   }
   readonly detail = signal<OrderDetail | null>(null);

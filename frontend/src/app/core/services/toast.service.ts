@@ -11,6 +11,10 @@ export class ToastService {
     const bar = typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('ion-tab-bar');
     return bar && bar.offsetParent !== null && bar.getBoundingClientRect().height > 0 ? bar : undefined;
   }
+  async success(message: string): Promise<void> {
+    const t = await this.ctrl.create({ message, duration: 2500, color: 'success', position: 'bottom', positionAnchor: this.anchor() });
+    await t.present();
+  }
   async error(message: string): Promise<void> {
     const now = Date.now();
     if (message === this.last && now - this.lastAt < 3000) return; // collapse bursts of identical errors

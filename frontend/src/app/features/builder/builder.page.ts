@@ -7,23 +7,31 @@ import { AiQuizDraft, CourseDetail, CourseStaffRow, Lesson, LessonResource, MyCo
 import { AdminService } from '../../core/services/admin.service';
 import { User } from '../../core/models/models';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ToastService } from '../../core/services/toast.service';
+import { messageFor } from '../../core/interceptors/error.interceptor';
+import { I18nService } from '../../core/services/i18n.service';
 
 /** Instructor course builder: draft courses, sections, lessons, media upload, AI indexing and the AI quiz generator (drafts only). */
 @Component({ selector: 'app-builder', imports: [FormsModule, RouterLink, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './builder.page.html', styleUrl: './builder.page.scss' })
 export class BuilderPage implements OnInit {
   private readonly api = inject(LearningService);
   private readonly admin = inject(AdminService);
+  private readonly toast = inject(ToastService);
+  private readonly i18n = inject(I18nService);
   readonly courses = signal<MyCourse[] | null>(null);
   readonly detail = signal<CourseDetail | null>(null);
   readonly draft = signal<AiQuizDraft | null>(null);
   readonly failed = signal(false);
   readonly busy = signal(false);
+  /** True while a submit-for-approval request is in flight: blocks repeat clicks and double submits. */
+  readonly submitting = signal(false);
   readonly info = signal('');
   /** Last action error, shown on screen. Silent catches hid real failures (wrong file type, validation, server down) behind a dead button. */
   readonly err = signal('');
   /** Uploaded attachments per lesson id. The picker clears after upload, so without this list a successful upload looked like the file was removed. */
   readonly resMap = signal<Record<string, LessonResource[]>>({});
-  private showErr(e: unknown): void { this.info.set(''); this.err.set(e instanceof Error && e.message ? e.message : 'request failed'); }
+  private showErr(e: unknown): void { this.info.set(''); this.err.set(e instanceof HttpErrorResponse ? messageFor(e, (k) => this.i18n.t(k)) : e instanceof Error && e.message ? e.message : 'request failed'); }
   title = ''; short = '';
   sectionTitle = '';
   lessonTitle = ''; lessonType = 'Video'; lessonText = ''; lessonUrl = ''; sectionId = '';
@@ -76,7 +84,17 @@ export class BuilderPage implements OnInit {
     this.busy.set(false);
   }
   async index(lessonId: string): Promise<void> { try { await this.api.queueIngest(lessonId); this.info.set('✓'); this.err.set(''); } catch (e) { this.showErr(e); } }
-  async submitApproval(): Promise<void> { try { await this.api.submitForApproval(this.selected); this.info.set('✓'); this.err.set(''); await this.load(); } catch (e) { this.showErr(e); } }
+  async submitApproval(): Promise<void> {
+    if (this.submitting() || !this.selected) return;
+    this.submitting.set(true);
+    try {
+      await this.api.submitForApproval(this.selected);
+      this.err.set('');
+      await this.load(); // status refetch: the list now shows the course as pending review
+      void this.toast.success(this.i18n.t('build.submitted')); // only after the server accepted
+    } catch (e) { this.showErr(e); }
+    finally { this.submitting.set(false); }
+  }
 
   // ---- staff (GET/PUT /courses/{id}/staff) and prerequisites (GET/PUT /courses/{id}/prerequisites) ------------------
   readonly staff = signal<CourseStaffRow[] | null>(null);
