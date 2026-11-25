@@ -19,7 +19,16 @@
           <div class="les">
             <span><i class="num" aria-hidden="true">{{ $index + 1 }}</i> {{ l.title }} <small class="mut">{{ l.lessonType }} {{ minutes(l.durationSeconds) }}</small>
               @if (l.isFreePreview) { <span class="tag">{{ 'course.preview' | t }}</span> }</span>
-            @if (enrolled() || l.isFreePreview) { <ion-button size="small" fill="outline" [routerLink]="['/app/learn', course()!.id, l.id]">{{ 'course.start' | t }}</ion-button> }
+            <span class="les-side">
+              @if (enrolled()) {
+                @if (lessonState(l.id); as st) {
+                  @if (st.done) { <span class="cur-check done" [attr.aria-label]="'course.done' | t">✓</span> }
+                  @else if (st.fraction > 0) { <span class="ring" [style.background]="ringStyle(st.fraction)" [attr.aria-label]="'course.inProgress' | t" [title]="'course.inProgress' | t"></span> }
+                  @else { <span class="ring started" [attr.aria-label]="'course.inProgress' | t" [title]="'course.inProgress' | t"></span> }
+                }
+              }
+              @if (enrolled() || l.isFreePreview) { <ion-button size="small" fill="outline" [routerLink]="['/app/learn', course()!.id, l.id]">{{ 'course.start' | t }}</ion-button> }
+            </span>
           </div>
         }
       }
@@ -38,6 +47,12 @@
       <div class="row2">
         <span class="price">@if (!isFree) { {{ course()!.price }} {{ course()!.currency }} } @else { {{ 'cat.free' | t }} }</span>
         @if (enrolled()) { <span class="ok">{{ 'course.enrolled' | t }}</span> }
+        @if (enrolled() && progress(); as pr) {
+          <div class="course-prog">
+            <div class="bar" role="presentation"><span [style.width.%]="pr.progressPercent"></span></div>
+            <small class="mut">{{ pr.progressPercent }}%</small>
+          </div>
+        }
         @else if (isFree) { <ion-button (click)="enroll()">{{ 'course.enroll' | t }}</ion-button> }
         @else { <ion-button (click)="addToCart()">{{ 'course.addCart' | t }}</ion-button> <ion-button fill="outline" routerLink="/app/cart">{{ 'nav.cart' | t }}</ion-button> }
       </div>

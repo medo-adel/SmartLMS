@@ -58,6 +58,8 @@ Object.assign(EN, {
   'course.enrolled': 'You are enrolled.',
   'course.start': 'Open lesson',
   'course.preview': 'Free preview',
+  'course.inProgress': 'In progress',
+  'course.done': 'Completed',
   'course.exams': 'Exams',
   'course.takeExam': 'Start exam',
   'course.outline': 'Course outline',

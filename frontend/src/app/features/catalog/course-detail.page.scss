@@ -1,3 +1,12 @@
 h3 { font-size: .95rem; margin: .9rem 0 .3rem; }
 .les { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .45rem 0; border-block-end: 1px solid var(--app-border); }
 .head p { margin: 0 0 .8rem; }
+
+.les-side { display: inline-flex; align-items: center; gap: .5rem; flex: none; }
+.cur-check { inline-size: 1.15rem; block-size: 1.15rem; flex: none; border: 1.5px solid var(--ion-color-step-400, #9ca3af); border-radius: 50%; display: inline-grid; place-items: center; font-size: .7rem; color: #fff; }
+.cur-check.done { background: var(--ion-color-primary, #0f766e); border-color: var(--ion-color-primary, #0f766e); }
+.ring { inline-size: 1.05rem; block-size: 1.05rem; flex: none; border-radius: 50%; }
+.ring.started { border: 1.5px solid var(--ion-color-primary, #0f766e); background: transparent; }
+.course-prog { margin-block-start: .7rem; }
+.course-prog .bar { block-size: .4rem; background: var(--ion-color-step-150, #e5e7eb); border-radius: 999px; overflow: hidden; margin-block-end: .3rem; }
+.course-prog .bar span { display: block; block-size: 100%; background: var(--ion-color-primary, #0f766e); border-radius: 999px; }
