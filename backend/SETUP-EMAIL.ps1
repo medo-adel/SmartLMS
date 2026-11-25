@@ -28,7 +28,7 @@ if ($appPassword.Length -ne 16) { Write-Host 'An app password is 16 letters. Sto
 function Invoke-Dotnet([string[]]$CmdArgs) {
     & dotnet @CmdArgs
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "dotnet $($CmdArgs -join ' ') failed (exit $LASTEXITCODE). Nothing was saved; fix the error above and run again." -ForegroundColor Red
+        Write-Host "dotnet $($CmdArgs -join ' ') failed (exit $LASTEXITCODE). Earlier settings may already be saved; fix the error above and run again (re-running overwrites the same settings)." -ForegroundColor Red
         exit 1
     }
 }
@@ -76,6 +76,6 @@ try {
 finally { $appPassword = $null }
 
 Write-Host ''
-Write-Host 'Done. Verification codes will now be emailed from' $gmail -ForegroundColor Green
-Write-Host 'Restart the API (dotnet run), register a test account, and check that inbox (and spam).'
+Write-Host 'Email settings saved for SmartLMS.API (sender:' $gmail'). Nothing has been sent yet.' -ForegroundColor Green
+Write-Host 'To confirm delivery works: restart the API (dotnet run), register a test account or resend a code, and check that inbox (and spam).'
 Write-Host 'Gmail can take a minute and may hold the first messages; daily sending limits apply.'
