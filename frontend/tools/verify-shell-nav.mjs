@@ -13,7 +13,7 @@ const multiRole = { id: 'u-inst', tenantId: 't-1', fullName: 'Instructor One', e
 const fx = {
   'GET /tenants/current/branding': ok({ name: 'Nile Academy', slug: 'demo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#f59e0b', accentColor: '#7c3aed', defaultLanguage: 'ar', featureFlags: [] }),
   'GET /me/devices': ok([]), 'GET /notifications': ok([]),
-  'GET /paths/manage': ok([]), 'GET /paths': ok([]), 'GET /courses/mine': ok([]),
+  'GET /learning-paths/manage': ok([]), 'GET /learning-paths': ok([]), 'GET /courses/mine': ok([]),
 };
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const p = await (await browser.createBrowserContext()).newPage();
@@ -63,6 +63,7 @@ const nav = await p.evaluate(() => {
 await sleep(400);
 await p.screenshot({ path: path.join(out, 'shell-nav-ar-scrolled.png') }); console.log('shot shell-nav-ar-scrolled');
 check('long menu (>= 12 items) renders for multi-role user', nav.count >= 12);
+check('paths page loads without a generic error (fixture routes match real API paths)', await p.evaluate(() => !document.body.textContent.includes('حاول مرة أخرى') && !document.body.textContent.includes('حدث خطأ')));
 check('menu list is scrollable at 604px viewport', nav.scrollable);
 check('after scrolling, last menu item clears the account footer', nav.lastBottom <= nav.whoTop + 1);
 check('account footer pinned and visible at the bottom', nav.footerVisible);
