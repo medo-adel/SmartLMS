@@ -1,10 +1,10 @@
 <ion-content>
 <div class="pg">
   <h1>{{ 'orders.title' | t }}</h1>
-  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
-  @else if (orders() === null) { <div class="pn sk" style="min-height:10rem" aria-busy="true"></div> }
+  @if (isStudent() && failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (isStudent() && orders() === null) { <div class="pn sk" style="min-height:10rem" aria-busy="true"></div> }
   @else {
-    <div class="layout2"><div class="main">
+    <div class="layout2">@if (isStudent()) {<div class="main">
     <section class="pn">
       @for (o of orders(); track o.id) {
         <div class="rv"><span><b>{{ o.total }} {{ o.currency }}</b> <span class="tag">{{ o.status }}</span> <span class="tag">{{ o.paymentMethod }}</span><br /><small class="mut">{{ o.createdAtUtc | date: 'medium' }}</small></span>
@@ -32,7 +32,7 @@
         }
       } @empty { <div class="empty"><p>{{ 'orders.empty' | t }}</p></div> }
     </section>
-    </div><aside class="side">
+    </div>}<aside class="side">
     @if (aff(); as a) {
       <section class="pn">
         <h2>{{ 'aff.title' | t }}</h2>

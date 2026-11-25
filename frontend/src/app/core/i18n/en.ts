@@ -365,6 +365,8 @@ Object.assign(EN, {
   'build.url': 'External link',
   'build.upload': 'Upload video or file',
   'build.submit': 'Submit for approval',
+  'build.submitting': 'Submitting...',
+  'build.submitted': 'Course sent for approval. You will be notified once it is reviewed.',
   'build.quiz': 'AI quiz generator',
   'build.makeQuiz': 'Generate draft questions',
   'build.index': 'Index for AI',

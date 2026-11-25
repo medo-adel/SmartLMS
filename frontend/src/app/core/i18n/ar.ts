@@ -446,6 +446,8 @@ Object.assign(AR, {
   'build.url': 'رابط خارجي',
   'build.upload': 'ارفع فيديو أو ملف',
   'build.submit': 'أرسل للموافقة',
+  'build.submitting': 'جاري الإرسال...',
+  'build.submitted': 'تم إرسال الكورس للمراجعة. سيصلك إشعار بعد المراجعة.',
   'build.quiz': 'مولّد الأسئلة بالذكاء الاصطناعي',
   'build.makeQuiz': 'ولّد أسئلة مسودة',
   'build.index': 'فهرسة للذكاء الاصطناعي',

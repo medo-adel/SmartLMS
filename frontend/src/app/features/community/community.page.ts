@@ -69,9 +69,13 @@ export class CommunityPage implements OnInit {
     try {
       this.announcements.set(await this.api.announcements());
       // Students pick from enrollments; staff pick from the courses they manage.
+      // Course picker source matches the API: staff list managed courses, students their enrollments
+      // (GET /me/enrollments is Student-only). Other roles (Parent, platform admin) skip the picker.
       this.courses.set(this.auth.hasRole('Instructor', 'TenantAdmin')
         ? (await this.learn.myCourses()).map((c: MyCourse) => ({ id: c.id, title: c.title }))
-        : (await this.learn.myEnrollments()).map((e: Enrollment) => ({ id: e.courseId, title: e.title })));
+        : this.auth.hasRole('Student')
+          ? (await this.learn.myEnrollments()).map((e: Enrollment) => ({ id: e.courseId, title: e.title }))
+          : []);
     } catch (e) { this.onLoadError(e, () => this.failed.set(true)); }
     if (this.contextLost()) return;
     this.loadRooms();
