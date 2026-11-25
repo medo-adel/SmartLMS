@@ -1,6 +1,7 @@
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -58,6 +59,8 @@ export class PlayerPage implements OnInit, OnDestroy {
   private answered = new Set<string>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private wmTimer: ReturnType<typeof setInterval> | null = null;
+  private loadSeq = 0; // bumped on every load: stale async responses of an older lesson are dropped
+  private paramSub?: Subscription;
   private lastSaved = 0;
   private url: string | null = null;
 
@@ -74,18 +77,20 @@ export class PlayerPage implements OnInit, OnDestroy {
     this.moveWatermark();
     this.wmTimer = setInterval(() => this.moveWatermark(), 7000); // the mark keeps moving so it cannot be cropped out of one corner
     // Navigating to another lesson reuses this component: reload for the new lesson instead of showing the old one.
-    this.route.paramMap.subscribe((m) => {
+    this.paramSub = this.route.paramMap.subscribe((m) => {
       const id = m.get('lessonId');
       if (this.lesson() && id && id !== this.lesson()!.id) { void this.flush(false); this.resetLessonState(); this.studyStarted = Date.now(); void this.load(); }
     });
   }
   private resetLessonState(): void {
+    ++this.loadSeq; // invalidate anything still in flight for the previous lesson
     if (this.url) { URL.revokeObjectURL(this.url); this.url = null; }
     this.mediaUrl.set(null); this.safeUrl.set(null); this.lesson.set(null);
     this.slides.set([]); this.slideIx.set(0); this.quizzes = []; this.answered.clear(); this.quiz.set(null);
     this.showUpNext.set(false); this.lastSaved = 0; this.dlMsg.set('');
   }
   ngOnDestroy(): void {
+    this.paramSub?.unsubscribe();
     if (this.timer) clearInterval(this.timer);
     if (this.wmTimer) clearInterval(this.wmTimer);
     if (this.url) URL.revokeObjectURL(this.url);
@@ -103,25 +108,29 @@ export class PlayerPage implements OnInit, OnDestroy {
   }
 
   async load(): Promise<void> {
+    const seq = ++this.loadSeq;
     this.failed.set(false); this.locked.set(false);
     this.offlineMode.set(false);
     try {
       const saved = this.offline.entry(this.lessonId);
       let lesson: Lesson, course: CourseDetail;
-      if (!this.net.online() && saved) { ({ lesson, course } = saved); await this.useOffline(saved); }
+      if (!this.net.online() && saved) { ({ lesson, course } = saved); if (seq !== this.loadSeq) return; await this.useOffline(saved); }
       else {
         try { [lesson, course] = await Promise.all([this.api.lesson(this.lessonId), this.api.course(this.courseId)]); }
         catch (e) {
           if ((e as { status?: number }).status !== 0 || !saved) throw e;
           ({ lesson, course } = saved); await this.useOffline(saved); // the network dropped: fall back to the downloaded copy
         }
+        if (seq !== this.loadSeq) return; // navigated away while loading: drop the stale response
         if (!this.offlineMode() && ['Video', 'Audio', 'Pdf'].includes(lesson.lessonType)) this.setMedia(await this.api.streamBlob(this.lessonId));
       }
-      this.lesson.set(lesson); this.course.set(course); void this.loadCurriculum(course);
+      if (seq !== this.loadSeq) return;
+      this.lesson.set(lesson); this.course.set(course); void this.loadCurriculum(course, seq);
       if (lesson.lessonType === 'InteractiveSlides') { this.slides.set(await this.api.slides(this.lessonId).catch(() => [])); this.slideIx.set(0); }
-      if (lesson.lessonType === 'Video') { this.quizzes = this.offlineMode() ? [] : await this.api.interactiveQuizzes(this.lessonId).catch(() => []); }
+      if (lesson.lessonType === 'Video' && seq === this.loadSeq) { this.quizzes = this.offlineMode() ? [] : await this.api.interactiveQuizzes(this.lessonId).catch(() => []); }
       if (!this.timer) this.timer = setInterval(() => void this.flush(false), 15000);
     } catch (e) {
+      if (seq !== this.loadSeq) return;
       const status = (e as { status?: number }).status;
       if (status === 402 || status === 403) { this.locked.set(true); this.canUnlock.set(true); } else this.failed.set(true);
     }
@@ -161,12 +170,13 @@ export class PlayerPage implements OnInit, OnDestroy {
   async onEnded(): Promise<void> { await this.flush(true); this.showUpNext.set(true); void this.refreshProgress(); }
   /** Manual "mark complete": records completion and reveals the up-next card; navigation stays with the learner. */
   async complete(): Promise<void> { await this.flush(true); this.showUpNext.set(true); void this.refreshProgress(); }
-  private async refreshProgress(): Promise<void> { try { this.progress.set(await this.api.courseProgress(this.courseId)); } catch { /* progress panel keeps the last known state */ } }
-  private async loadCurriculum(c: CourseDetail): Promise<void> {
+  private async refreshProgress(): Promise<void> { const cid = this.courseId; try { const p = await this.api.courseProgress(cid); if (cid === this.courseId) this.progress.set(p); } catch { /* progress panel keeps the last known state */ } }
+  private async loadCurriculum(c: CourseDetail, seq: number): Promise<void> {
     void this.refreshProgress();
     const entries = await Promise.all(c.sections.flatMap((s) => s.lessons.map(async (l) => {
-      try { return [l.id, await this.api.resources(l.id)] as const; } catch { return [l.id, [] as LessonResource[]] as const; } // locked or empty lessons just show no files
+      try { return [l.id, await this.api.resources(l.id)] as const; } catch { return [l.id, [] as LessonResource[]] as const; } // the API refuses locked lessons; they just show no files
     })));
+    if (seq !== this.loadSeq) return; // a newer lesson took over while the map loaded
     this.resMap.set(Object.fromEntries(entries));
   }
   lessonDone(id: string): boolean { return this.progress()?.lessons.find((x) => x.lessonId === id)?.status === 'Completed'; }
