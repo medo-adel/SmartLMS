@@ -1,0 +1,6 @@
+.stack { display: grid; gap: .6rem; }
+.rv { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .6rem 0; border-block-end: 1px solid var(--app-border); }
+label { display: grid; gap: .2rem; font-size: .8rem; }
+.chk { display: flex; align-items: center; gap: .4rem; }
+.n { inline-size: 6rem; flex: none; }
+textarea { resize: vertical; }

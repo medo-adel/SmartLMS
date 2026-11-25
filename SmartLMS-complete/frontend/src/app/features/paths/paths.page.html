@@ -1,0 +1,59 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'paths.title' | t }}</h1>
+  @if (!manageAvailable() && auth.hasRole('TenantAdmin', 'Instructor')) {
+    <p class="pn mut">{{ 'paths.manageUnavailable' | t }}</p>
+  }
+  @if (msg()) { <p class="ok">{{ msg() | t }}</p> }
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (paths() === null) { <div class="pn sk" style="min-height:10rem" aria-busy="true"></div> }
+  @else {
+    @if (paths()!.length === 0) { <div class="empty"><p>{{ 'common.empty' | t }}</p></div> }
+    <div class="cards wide">
+    @for (p of paths()!; track p.id) {
+      <section class="pn">
+        <div class="row2"><h2>{{ p.title }}</h2> <span class="tag">{{ p.status }}</span> @if (p.issuesCertificate) { <span class="tag">{{ 'cm.certified' | t }}</span> }</div>
+        <p class="mut">{{ p.description }}</p>
+        <ol class="steps">
+          @for (c of p.courses; track c.id) {
+            <li><a [routerLink]="['/app/courses', c.id]">{{ c.title }}</a> @if (c.isMandatory) { <span class="tag">{{ 'paths.mandatory' | t }}</span> }</li>
+          }
+        </ol>
+        <div class="row2">
+          @if (auth.hasRole('Student') && p.status === 'Published') {
+            @if (done() === p.id) { <span class="ok">{{ 'course.enrolled' | t }}</span> } @else { <ion-button (click)="enroll(p)">{{ 'paths.enroll' | t }}</ion-button> }
+          }
+          @if (auth.hasRole('TenantAdmin', 'Instructor')) { <ion-button fill="outline" (click)="startEdit(p)">{{ 'common.edit' | t }}</ion-button> }
+          @if (auth.hasRole('TenantAdmin')) {
+            <ion-button fill="clear" color="danger" (click)="remove(p)">{{ (confirmDel() === p.id ? 'cm.confirmDeletePath' : 'common.delete') | t }}</ion-button>
+          }
+        </div>
+      </section>
+    }
+    </div>
+  }
+  @if (auth.hasRole('TenantAdmin', 'Instructor')) {
+    <form class="pn stack" (ngSubmit)="save()">
+      <h3>{{ (editing ? 'cm.editPath' : 'cm.newPath') | t }}</h3>
+      <input class="fld" name="pfTitle" [(ngModel)]="pfTitle" [placeholder]="'cm.pathTitle' | t" aria-label="path title" />
+      <textarea class="fld" name="pfDesc" rows="2" [(ngModel)]="pfDesc" [placeholder]="'cm.pathDesc' | t" aria-label="path description"></textarea>
+      <label>{{ 'cm.pathStatus' | t }}</label>
+      <select class="fld" name="pfStatus" [(ngModel)]="pfStatus" aria-label="path status">
+        <option value="Draft">Draft</option>
+        @if (auth.hasRole('TenantAdmin')) { <option value="Published">Published</option> }
+        <option value="Archived">Archived</option>
+      </select>
+      @if (!auth.hasRole('TenantAdmin')) { <p class="mut">{{ 'cm.publishAdminOnly' | t }}</p> }
+      <label class="row2"><input type="checkbox" name="pfCert" [(ngModel)]="pfCert" /> {{ 'cm.issuesCert' | t }}</label>
+      <label>{{ 'cm.pathCourses' | t }}</label>
+      @for (c of myCourses(); track c.id) {
+        <label class="row2"><input type="checkbox" [checked]="pfCourses.has(c.id)" (change)="toggleCourse(c.id)" [attr.name]="'pfc-' + c.id" /> {{ c.title }}</label>
+      }
+      <div class="row2">
+        <ion-button type="submit" expand="block">{{ (editing ? 'common.save' : 'cm.createPath') | t }}</ion-button>
+        @if (editing) { <ion-button fill="clear" type="button" (click)="resetForm()">{{ 'common.cancel' | t }}</ion-button> }
+      </div>
+    </form>
+  }
+</div>
+</ion-content>

@@ -1,0 +1,51 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'par.title' | t }}</h1>
+  @if (msg()) { <p class="err">{{ msg() | t }}</p> }
+
+  <div class="pn">
+    <h3>{{ 'par.linkTitle' | t }}</h3>
+    <p class="mut">{{ 'par.linkHint' | t }}</p>
+    <form (ngSubmit)="link()" class="row2">
+      <input class="fld" name="linkCode" [(ngModel)]="code" [placeholder]="'par.codePlaceholder' | t" aria-label="link code" />
+      <ion-button type="submit">{{ 'par.requestLink' | t }}</ion-button>
+    </form>
+    @if (linkStatus() === 'invalid') { <p class="err">{{ 'par.linkInvalid' | t }}</p> }
+    @if (linkStatus() === 'Pending') { <p class="ok">{{ 'par.linkPending' | t }}</p> }
+    @if (linkStatus() === 'Active') { <p class="ok">{{ 'par.linkActive' | t }}</p> }
+  </div>
+
+  @if (children() === null) { <ion-spinner></ion-spinner> }
+  @if (children(); as kids) {
+    @if (!kids.length) { <p class="mut">{{ 'par.noChildren' | t }}</p> }
+    @for (k of kids; track k.studentId) {
+      <div class="pn">
+        <h3>{{ k.fullName }}</h3>
+        @if (summaries()[k.studentId]; as s) {
+          <div class="row2">
+            <span>{{ 'par.studyHours' | t }}: <b>{{ s.weeklyStudyHours }}</b></span>
+            <span>{{ 'par.avgScore' | t }}: <b>{{ s.averageExamScorePercent ?? ('par.na' | t) }}</b></span>
+          </div>
+          @for (c of s.courses; track c.title) {
+            <p class="row2"><span>{{ c.title }}</span> <span class="mut">{{ c.status }} · {{ c.progressPercent }}%</span></p>
+          }
+          @if (s.riskAlerts.length) {
+            <p class="err">@for (a of s.riskAlerts; track a) { <span class="tag">{{ a }}</span> }</p>
+          }
+        } @else { <ion-spinner></ion-spinner> }
+      </div>
+    }
+  }
+
+  @if (alerts(); as as_) {
+    @if (as_.length) {
+      <div class="pn">
+        <h3>{{ 'par.alerts' | t }}</h3>
+        @for (a of as_; track a.id) {
+          <p class="row2"><span>{{ a.message }}</span> <span class="mut">{{ a.createdAtUtc | date:'short' }}</span></p>
+        }
+      </div>
+    }
+  }
+</div>
+</ion-content>

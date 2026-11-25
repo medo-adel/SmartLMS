@@ -1,0 +1,55 @@
+<ion-content>
+<div class="pg">
+  <div class="row2"><h1>{{ 'wallet.title' | t }}</h1><span class="row2"><ion-button size="small" fill="outline" routerLink="/app/cart">{{ 'nav.cart' | t }}</ion-button><ion-button size="small" fill="outline" routerLink="/app/orders">{{ 'nav.orders' | t }}</ion-button></span></div>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (!balance()) { <div class="pn sk" style="min-height:9rem" aria-busy="true"></div> }
+  @else {
+    <section class="pn bal"><span class="mut">{{ 'wallet.balance' | t }}</span><span class="amt">{{ balance()!.balance }} {{ balance()!.currency }}</span></section>
+    <div class="layout2 flip"><div class="main">
+    @if (mine().length) {
+      <section class="pn"><h2>{{ 'wallet.mine' | t }}</h2>
+        @for (m of mine(); track m.id) { <div class="tx"><span>{{ m.method }} · {{ m.amount }} <span class="tag">{{ m.status }}</span></span><small class="mut">{{ m.createdAtUtc | date: 'medium' }}</small></div> }
+      </section>
+    }
+    <section class="pn"><h2>{{ 'wallet.history' | t }}</h2>
+      @for (t of txs(); track t.id) { <div class="tx"><span>{{ t.description || t.type }}<br /><small class="mut">{{ t.createdAtUtc | date: 'medium' }}</small></span><b [class.err]="t.amount < 0">{{ t.amount }}</b></div> }
+      @empty { <div class="empty"><p>{{ 'common.empty' | t }}</p></div> }
+    </section>
+    </div>
+    <aside class="side">
+      <section class="pn">
+        <h2>{{ 'wallet.voucher' | t }}</h2>
+        <form class="row2" (ngSubmit)="redeem()"><input class="fld" name="code" [(ngModel)]="code" [placeholder]="'wallet.code' | t" autocomplete="off" /><ion-button type="submit">{{ 'wallet.redeem' | t }}</ion-button></form>
+        <h2>{{ 'wallet.courseVoucher' | t }}</h2>
+        <p class="mut">{{ 'wallet.courseVoucherHint' | t }}</p>
+        <form class="row2" (ngSubmit)="redeemCourse()"><input class="fld" name="courseCode" [(ngModel)]="courseCode" [placeholder]="'wallet.code' | t" autocomplete="off" /><ion-button type="submit">{{ 'wallet.redeem' | t }}</ion-button></form>
+        @if (courseRedeemed()) { <p class="ok">{{ 'wallet.courseRedeemed' | t }}: {{ courseRedeemed() }}</p> }
+        @if (note() === 'ok') { <p class="ok">✓</p> }
+      </section>
+      <section class="pn">
+        <h2>{{ 'wallet.manual' | t }}</h2>
+        <form class="stack" (ngSubmit)="submitManual()">
+          <select class="fld" name="method" [(ngModel)]="method"><option value="VodafoneCash">Vodafone Cash</option><option value="InstaPay">InstaPay</option><option value="BankTransfer">Bank transfer</option></select>
+          <input class="fld" name="amount" type="number" min="1" step="0.01" [(ngModel)]="amount" [placeholder]="'wallet.amount' | t" />
+          <input class="fld" name="ref" [(ngModel)]="reference" [placeholder]="'wallet.ref' | t" />
+          <input class="fld" name="sender" [(ngModel)]="sender" [placeholder]="'wallet.sender' | t" />
+          <input class="fld" name="receipt" type="file" accept="image/png,image/jpeg,application/pdf" (change)="pick($event)" />
+          <p class="mut">{{ 'wallet.receiptHint' | t }}</p>
+          <ion-button type="submit" [disabled]="!receipt || !amount">{{ 'wallet.submit' | t }}</ion-button>
+        </form>
+        <p class="mut">{{ 'wallet.pending' | t }}</p>
+      </section>
+      <section class="pn">
+        <h2>{{ 'wallet.gateway' | t }}</h2>
+        <form class="stack" (ngSubmit)="topUp()">
+          <select class="fld" name="gw" [(ngModel)]="gateway"><option value="Paymob">Paymob</option><option value="Fawry">Fawry</option><option value="Stripe">Stripe</option></select>
+          <input class="fld" name="tu" type="number" min="1" step="0.01" [(ngModel)]="topUpAmount" [placeholder]="'wallet.amount' | t" />
+          <ion-button type="submit" [disabled]="!topUpAmount">{{ 'wallet.gatewayGo' | t }}</ion-button>
+        </form>
+        @if (checkoutUrl(); as u) { <a class="lnk" [href]="u" target="_blank" rel="noopener noreferrer">{{ 'cart.gatewayOpen' | t }}</a><p class="mut">{{ 'cart.gatewayHint' | t }}</p> }
+        <p class="mut">{{ 'wallet.gatewayNote' | t }}</p>
+      </section>
+    </aside></div>
+  }
+</div>
+</ion-content>

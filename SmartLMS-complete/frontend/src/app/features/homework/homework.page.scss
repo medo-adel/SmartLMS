@@ -1,0 +1,9 @@
+.inner { margin: .4rem 0 .8rem; background: var(--app-field); }
+.rv .tags { display: inline-flex; gap: .3rem; flex-wrap: wrap; }
+.subtext { white-space: pre-wrap; }
+textarea.fld { resize: vertical; font-family: inherit; }
+.inner code { background: var(--app-bg); padding: .1rem .4rem; border-radius: .4rem; }
+.inner a { color: var(--ion-color-primary); word-break: break-all; }
+.tag.mine { background: var(--ion-color-primary); color: #fff; }
+.inner .work { border-inline-start: 3px solid var(--ion-color-primary); padding: .4rem .8rem; margin-bottom: .6rem; }
+.inner .comment { margin: .15rem 0; }

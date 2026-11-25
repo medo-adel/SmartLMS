@@ -1,0 +1,107 @@
+<ion-content>
+<div class="pg">
+  <div class="row2 head2">
+    <h1>{{ 'users.title' | t }}</h1>
+    <ion-button size="small" (click)="creating.set(!creating())">{{ 'users.new' | t }}</ion-button>
+  </div>
+
+  @if (creating()) {
+    <section class="pn">
+      <h2>{{ 'users.new' | t }}</h2>
+      <form class="stack" (ngSubmit)="create()">
+        <div class="row2">
+          <input class="fld" name="un" [(ngModel)]="fullName" [placeholder]="'reg.fullName' | t" [attr.aria-label]="'reg.fullName' | t" />
+          <input class="fld" name="ue" type="email" dir="ltr" [(ngModel)]="email" [placeholder]="'login.email' | t" [attr.aria-label]="'login.email' | t" />
+        </div>
+        <div class="row2">
+          <input class="fld" name="up" type="password" autocomplete="new-password" [(ngModel)]="password" [placeholder]="'login.password' | t" [attr.aria-label]="'login.password' | t" />
+          <input class="fld" name="uh" type="tel" dir="ltr" [(ngModel)]="phone" [placeholder]="'reg.phone' | t" [attr.aria-label]="'reg.phone' | t" />
+        </div>
+        <div class="row2">
+          <span class="mut">{{ 'users.roles' | t }}:</span>
+          @for (r of rolesList; track r) {
+            <button type="button" class="pick" [class.on]="roles[r]" (click)="toggleRole(r)">{{ r }}</button>
+          }
+          <label>{{ 'ten.lang' | t }}
+            <select class="fld" name="ul" [(ngModel)]="preferredLanguage"><option value="ar">العربية</option><option value="en">English</option></select>
+          </label>
+        </div>
+        <ion-button type="submit" [disabled]="!fullName.trim() || !email.trim() || password.length < 10 || picked().length === 0">{{ 'users.create' | t }}</ion-button>
+      </form>
+    </section>
+  }
+  @if (info() === 'created') { <p class="ok">{{ 'users.created' | t }}</p> }
+  @if (info() === 'saved') { <p class="ok">{{ 'users.updated' | t }}</p> }
+  @if (info() === 'deactivated') { <p class="ok">{{ 'users.deactivated' | t }}</p> }
+  @if (info() === 'devicesReset') { <p class="ok">{{ 'users.devicesReset' | t }}</p> }
+
+  <section class="pn">
+    <form class="row2" (ngSubmit)="find()">
+      <input class="fld" name="q" [(ngModel)]="search" [placeholder]="'users.search' | t" [attr.aria-label]="'users.search' | t" />
+      <select class="fld n" name="rf" [(ngModel)]="role" (change)="find()">
+        @for (r of roleFilters; track r) { <option [value]="r">{{ r || ('users.allRoles' | t) }}</option> }
+      </select>
+      <ion-button type="submit" size="small">{{ 'users.search' | t }}</ion-button>
+    </form>
+
+    @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+    @else if (items() === null) { <ion-spinner></ion-spinner> }
+    @else {
+      @for (u of items(); track u.id) {
+        <div class="rv">
+          <span>
+            <b>{{ u.fullName }}</b>
+            @for (r of u.roles; track r) { <span class="tag">{{ r }}</span> }
+            <span class="tag" [class.off]="!u.isActive">{{ u.isActive ? ('users.active' | t) : ('users.inactive' | t) }}</span><br />
+            <small class="mut" dir="ltr">{{ u.email || ('users.noEmail' | t) }}{{ u.phoneNumber ? ' · ' + u.phoneNumber : '' }}</small>
+            @if (u.lastLoginAtUtc) { <br /><small class="mut">{{ 'users.lastLogin' | t }}: {{ u.lastLoginAtUtc | date: 'medium' }}</small> }
+          </span>
+          <span class="row2">
+            <ion-button size="small" fill="outline" (click)="editing() === u.id ? editing.set('') : startEdit(u)">{{ 'users.edit' | t }}</ion-button>
+            <ion-button size="small" fill="outline" (click)="showDevices(u.id)">{{ 'users.devices' | t }}</ion-button>
+            @if (u.isActive) { <ion-button size="small" fill="clear" color="danger" [attr.aria-label]="'users.deactivate' | t" (click)="deactivate(u.id)">{{ (confirmDeactivate() === u.id ? 'common.confirm' : 'users.deactivate') | t }}</ion-button> }
+          </span>
+        </div>
+
+        @if (editing() === u.id) {
+          <form class="pn inner stack" (ngSubmit)="saveEdit(u.id)">
+            <div class="row2">
+              <input class="fld" name="en{{ u.id }}" [(ngModel)]="edit['fullName']" [placeholder]="'reg.fullName' | t" [attr.aria-label]="'reg.fullName' | t" />
+              <input class="fld" type="tel" dir="ltr" name="ep{{ u.id }}" [(ngModel)]="edit['phoneNumber']" [placeholder]="'reg.phone' | t" [attr.aria-label]="'reg.phone' | t" />
+              <label>{{ 'ten.lang' | t }}
+                <select class="fld" name="el{{ u.id }}" [(ngModel)]="edit['preferredLanguage']"><option value="ar">العربية</option><option value="en">English</option></select>
+              </label>
+            </div>
+            <div class="row2">
+              <span class="mut">{{ 'users.roles' | t }}:</span>
+              @for (r of rolesList; track r) {
+                <button type="button" class="pick" [class.on]="editRoles[r]" (click)="editRoles[r] = !editRoles[r]">{{ r }}</button>
+              }
+            </div>
+            <div class="row2">
+              <ion-button type="submit" size="small" [disabled]="pickedEdit().length === 0">{{ 'common.save' | t }}</ion-button>
+              <ion-button type="button" size="small" fill="clear" (click)="editing.set('')">{{ 'login.cancel' | t }}</ion-button>
+            </div>
+          </form>
+        }
+
+        @if (devicesFor() === u.id) {
+          <div class="pn inner">
+            @for (d of devices(); track d.id) {
+              <div class="rv"><span dir="ltr">{{ d.deviceType }}{{ d.platform ? ' · ' + d.platform : '' }}{{ d.deviceName ? ' · ' + d.deviceName : '' }} <span class="tag" [class.off]="!d.isActive">{{ d.isActive ? '✓' : '✕' }}</span><br /><small class="mut">{{ d.lastSeenAtUtc | date: 'medium' }}</small></span></div>
+            } @empty { <p class="mut">{{ 'users.none' | t }}</p> }
+            <ion-button size="small" fill="outline" color="danger" (click)="resetDevices(u.id)">{{ 'users.resetDevices' | t }}</ion-button>
+          </div>
+        }
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+      @if (total() > items()!.length) {
+        <div class="row2 pager">
+          <ion-button size="small" fill="outline" [disabled]="page <= 1" (click)="page = page - 1; load()">‹</ion-button>
+          <span class="mut">{{ page }} / {{ pages }}</span>
+          <ion-button size="small" fill="outline" [disabled]="page * 20 >= total()" (click)="page = page + 1; load()">›</ion-button>
+        </div>
+      }
+    }
+  </section>
+</div>
+</ion-content>

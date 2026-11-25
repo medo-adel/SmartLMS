@@ -1,0 +1,152 @@
+<ion-content>
+<div class="pg">
+  <div class="row2 head2">
+    <h1>{{ 'asg.title' | t }}</h1>
+    @if (canManage() && course) { <ion-button size="small" (click)="startCreate()">{{ 'asg.new' | t }}</ion-button> }
+  </div>
+
+  <section class="pn">
+    <label class="stack">
+      <span class="mut">{{ 'asg.pick' | t }}</span>
+      <select class="fld" name="course" [(ngModel)]="course" (ngModelChange)="pickCourse()" [attr.aria-label]="'asg.pick' | t">
+        <option value="">—</option>
+        @for (c of courses() ?? []; track c.id) { <option [value]="c.id">{{ c.title }}</option> }
+      </select>
+    </label>
+    @if (failed()) { <p class="err">{{ 'common.error' | t }}</p> }
+    @if (courses() === null) { <ion-spinner></ion-spinner> }
+  </section>
+
+  @if (msg()) { <p [class.ok]="msg() !== 'common.error'" [class.err]="msg() === 'common.error'">{{ msg() | t }}</p> }
+
+  @if (editing()) {
+    <section class="pn">
+      <h2>{{ (editing() === 'new' ? 'asg.new' : 'asg.edit') | t }}</h2>
+      <form class="stack" (ngSubmit)="save()">
+        <input class="fld" name="ti" [(ngModel)]="form.title" [placeholder]="'asg.name' | t" [attr.aria-label]="'asg.name' | t" />
+        <textarea class="fld" name="ins" rows="3" [(ngModel)]="form.instructions" [placeholder]="'asg.instructions' | t" [attr.aria-label]="'asg.instructions' | t"></textarea>
+        <div class="row2">
+          <label>{{ 'asg.due' | t }}<input class="fld" type="datetime-local" name="due" [(ngModel)]="dueLocal" /></label>
+          <label>{{ 'asg.maxPoints' | t }}<input class="fld n" type="number" min="0" name="mp" [(ngModel)]="form.maxPoints" /></label>
+        </div>
+        <div class="row2">
+          <label class="chk"><input type="checkbox" name="ar" [(ngModel)]="form.allowResubmission" /> {{ 'asg.allowResub' | t }}</label>
+          @if (form.allowResubmission) { <label>{{ 'asg.maxResub' | t }}<input class="fld n" type="number" min="1" name="mr" [(ngModel)]="form.maxResubmissions" /></label> }
+        </div>
+        <div class="row2">
+          <label class="chk"><input type="checkbox" name="ig" [(ngModel)]="form.isGroup" /> {{ 'asg.group' | t }}</label>
+          @if (form.isGroup) { <label>{{ 'asg.maxGroup' | t }}<input class="fld n" type="number" min="2" name="mg" [(ngModel)]="form.maxGroupSize" /></label> }
+        </div>
+        <div class="row2">
+          <label class="chk"><input type="checkbox" name="pr" [(ngModel)]="form.peerReviewEnabled" /> {{ 'asg.peer' | t }}</label>
+          @if (form.peerReviewEnabled) { <label>{{ 'asg.peerCount' | t }}<input class="fld n" type="number" min="1" name="pc" [(ngModel)]="form.peerReviewsPerSubmission" /></label> }
+          <label class="chk"><input type="checkbox" name="ip" [(ngModel)]="form.isPublished" /> {{ 'asg.published' | t }}</label>
+        </div>
+
+        <div class="rv">
+          <div class="row2 head2">
+            <b>{{ 'asg.rubric' | t }}</b>
+            <ion-button size="small" fill="outline" type="button" (click)="addCriterion()">{{ 'asg.addCriterion' | t }}</ion-button>
+          </div>
+          @for (r of form.rubric ?? []; track $index) {
+            <div class="row2">
+              <input class="fld" [attr.name]="'rn' + $index" [(ngModel)]="r.name" [placeholder]="'asg.criterionName' | t" [attr.aria-label]="'asg.criterionName' | t" />
+              <input class="fld" [attr.name]="'rd' + $index" [(ngModel)]="r.description" [placeholder]="'asg.criterionDesc' | t" [attr.aria-label]="'asg.criterionDesc' | t" />
+              <input class="fld n" type="number" min="0" [attr.name]="'rp' + $index" [(ngModel)]="r.maxPoints" [attr.aria-label]="'asg.criterionPoints' | t" />
+              <ion-button size="small" fill="clear" color="danger" type="button" (click)="removeCriterion($index)">×</ion-button>
+            </div>
+          }
+        </div>
+
+        <span class="row2">
+          <ion-button type="submit">{{ 'common.save' | t }}</ion-button>
+          <ion-button type="button" fill="clear" (click)="editing.set('')">{{ 'login.cancel' | t }}</ion-button>
+        </span>
+      </form>
+    </section>
+  }
+
+  @if (course && !editing()) {
+    <section class="pn">
+      @for (a of items(); track a.id) {
+        <div class="rv">
+          <div class="row2 head2">
+            <b>{{ a.title }}</b>
+            <span class="tags">
+              <span class="tag">{{ a.isPublished ? ('asg.published' | t) : ('asg.draft' | t) }}</span>
+              @if (a.isGroup) { <span class="tag">{{ 'asg.group' | t }}</span> }
+              @if (a.peerReviewEnabled) { <span class="tag">{{ 'asg.peer' | t }}</span> }
+            </span>
+          </div>
+          <p class="mut">
+            {{ a.dueAtUtc ? ('asg.due' | t) + ': ' + (a.dueAtUtc | date:'medium') : ('asg.noDue' | t) }}
+            @if (a.maxPoints) { · {{ a.maxPoints }} {{ 'asg.pts' | t }} }
+            @if (a.rubric.length) { · {{ a.rubric.length }} {{ 'asg.criteria' | t }} }
+          </p>
+          <span class="row2">
+            @if (canGrade()) { <ion-button size="small" fill="outline" (click)="toggleSubs(a)">{{ (subsFor() === a.id ? 'approvals.hide' : 'asg.submissions') | t }}</ion-button> }
+            @if (canManage()) {
+              <ion-button size="small" fill="clear" (click)="startEdit(a)">{{ 'users.edit' | t }}</ion-button>
+              @if (a.peerReviewEnabled) { <ion-button size="small" fill="clear" (click)="assignPeer(a)">{{ 'asg.assignPeer' | t }}</ion-button> }
+            }
+          </span>
+        </div>
+
+        @if (subsFor() === a.id) {
+          <div class="pn inner">
+            @for (s of subs(); track s.id) {
+              <div class="rv">
+                <div class="row2 head2">
+                  <b>{{ s.studentName }}</b>
+                  <span class="tags">
+                    <span class="tag">v{{ s.version }}</span>
+                    <span class="tag">{{ s.status }}</span>
+                    @if (s.isLate) { <span class="tag late">{{ 'asg.late' | t }}</span> }
+                    @if (s.totalScore !== null) { <span class="tag">{{ s.totalScore }} / {{ a.maxPoints ?? '—' }}</span> }
+                  </span>
+                </div>
+                <p class="mut">{{ s.submittedAtUtc | date:'medium' }}</p>
+                <ion-button size="small" fill="outline" (click)="startGrade(s)">{{ (gradingFor() === s.id ? 'approvals.hide' : 'asg.grade') | t }}</ion-button>
+
+                @if (gradingFor() === s.id) {
+                  @if (detailFailed()) { <p class="err">{{ 'common.error' | t }}</p> }
+                  @else if (detail(); as d) {
+                    <div class="work">
+                      @if (d.textContent) { <p class="subtext">{{ d.textContent }}</p> }
+                      @if (d.linkUrl) { <a class="sublink" [href]="d.linkUrl" target="_blank" rel="noopener noreferrer" dir="ltr">{{ d.linkUrl }}</a> }
+                      @if (!d.textContent && !d.linkUrl) { <p class="mut">{{ 'common.empty' | t }}</p> }
+                      @if (d.feedback) { <p class="mut"><b>{{ 'asg.feedback' | t }}:</b> {{ d.feedback }}</p> }
+                      @if (d.comments.length) {
+                        <div class="comments">
+                          @for (c of d.comments; track c.id) { <p class="comment">{{ c.body }} <small class="mut">{{ c.createdAtUtc | date:'short' }}</small></p> }
+                        </div>
+                      }
+                    </div>
+                  } @else { <ion-spinner></ion-spinner> }
+                  <form class="stack" (ngSubmit)="saveGrade(s)">
+                    @for (r of a.rubric; track r.id) {
+                      <label>{{ r.name }} ({{ r.maxPoints }} {{ 'asg.pts' | t }})
+                        <input class="fld n" type="number" min="0" [max]="r.maxPoints" [attr.name]="'sc' + r.id" [(ngModel)]="grade.scores[r.id]" />
+                      </label>
+                    }
+                    @if (!a.rubric.length) {
+                      <label>{{ 'asg.total' | t }}<input class="fld n" type="number" min="0" name="ts" [(ngModel)]="grade.totalScore" /></label>
+                    }
+                    <textarea class="fld" name="fb" rows="2" [(ngModel)]="grade.feedback" [placeholder]="'asg.feedback' | t" [attr.aria-label]="'asg.feedback' | t"></textarea>
+                    <input class="fld" name="cm" [(ngModel)]="commentText" [placeholder]="'asg.comment' | t" [attr.aria-label]="'asg.comment' | t" />
+                    <span class="row2">
+                      <ion-button type="submit" size="small">{{ 'asg.saveGrade' | t }}</ion-button>
+                      <ion-button type="button" size="small" fill="clear" color="danger" [attr.aria-label]="'asg.return' | t"
+                        (click)="returnSub(s)">{{ (confirmReturn() === s.id ? 'common.confirm' : 'asg.return') | t }}</ion-button>
+                    </span>
+                  </form>
+                }
+              </div>
+            } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+          </div>
+        }
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+  }
+</div>
+</ion-content>

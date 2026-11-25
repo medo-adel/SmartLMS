@@ -1,0 +1,18 @@
+<ion-content>
+<div class="page">
+  <h1 class="title">{{ 'notif.title' | t }} @if (unread() > 0) { <span class="count">{{ unread() }}</span> }</h1>
+  <section class="panel">
+  @if (failed()) { <p class="msg">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (items() === null) { <ion-spinner></ion-spinner> }
+  @else if (items()!.length === 0) { <p class="msg">{{ 'common.empty' | t }}</p> }
+  @else {
+    @for (n of items(); track n.id) {
+      <div class="row" [class.unread]="!n.isRead">
+        <div class="body"><strong>{{ n.title }}</strong><span>{{ n.body }}</span><small class="time">{{ n.createdAtUtc | date: 'medium' }}</small></div>
+        @if (!n.isRead) { <ion-button size="small" fill="outline" (click)="markRead(n)">{{ 'notif.markRead' | t }}</ion-button> }
+      </div>
+    }
+  }
+  </section>
+</div>
+</ion-content>

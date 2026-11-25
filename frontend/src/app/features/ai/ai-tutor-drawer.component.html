@@ -1,0 +1,60 @@
+<aside class="drawer" role="complementary">
+  <header>
+    <strong>{{ 'ai.tutor' | t }}</strong>
+    <ion-button fill="clear" size="small" (click)="closed.emit()">✕</ion-button>
+  </header>
+  <nav class="tabs2">
+    <button [class.on]="tab() === 'chat'" (click)="openTab('chat')">{{ 'ai.tutor' | t }}</button>
+    <button [class.on]="tab() === 'search'" (click)="openTab('search')">{{ 'ai.search' | t }}</button>
+    <button [class.on]="tab() === 'summary'" (click)="openTab('summary')">{{ 'ai.summary' | t }}</button>
+    <button [class.on]="tab() === 'map'" (click)="openTab('map')">{{ 'ai.mindmap' | t }}</button>
+  </nav>
+  <p class="mut small">{{ 'ai.notice' | t }}</p>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }}</p> }
+  @if (tab() === 'chat') {
+    <div class="log">
+      @for (t of turns(); track $index) {
+        <div class="q">{{ t.q }}</div>
+        @if (t.a; as a) {
+          <div class="a">{{ a.answer }}
+            <div class="meta"><span class="tag">{{ (a.grounded ? 'ai.grounded' : 'ai.ungrounded') | t }}</span></div>
+            @if (a.citations.length) {
+              <div class="cites"><small class="mut">{{ 'ai.cite' | t }}</small>
+                @for (c of a.citations; track $index) {
+                  <button class="cite" (click)="c.startSeconds !== null ? seek.emit(c.startSeconds) : null">{{ c.startSeconds !== null ? time(c.startSeconds) : ('p.' + (c.page ?? '-')) }} · {{ c.snippet }}</button>
+                }
+              </div>
+            }
+          </div>
+        } @else if (t.error) { <div class="a err">{{ 'common.error' | t }}</div> }
+        @else { <div class="a mut">{{ 'ai.thinking' | t }}</div> }
+      }
+    </div>
+    <form class="row2" (ngSubmit)="ask()">
+      <input class="fld" name="question" [(ngModel)]="question" [placeholder]="'ai.ask' | t" />
+      <ion-button type="submit" [disabled]="busy()">{{ 'ai.send' | t }}</ion-button>
+    </form>
+  }
+  @if (tab() === 'search') {
+    <form class="row2" (ngSubmit)="search()">
+      <input class="fld" name="query" [(ngModel)]="query" [placeholder]="'ai.search' | t" />
+      <ion-button type="submit" [disabled]="busy()">{{ 'cat.search' | t }}</ion-button>
+    </form>
+    @for (h of hits() ?? []; track $index) {
+      <button class="cite" (click)="seek.emit(h.startSeconds)"><b>{{ time(h.startSeconds) }}</b> · {{ h.snippet }}</button>
+    }
+    @if (hits() && hits()!.length === 0) { <p class="mut">{{ 'cat.empty' | t }}</p> }
+  }
+  @if (tab() === 'summary') {
+    @if (busy()) { <ion-spinner></ion-spinner> }
+    @if (summary(); as s) {
+      <h3>{{ 'ai.takeaways' | t }}</h3><ul>@for (x of s.takeaways; track $index) { <li>{{ x }}</li> }</ul>
+      <h3>{{ 'ai.keyTerms' | t }}</h3><div class="row2">@for (x of s.keyTerms; track $index) { <span class="tag">{{ x }}</span> }</div>
+      @for (c of s.chapters; track $index) { <button class="cite" (click)="seek.emit(c.startSeconds)"><b>{{ time(c.startSeconds) }}</b> · {{ c.title }}</button> }
+    }
+  }
+  @if (tab() === 'map') {
+    @if (busy()) { <ion-spinner></ion-spinner> }
+    @if (map(); as m) { <app-mind-map [map]="m" /> }
+  }
+</aside>

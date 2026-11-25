@@ -1,0 +1,2 @@
+.it { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .55rem 0; border-block-end: 1px solid var(--app-border); }
+.it:last-child { border-block-end: 0; }

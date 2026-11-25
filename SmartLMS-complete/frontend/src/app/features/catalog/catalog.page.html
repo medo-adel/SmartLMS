@@ -1,0 +1,49 @@
+<ion-content>
+<div class="pg">
+  <div class="row2"><h1>{{ 'cat.title' | t }}</h1><span class="row2"><ion-button size="small" fill="outline" routerLink="/app/paths">{{ 'paths.title' | t }}</ion-button>@if (auth.hasRole('Student')) { <ion-button size="small" fill="outline" routerLink="/app/downloads">{{ 'nav.downloads' | t }}</ion-button> }</span></div>
+  <form class="row2 bar searchbar" (ngSubmit)="load()">
+    <input class="fld" name="q" [(ngModel)]="search" [placeholder]="'cat.search' | t" />
+    <ion-button type="submit">{{ 'cat.search' | t }}</ion-button>
+  </form>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (items() === null) { <div class="cards" aria-busy="true"><div class="pn sk" style="min-height:14rem"></div><div class="pn sk" style="min-height:14rem"></div><div class="pn sk" style="min-height:14rem"></div></div> }
+  @else if (items()!.length === 0) { <div class="empty"><p>{{ 'cat.empty' | t }}</p></div> }
+  @else {
+    <div class="cards">
+      @for (c of items(); track c.id) {
+        <article class="pn course">
+          <div class="cover" aria-hidden="true" [attr.data-i]="$index % 5"><span>{{ c.title.charAt(0) }}</span></div>
+          <span class="tag">{{ c.level }}</span>
+          <h2>{{ c.title }}</h2>
+          <p class="mut">{{ c.shortDescription }}</p>
+          <div class="foot">
+            <span class="price">@if (c.price && c.pricingModel !== 'Free') { {{ c.price }} {{ c.currency }} } @else { {{ 'cat.free' | t }} }</span>
+            <ion-button size="small" [routerLink]="['/app/courses', c.id]">{{ 'cat.open' | t }}</ion-button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+  @if (bundles().length) {
+    <h2 class="sec">{{ 'cat.bundles' | t }}</h2>
+    <div class="cards">
+      @for (b of bundles(); track b.id) {
+        <article class="pn"><h2>{{ b.name }}</h2><p class="mut">{{ b.description }}</p>
+          <ul>@for (c of b.courses; track c.id) { <li>{{ c.title }}</li> }</ul>
+          <div class="foot"><span class="price">{{ b.price }} {{ b.currency }}</span>
+            @if (auth.hasRole('Student')) { <ion-button size="small" (click)="addOffer('Bundle', b.id)" [disabled]="added() === b.id">{{ added() === b.id ? ('cat.added' | t) : ('cat.addCart' | t) }}</ion-button> }</div></article>
+      }
+    </div>
+  }
+  @if (plans().length) {
+    <h2 class="sec">{{ 'cat.plans' | t }}</h2>
+    <div class="cards">
+      @for (p of plans(); track p.id) {
+        <article class="pn"><span class="tag">{{ p.billingPeriod }}</span><h2>{{ p.name }}</h2><p class="mut">{{ p.description }}</p>
+          <div class="foot"><span class="price">{{ p.price }} {{ p.currency }}</span>
+            @if (auth.hasRole('Student')) { <ion-button size="small" (click)="addOffer('Plan', p.id)" [disabled]="added() === p.id">{{ added() === p.id ? ('cat.added' | t) : ('cat.subscribe' | t) }}</ion-button> }</div></article>
+      }
+    </div>
+  }
+</div>
+</ion-content>

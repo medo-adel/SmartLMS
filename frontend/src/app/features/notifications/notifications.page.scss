@@ -1,0 +1,7 @@
+.panel { background: var(--app-card); border: 1px solid var(--app-border); border-radius: var(--app-radius); box-shadow: var(--app-shadow); padding: .5rem 1.1rem; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem 0; border-block-end: 1px solid var(--app-border); }
+.row:last-child { border-block-end: 0; }
+.body { display: grid; gap: .15rem; }
+.unread .body strong::before { content: ''; display: inline-block; inline-size: .55rem; block-size: .55rem; border-radius: 50%; background: var(--ion-color-primary); margin-inline-end: .5rem; }
+.time { color: var(--ion-color-medium); }
+.msg { text-align: center; color: var(--ion-color-medium); padding: 1.5rem 0; }

@@ -1,0 +1,26 @@
+<ion-content>
+<div class="page">
+  <header class="head">
+    <div>
+      <p class="eyebrow">{{ today }}</p>
+      <h1 class="display"><span class="hello">{{ 'dash.hello' | t }}</span> {{ auth.user()?.fullName }}</h1>
+    </div>
+    <span class="role">{{ auth.user()?.roles?.[0] }}</span>
+  </header>
+  @switch (auth.dashboard()) {
+    @case ('student') { <app-student-dashboard /> }
+    @case ('instructor') { <app-instructor-dashboard /> }
+    @case ('admin') { <app-admin-dashboard /> }
+    @case ('parent') { <app-parent-dashboard /> }
+    @default {
+      @if (auth.hasRole('SuperAdmin')) {
+        <h2>{{ 'dash.super.title' | t }}</h2>
+        <p>{{ 'dash.super.text' | t }}</p>
+        <ion-button routerLink="/app/tenants">{{ 'dash.super.link' | t }}</ion-button>
+      } @else {
+        <h2>{{ 'dash.none.title' | t }}</h2><p>{{ 'dash.none.text' | t }}</p>
+      }
+    }
+  }
+</div>
+</ion-content>

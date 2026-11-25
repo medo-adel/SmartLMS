@@ -1,0 +1,33 @@
+# Build and test only. Does not deploy or publish anything.
+name: ci
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: 10.0.x }
+      - run: dotnet test backend/SmartLMS.sln
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npx ng build
+        working-directory: frontend
+      - run: npx ng test --watch=false
+        working-directory: frontend
+  ai-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.lock.txt -r requirements-dev.txt && pytest -q
+        working-directory: ai-service
+      - run: pip install pip-audit && pip-audit -r requirements.lock.txt || true   # informational: known unfixable advisories, see docs/SECURITY_AUDIT.md
+        working-directory: ai-service

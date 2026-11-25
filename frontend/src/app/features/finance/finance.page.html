@@ -1,0 +1,311 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'fin.title' | t }}</h1>
+  @if (auth.hasRole('TenantAdmin')) {
+    <div class="tabs2">
+      <button type="button" [class.on]="tab() === 'overview'" (click)="go('overview')">{{ 'fin.overview' | t }}</button>
+      <button type="button" [class.on]="tab() === 'shares'" (click)="go('shares')">{{ 'fin.shares' | t }}</button>
+      <button type="button" [class.on]="tab() === 'statement'" (click)="go('statement')">{{ 'fin.statement' | t }}</button>
+      <button type="button" [class.on]="tab() === 'held'" (click)="go('held')">{{ 'fin.held' | t }}</button>
+      <button type="button" [class.on]="tab() === 'debits'" (click)="go('debits')">{{ 'fin.debits' | t }}</button>
+      <button type="button" [class.on]="tab() === 'payouts'" (click)="go('payouts')">{{ 'fin.payouts' | t }}</button>
+      <button type="button" [class.on]="tab() === 'controls'" (click)="go('controls')">{{ 'fin.controls' | t }}</button>
+    </div>
+  }
+  @if (msg()) { <p [class.ok]="!msg().startsWith('fin.err')" [class.err]="msg().startsWith('fin.err')">{{ msg() | t }}</p> }
+
+  @if (tab() === 'overview' && auth.hasRole('TenantAdmin')) {
+    @if (dash() === null) { <ion-spinner></ion-spinner> }
+    @if (dash(); as d) {
+      <div class="pn"><h3>{{ 'fin.kpis' | t }}</h3>
+        <div class="row2"><span>{{ 'fin.users' | t }}</span><b>{{ d.kpis.users }}</b></div>
+        <div class="row2"><span>{{ 'fin.publishedCourses' | t }}</span><b>{{ d.kpis.publishedCourses }}</b></div>
+        <div class="row2"><span>{{ 'fin.activeEnrollments' | t }}</span><b>{{ d.kpis.activeEnrollments }}</b></div>
+        <div class="row2"><span>{{ 'fin.revenue30' | t }}</span><b>{{ d.kpis.revenueLast30Days | number:'1.2-2' }}</b></div>
+        <div class="row2"><span>{{ 'fin.revenueAll' | t }}</span><b>{{ d.kpis.revenueAllTime | number:'1.2-2' }}</b></div>
+        <div class="row2"><span>{{ 'fin.paidOrders30' | t }}</span><b>{{ d.kpis.paidOrdersLast30Days }}</b></div>
+        <p class="mut">{{ 'fin.currencyUnknown' | t }}</p>
+      </div>
+      <div class="pn"><h3>{{ 'fin.queues' | t }}</h3>
+        <div class="row2"><span>{{ 'fin.qCourses' | t }}</span><b>{{ d.queues.coursesAwaitingApproval }}</b></div>
+        <div class="row2"><span>{{ 'fin.qManual' | t }}</span><b>{{ d.queues.manualPaymentsToReview }}</b></div>
+        <div class="row2"><span>{{ 'fin.qPayouts' | t }}</span><b>{{ d.queues.payoutsToApprove }}</b></div>
+        <div class="row2"><span>{{ 'fin.qWebhooks' | t }}</span><b>{{ d.queues.failedWebhookDeliveries }}</b></div>
+      </div>
+    }
+  }
+
+  @if (tab() === 'shares' && auth.hasRole('TenantAdmin')) {
+    @if (shares() === null) { <ion-spinner></ion-spinner> }
+    @if (shares(); as s) {
+      <form class="pn stack" (ngSubmit)="saveDefaultShare()">
+        <h3>{{ 'fin.defaultShare' | t }}</h3>
+        <p class="mut">{{ 'fin.defaultShareHint' | t }}</p>
+        <label for="defaultShareIn">{{ 'fin.sharePctLabel' | t }}</label>
+        <div class="row2">
+          <input class="fld" id="defaultShareIn" name="defaultShare" type="number" min="0" max="100" step="0.1" [(ngModel)]="defaultShare" />
+          <span class="mut">%</span>
+        </div>
+        <ion-button type="submit" expand="block">{{ 'common.save' | t }}</ion-button>
+      </form>
+      <div class="pn"><h3>{{ 'fin.overrides' | t }}</h3>
+        @if (!s.overrides.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+        @for (o of s.overrides; track o.courseId + o.instructorId) {
+          <p class="row2"><span>{{ courseLabel(o.courseId) }} <span class="mut">·</span> {{ userLabel(o.instructorId) }}</span> <b>{{ o.sharePercent }}%</b></p>
+        }
+      </div>
+      <form class="pn stack" (ngSubmit)="reviewOverride()">
+        <h3>{{ 'fin.addOverride' | t }}</h3>
+        <p class="mut">{{ 'fin.addOverrideHint' | t }}</p>
+        <select class="fld" name="ovc" [(ngModel)]="ov.course"><option value="">{{ 'fin.pickCourse' | t }}</option>@for (c of courses() ?? []; track c.id) { <option [value]="c.id">{{ c.title }}</option> }</select>
+        <select class="fld" name="ovi" [(ngModel)]="ov.instructor"><option value="">{{ 'fin.pickInstructor' | t }}</option>@for (i of instructors(); track i.id) { <option [value]="i.id">{{ i.fullName }}</option> }</select>
+        <div class="row2">
+          <input class="fld" name="ovp" type="number" min="0" max="100" step="0.1" [(ngModel)]="ov.percent" [placeholder]="'fin.sharePctLabel' | t" />
+          <ion-button type="submit" size="small">{{ 'fin.saveOverride' | t }}</ion-button>
+        </div>
+      </form>
+      @if (pendingOverride(); as po) {
+        <div class="pn confirm">
+          <h3>{{ 'fin.confirmOverrideTitle' | t }}</h3>
+          <div class="row2"><span>{{ 'fin.course' | t }}</span><b>{{ po.courseName }}</b></div>
+          <div class="row2"><span>{{ 'fin.instructor' | t }}</span><b>{{ po.instructorName }}</b></div>
+          <div class="row2"><span>{{ 'fin.sharePctLabel' | t }}</span><b>{{ po.percent }}%</b></div>
+          <p class="mut">{{ 'fin.confirmOverrideConsequence' | t }}</p>
+          <div class="row2">
+            <ion-button color="danger" (click)="confirmOverride()">{{ 'fin.confirmSave' | t }}</ion-button>
+            <ion-button fill="clear" (click)="pendingOverride.set(null)">{{ 'common.cancel' | t }}</ion-button>
+          </div>
+        </div>
+      }
+    }
+  }
+
+  @if (tab() === 'statement' && auth.hasRole('TenantAdmin')) {
+    <div class="pn stack">
+      <div class="row2">
+        <input class="fld" name="stFrom" type="date" [(ngModel)]="stFrom" aria-label="statement from" />
+        <input class="fld" name="stTo" type="date" [(ngModel)]="stTo" aria-label="statement to" />
+        <ion-button (click)="loadStatement()">{{ 'fin.load' | t }}</ion-button>
+      </div>
+    </div>
+    @if (statement(); as st) {
+      <div class="pn">
+        @for (i of st.instructors; track i.instructorId) {
+          <div class="row2"><b>{{ i.name }}</b> <b>{{ i.total | number:'1.2-2' }}</b></div>
+          <p class="mut">{{ 'fin.courseSales' | t }}: {{ i.courseSales | number:'1.2-2' }} · {{ 'fin.subscription' | t }}: {{ i.subscription | number:'1.2-2' }} ({{ i.subscriptionQualifiedMinutes }} {{ 'fin.minutes' | t }})
+            @for (f of i.flags; track f) { <span class="tag">{{ f }}</span> }</p>
+        }
+        @if (st.note) { <p class="mut">{{ st.note }}</p> }
+        <p class="mut">{{ 'fin.currencyUnknown' | t }}</p>
+      </div>
+    }
+  }
+
+  @if (tab() === 'held' && auth.hasRole('TenantAdmin')) {
+    <div class="pn stack">
+      <div class="row2">
+        <input class="fld" name="heldFrom" type="date" [(ngModel)]="heldFrom" aria-label="held from" />
+        <input class="fld" name="heldTo" type="date" [(ngModel)]="heldTo" aria-label="held to" />
+        <ion-button (click)="loadHeld()">{{ 'fin.load' | t }}</ion-button>
+      </div>
+    </div>
+    @if (held(); as h) {
+      <div class="pn">
+        <div class="row2"><b>{{ 'fin.totalHeld' | t }}</b> <b>{{ h.totalHeld | number:'1.2-2' }}</b></div>
+        <p class="mut">{{ 'fin.currencyUnknown' | t }}</p>
+        @for (i of h.items; track i.orderItemId) {
+          <div class="heldrow">
+            <div class="row2"><span>{{ 'fin.course' | t }}</span><b>{{ courseLabel(i.courseId) }}</b></div>
+            <div class="row2"><span>{{ 'fin.instructor' | t }}</span><b>{{ userLabel(i.instructorId) }}</b></div>
+            <div class="row2"><span>{{ 'fin.kind' | t }}</span><span class="tag">{{ i.kind }}</span></div>
+            <div class="row2"><span>{{ 'fin.amount' | t }}</span><b>{{ i.amount | number:'1.2-2' }}</b></div>
+            <div class="row2"><span>{{ 'fin.orderItemId' | t }}</span><span class="mut mono">{{ i.orderItemId }}</span></div>
+            <div class="row2">
+              <label [for]="'rel-' + i.orderItemId">{{ 'fin.sharePctLabel' | t }}</label>
+              <span class="row2 pctwrap">
+                <input class="fld pct" type="number" min="0" max="100" step="0.1" [id]="'rel-' + i.orderItemId" [name]="'rel-' + i.orderItemId" [attr.name]="'rel-' + i.orderItemId" [(ngModel)]="releasePct[i.orderItemId]" />
+                <span class="mut">%</span>
+                <ion-button size="small" (click)="reviewRelease(i)">{{ 'fin.reviewRelease' | t }}</ion-button>
+              </span>
+            </div>
+          </div>
+        }
+        @if (!h.items.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+      </div>
+    }
+    @if (pendingRelease(); as pr) {
+      <div class="pn confirm">
+        <h3>{{ 'fin.confirmReleaseTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'fin.course' | t }}</span><b>{{ courseLabel(pr.item.courseId) }}</b></div>
+        <div class="row2"><span>{{ 'fin.instructor' | t }}</span><b>{{ userLabel(pr.item.instructorId) }}</b></div>
+        <div class="row2"><span>{{ 'fin.amount' | t }}</span><b>{{ pr.item.amount | number:'1.2-2' }}</b></div>
+        <div class="row2"><span>{{ 'fin.share' | t }}</span><b>{{ pr.percent }}%</b></div>
+        <div class="row2"><span>{{ 'fin.orderItemId' | t }}</span><span class="mut mono">{{ pr.item.orderItemId }}</span></div>
+        <p class="mut">{{ 'fin.releaseConsequence' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmRelease()">{{ 'fin.confirmRelease' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingRelease.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+  }
+
+  @if (tab() === 'debits' && auth.hasRole('TenantAdmin')) {
+    @if (debits() === null) { <ion-spinner></ion-spinner> }
+    @if (debits(); as d) {
+      <div class="pn">
+        <div class="row2"><b>{{ 'fin.outstanding' | t }}</b> <b>{{ d.outstanding | number:'1.2-2' }}</b></div>
+        @for (i of d.items; track i.id) {
+          <p class="row2"><span>{{ userLabel(i.instructorId) }} · <span class="mut">{{ i.createdAtUtc | date:'mediumDate' }}</span></span>
+          <b>{{ i.remainingAmount | number:'1.2-2' }} / {{ i.amount | number:'1.2-2' }} {{ i.currency }}</b></p>
+        }
+        @if (!d.items.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+      </div>
+    }
+  }
+
+  @if (tab() === 'payouts' && auth.hasRole('TenantAdmin')) {
+    <form class="pn stack" (ngSubmit)="calculate()">
+      <h3>{{ 'fin.calculate' | t }}</h3>
+      <div class="row2">
+        <input class="fld" name="calcFrom" type="date" [(ngModel)]="calcFrom" aria-label="period start" />
+        <input class="fld" name="calcTo" type="date" [(ngModel)]="calcTo" aria-label="period end" />
+        <ion-button type="submit">{{ 'fin.runCalc' | t }}</ion-button>
+      </div>
+      @if (calcJob(); as j) { <p class="mut">{{ 'fin.calcRunning' | t }}: {{ j.status }}@if (j.progressPercent) { · {{ j.progressPercent }}% }</p> }
+    </form>
+    @if (payouts(); as ps) {
+      @for (po of ps.items; track po.id) {
+        <div class="pn">
+          <div class="row2"><b>{{ po.name || userLabel(po.instructorId) }}</b> <span class="tag">{{ po.status }}</span> <b>{{ po.amount | number:'1.2-2' }} {{ po.currency }}</b></div>
+          <p class="mut">{{ po.periodStartUtc | date:'mediumDate' }} – {{ po.periodEndUtc | date:'mediumDate' }}@if (po.paymentReference) { · {{ po.paymentReference }} }</p>
+          @if (payoutEdit === po.id) {
+            <form class="row2" (ngSubmit)="reviewPayout(po)">
+              <select class="fld" name="payoutStatus" [(ngModel)]="payoutStatus" aria-label="payout status">
+                @for (st of payoutStatuses; track st) { <option [value]="st">{{ st }}</option> }
+              </select>
+              <input class="fld" name="payoutRef" [(ngModel)]="payoutRef" [placeholder]="'fin.paymentRef' | t" aria-label="payment reference" />
+              <ion-button type="submit" size="small">{{ 'fin.reviewUpdate' | t }}</ion-button>
+              <ion-button size="small" fill="clear" type="button" (click)="payoutEdit = null">{{ 'common.cancel' | t }}</ion-button>
+            </form>
+          } @else {
+            <ion-button size="small" fill="outline" (click)="startPayoutEdit(po.id, po.status, po.paymentReference)">{{ 'common.edit' | t }}</ion-button>
+          }
+        </div>
+      }
+      @if (!ps.items.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+    }
+    @if (pendingPayout(); as pp) {
+      <div class="pn confirm">
+        <h3>{{ 'fin.confirmPayoutTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'fin.instructor' | t }}</span><b>{{ pp.name }}</b></div>
+        <div class="row2"><span>{{ 'fin.period' | t }}</span><b>{{ pp.period }}</b></div>
+        <div class="row2"><span>{{ 'fin.amount' | t }}</span><b>{{ pp.amount | number:'1.2-2' }} {{ pp.currency }}</b></div>
+        <div class="row2"><span>{{ 'fin.newStatus' | t }}</span><span class="tag">{{ pp.status }}</span></div>
+        @if (pp.reference) { <div class="row2"><span>{{ 'fin.paymentRef' | t }}</span><b>{{ pp.reference }}</b></div> }
+        <p class="mut">{{ 'fin.payoutConsequence' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmPayout()">{{ 'fin.confirmUpdate' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingPayout.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+
+    <form class="pn stack" (ngSubmit)="reviewRefund()">
+      <h3>{{ 'fin.refund' | t }}</h3>
+      <p class="mut">{{ 'fin.refundHint' | t }}</p>
+      <input class="fld" name="refundOrder" [(ngModel)]="refundOrder" [placeholder]="'fin.orderId' | t" aria-label="order id" />
+      <input class="fld" name="refundAmount" type="number" min="0.01" step="0.01" [(ngModel)]="refundAmount" [placeholder]="'fin.amount' | t" aria-label="refund amount" />
+      <input class="fld" name="refundRef" [(ngModel)]="refundRef" [placeholder]="'fin.refundRef' | t" aria-label="refund reference" />
+      <input class="fld" name="refundReason" [(ngModel)]="refundReason" [placeholder]="'fin.refundReason' | t" aria-label="refund reason" />
+      <ion-button type="submit" expand="block">{{ 'fin.reviewRefund' | t }}</ion-button>
+    </form>
+    @if (pendingRefund(); as pf) {
+      <div class="pn confirm">
+        <h3>{{ 'fin.confirmRefundTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'fin.orderId' | t }}</span><b class="mono">{{ pf.orderId }}</b></div>
+        <div class="row2"><span>{{ 'fin.amount' | t }}</span><b>{{ pf.amount | number:'1.2-2' }}</b></div>
+        <div class="row2"><span>{{ 'fin.refundRef' | t }}</span><b>{{ pf.reference }}</b></div>
+        @if (pf.reason) { <div class="row2"><span>{{ 'fin.refundReason' | t }}</span><b>{{ pf.reason }}</b></div> }
+        <p class="mut">{{ 'fin.refundConsequence' | t }} {{ 'fin.currencyUnknown' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmRefund()">{{ 'fin.recordRefund' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingRefund.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+  }
+
+  @if (tab() === 'controls' && auth.hasRole('TenantAdmin')) {
+    <form class="pn stack" (ngSubmit)="reviewControls()">
+      <h3>{{ 'fin.subControls' | t }}</h3>
+      <p class="mut">{{ 'fin.subControlsHint' | t }}</p>
+      @if (!controlsLoaded()) { <ion-spinner></ion-spinner> }
+      @else {
+        <label>{{ 'fin.minWatch' | t }}<input class="fld n" name="cmw" type="number" min="0" max="100" step="0.1" [(ngModel)]="controls.minWatch" /></label>
+        <label>{{ 'fin.minAvg' | t }}<input class="fld n" name="cma" type="number" min="0" [(ngModel)]="controls.minAvg" /></label>
+        <label>{{ 'fin.jump' | t }}<input class="fld n" name="cjp" type="number" min="0" step="0.1" [(ngModel)]="controls.jump" /></label>
+        <ion-button type="submit">{{ 'common.save' | t }}</ion-button>
+      }
+    </form>
+    <form class="pn stack" (ngSubmit)="reviewWeight()">
+      <h3>{{ 'fin.weight' | t }}</h3>
+      <p class="mut">{{ 'fin.weightHint' | t }}</p>
+      <select class="fld" name="lwc" [(ngModel)]="lw.course" (ngModelChange)="pickWeightCourse()"><option value="">{{ 'fin.pickCourse' | t }}</option>@for (c of courses() ?? []; track c.id) { <option [value]="c.id">{{ c.title }}</option> }</select>
+      @if (lwUnavailable()) { <p class="mut">{{ 'fin.weightUnavailable' | t }}</p> }
+      @if (lwCurrent() !== null) { <p class="mut">{{ 'fin.current' | t }}: {{ lwCurrent()! / 60 }} {{ 'fin.minutes' | t }}</p> }
+      @if (lw.course && !lwUnavailable()) {
+        <div class="row2">
+          <input class="fld n" name="lwm" type="number" min="0" max="6000" [(ngModel)]="lw.minutes" [placeholder]="'fin.weightMinutes' | t" />
+          <ion-button type="submit" size="small">{{ 'common.save' | t }}</ion-button>
+        </div>
+      }
+    </form>
+    @if (pendingControls(); as pc) {
+      <div class="pn confirm">
+        <h3>{{ 'fin.confirmControlsTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'fin.minWatch' | t }}</span><b>{{ pc.minWatchPercent ?? '—' }}</b></div>
+        <div class="row2"><span>{{ 'fin.minAvg' | t }}</span><b>{{ pc.minAverageLessonSeconds ?? '—' }}</b></div>
+        <div class="row2"><span>{{ 'fin.jump' | t }}</span><b>{{ pc.jumpAlertPercent ?? '—' }}</b></div>
+        <p class="mut">{{ 'fin.confirmControlsConsequence' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmControls()">{{ 'fin.confirmSave' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingControls.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+    @if (pendingWeight(); as pw) {
+      <div class="pn confirm">
+        <h3>{{ 'fin.confirmWeightTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'fin.course' | t }}</span><b>{{ pw.courseName }}</b></div>
+        <div class="row2"><span>{{ 'fin.weight' | t }}</span><b>{{ pw.seconds / 60 }} {{ 'fin.minutes' | t }}</b></div>
+        <p class="mut">{{ 'fin.confirmWeightConsequence' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmWeight()">{{ 'fin.confirmSave' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingWeight.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+  }
+
+  @if (tab() === 'mine') {
+    @if (mine() === null) { <ion-spinner></ion-spinner> }
+    @if (mine(); as m) {
+      <div class="pn"><div class="row2"><b>{{ 'fin.totalEarned' | t }}</b> <b>{{ m.totalEarned | number:'1.2-2' }}</b></div><p class="mut">{{ 'fin.currencyUnknown' | t }}</p></div>
+      @for (c of m.courses; track c.courseId) {
+        <div class="pn">
+          <div class="row2"><b>{{ c.title }}</b> <span class="tag">{{ c.sharePercent }}%</span></div>
+          <p class="mut">{{ c.sales }} {{ 'fin.sales' | t }} · {{ 'fin.net' | t }} {{ c.net | number:'1.2-2' }} · {{ 'fin.earned' | t }} {{ c.earned | number:'1.2-2' }}</p>
+        </div>
+      }
+      @if (m.payouts.length) {
+        <div class="pn"><h3>{{ 'fin.payouts' | t }}</h3>
+          @for (po of m.payouts; track po.id) {
+            <p class="row2"><span>{{ po.periodStartUtc | date:'mediumDate' }} – {{ po.periodEndUtc | date:'mediumDate' }}</span> <span><span class="tag">{{ po.status }}</span> <b>{{ po.amount | number:'1.2-2' }} {{ po.currency }}</b></span></p>
+          }
+        </div>
+      }
+    }
+  }
+</div>
+</ion-content>

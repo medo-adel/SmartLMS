@@ -1,0 +1,63 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'mon.title' | t }}</h1>
+  @if (info()) { <p class="ok">✓ {{ 'mon.saved' | t }}</p> }
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (coupons() === null) { <ion-spinner></ion-spinner> }
+  @else {
+    <section class="pn">
+      <h2>{{ 'mon.coupons' | t }}</h2>
+      <form class="row" (ngSubmit)="createCoupon()">
+        <label>{{ 'mon.code' | t }}<input class="fld" name="cc" [(ngModel)]="cp.code" /></label>
+        <label>{{ 'mon.type' | t }}<select class="fld" name="ct" [(ngModel)]="cp.type"><option value="Percentage">{{ 'mon.percentage' | t }}</option><option value="Fixed">{{ 'mon.fixed' | t }}</option></select></label>
+        <label>{{ 'mon.value' | t }}<input class="fld n" type="number" min="1" name="cv" [(ngModel)]="cp.value" /></label>
+        <label>{{ 'mon.max' | t }}<input class="fld n" type="number" min="1" name="cm" [(ngModel)]="cp.max" /></label>
+        <label>{{ 'mon.perUser' | t }}<input class="fld n" type="number" min="1" name="cu" [(ngModel)]="cp.perUser" /></label>
+        <label>{{ 'mon.min' | t }}<input class="fld n" type="number" min="0" name="cn" [(ngModel)]="cp.min" /></label>
+        <label>{{ 'mon.expires' | t }}<input class="fld" type="date" name="ce" [(ngModel)]="cp.expires" /></label>
+        <label>{{ 'mon.course' | t }}<select class="fld" name="cs" [(ngModel)]="cp.courseId"><option value="">{{ 'mon.anyCourse' | t }}</option>@for (c of courses(); track c.id) { <option [value]="c.id">{{ c.title }}</option> }</select></label>
+        <ion-button type="submit" size="small">{{ 'mon.create' | t }}</ion-button>
+      </form>
+      @for (c of coupons(); track c.id) {
+        <div class="rv"><span><b>{{ c.code }}</b> · {{ c.value }}{{ c.discountType === 'Percentage' ? '%' : '' }} · {{ 'mon.used' | t }} {{ c.redemptions }}{{ c.maxRedemptions ? '/' + c.maxRedemptions : '' }}@if (c.expiresAtUtc) { · {{ c.expiresAtUtc | date: 'mediumDate' }} }</span>
+          <ion-button size="small" fill="outline" (click)="toggleCoupon(c)">{{ (c.isActive ? 'mon.deactivate' : 'mon.activate') | t }}</ion-button></div>
+      } @empty { <p class="mut">{{ 'mon.noCoupons' | t }}</p> }
+    </section>
+    <section class="pn">
+      <h2>{{ 'mon.bundles' | t }}</h2>
+      <form class="stack" (ngSubmit)="createBundle()">
+        <div class="row"><label>{{ 'build.name' | t }}<input class="fld" name="bn" [(ngModel)]="bd.name" /></label>
+          <label>{{ 'wallet.amount' | t }}<input class="fld n" type="number" min="1" name="bp" [(ngModel)]="bd.price" /></label>
+          <label>{{ 'price.currency' | t }}<input class="fld n" maxlength="3" name="bc" [(ngModel)]="bd.currency" /></label></div>
+        <p class="mut">{{ 'mon.pickCourses' | t }}</p>
+        @for (c of courses(); track c.id) { <label class="chk"><input type="checkbox" [checked]="bd.ids.includes(c.id)" (change)="bd.ids = toggleId(bd.ids, c.id)" /> {{ c.title }}</label> }
+        <span><ion-button type="submit" size="small">{{ 'mon.create' | t }}</ion-button></span>
+      </form>
+      @for (b of bundles(); track b.id) { <div class="rv"><span><b>{{ b.name }}</b> · {{ b.price }} {{ b.currency }} · {{ b.courses.length }} {{ 'mon.coursesN' | t }}</span></div> }
+    </section>
+    <section class="pn">
+      <h2>{{ 'mon.plans' | t }}</h2>
+      <form class="stack" (ngSubmit)="createPlan()">
+        <div class="row"><label>{{ 'build.name' | t }}<input class="fld" name="pn" [(ngModel)]="pl.name" /></label>
+          <label>{{ 'wallet.amount' | t }}<input class="fld n" type="number" min="1" name="pp" [(ngModel)]="pl.price" /></label>
+          <label>{{ 'price.currency' | t }}<input class="fld n" maxlength="3" name="pc2" [(ngModel)]="pl.currency" /></label>
+          <label>{{ 'mon.period' | t }}<select class="fld" name="pb" [(ngModel)]="pl.period"><option value="Monthly">{{ 'mon.monthly' | t }}</option><option value="Quarterly">{{ 'mon.quarterly' | t }}</option><option value="Yearly">{{ 'mon.yearly' | t }}</option></select></label>
+          <label>{{ 'mon.scope' | t }}<select class="fld" name="ps" [(ngModel)]="pl.scope"><option value="AllCourses">{{ 'mon.allCourses' | t }}</option><option value="SelectedCourses">{{ 'mon.selected' | t }}</option></select></label></div>
+        @if (pl.scope === 'SelectedCourses') { @for (c of courses(); track c.id) { <label class="chk"><input type="checkbox" [checked]="pl.ids.includes(c.id)" (change)="pl.ids = toggleId(pl.ids, c.id)" /> {{ c.title }}</label> } }
+        <span><ion-button type="submit" size="small">{{ 'mon.create' | t }}</ion-button></span>
+      </form>
+      @for (p of plans(); track p.id) { <div class="rv"><span><b>{{ p.name }}</b> · {{ p.price }} {{ p.currency }} · {{ p.billingPeriod }} · {{ p.scope }}</span></div> }
+    </section>
+    <section class="pn">
+      <h2>{{ 'mon.affiliate' | t }}</h2>
+      <p class="mut">{{ 'mon.affHint' | t }}</p>
+      <form class="row" (ngSubmit)="createAffiliate()">
+        <label>{{ 'mon.userId' | t }}<input class="fld" name="au" [(ngModel)]="af.userId" /></label>
+        <label>{{ 'mon.percent' | t }}<input class="fld n" type="number" min="1" max="100" name="ap" [(ngModel)]="af.percent" /></label>
+        <label>{{ 'mon.refCode' | t }}<input class="fld" name="ar" [(ngModel)]="af.code" /></label>
+        <ion-button type="submit" size="small">{{ 'mon.create' | t }}</ion-button>
+      </form>
+    </section>
+  }
+</div>
+</ion-content>

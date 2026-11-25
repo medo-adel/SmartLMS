@@ -1,0 +1,40 @@
+@if (failed()) { <app-dash-error (retry)="load()" /> }
+@else if (data(); as d) {
+  <div class="bento">
+    <section class="s8 rev">
+      <div class="sec-head">
+        <div><p class="eyebrow">{{ 'dash.admin.rev30' | t }}</p><div class="big">{{ d.kpis.revenueLast30Days | number: '1.0-2' }}</div></div>
+        <span class="pill">{{ 'dash.admin.revAll' | t }}: {{ d.kpis.revenueAllTime | number: '1.0-0' }}</span>
+      </div>
+      @if (daily().length) { <app-bar-chart [data]="daily()" [ariaLabel]="'dash.admin.daily' | t" /> } @else { <p class="empty">{{ 'common.empty' | t }}</p> }
+    </section>
+    <section class="s4 stats">
+      <h2>{{ 'dash.admin.snapshot' | t }}</h2>
+      <app-kpi-card [flat]="true" [label]="'dash.admin.users' | t" icon="people-outline" [value]="d.kpis.users" />
+      <app-kpi-card [flat]="true" [label]="'dash.admin.courses' | t" icon="library-outline" [value]="d.kpis.publishedCourses" />
+      <app-kpi-card [flat]="true" [label]="'dash.admin.enrollments' | t" icon="school-outline" [value]="d.kpis.activeEnrollments" />
+      <app-kpi-card [flat]="true" [label]="'dash.admin.orders30' | t" icon="receipt-outline" [value]="d.kpis.paidOrdersLast30Days" />
+    </section>
+    <section class="s12">
+      <div class="sec-head"><h2>{{ 'dash.admin.queues' | t }}</h2>
+        @if (waiting() > 0) { <span class="pill warn">{{ 'dash.admin.attention' | t }}: {{ waiting() }}</span> } @else { <span class="pill good">{{ 'dash.admin.clear' | t }}</span> }
+      </div>
+      <div class="queue">
+        <app-kpi-card [flat]="true" [label]="'dash.admin.q.courses' | t" icon="checkmark-done-outline" [value]="d.queues.coursesAwaitingApproval" [tone]="d.queues.coursesAwaitingApproval ? 'warning' : 'primary'" />
+        <app-kpi-card [flat]="true" [label]="'dash.admin.q.payments' | t" icon="receipt-outline" [value]="d.queues.manualPaymentsToReview" [tone]="d.queues.manualPaymentsToReview ? 'warning' : 'primary'" />
+        <app-kpi-card [flat]="true" [label]="'dash.admin.q.payouts' | t" icon="wallet-outline" [value]="d.queues.payoutsToApprove" [tone]="d.queues.payoutsToApprove ? 'warning' : 'primary'" />
+        <app-kpi-card [flat]="true" [label]="'dash.admin.q.webhooks' | t" icon="alert-circle-outline" [value]="d.queues.failedWebhookDeliveries" [tone]="d.queues.failedWebhookDeliveries ? 'danger' : 'primary'" />
+      </div>
+    </section>
+    <section class="s12 exp">
+      <h2>{{ 'dash.admin.export' | t }}</h2>
+      <div class="exports">
+        <ion-select interface="popover" fill="outline" [label]="'dash.admin.exportKind' | t" labelPlacement="stacked" [value]="kind()" (ionChange)="kind.set($event.detail.value)">
+          @for (k of kinds; track k) { <ion-select-option [value]="k">{{ k }}</ion-select-option> }
+        </ion-select>
+        <ion-button (click)="export('csv')">{{ 'dash.admin.exportCsv' | t }}</ion-button>
+        <ion-button fill="outline" (click)="export('xlsx')">{{ 'dash.admin.exportXlsx' | t }}</ion-button>
+      </div>
+    </section>
+  </div>
+} @else { <app-dash-skeleton [count]="6" /> }

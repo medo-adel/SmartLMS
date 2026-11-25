@@ -1,0 +1,180 @@
+<ion-content>
+<div class="pg">
+  <div class="row2"><h1>{{ 'build.title' | t }}</h1><ion-button size="small" fill="outline" routerLink="/app/orders">{{ 'nav.orders' | t }}</ion-button></div>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (courses() === null) { <div class="pn sk" aria-busy="true"></div> }
+  @else {
+    <div class="layout2 cols">
+    <section class="pn side-c">
+      <h2>{{ 'build.new' | t }}</h2>
+      <form class="row2" (ngSubmit)="create()">
+        <input class="fld" name="title" [(ngModel)]="title" [placeholder]="'build.name' | t" />
+        <input class="fld" name="short" [(ngModel)]="short" [placeholder]="'build.short' | t" />
+        <ion-button type="submit">{{ 'build.create' | t }}</ion-button>
+      </form>
+    </section>
+    <section class="pn side-c">
+      <h2>{{ 'build.pickCourse' | t }}</h2>
+      <div class="tabs2">@for (c of courses(); track c.id) { <button [class.on]="selected === c.id" (click)="open1(c.id)">{{ c.title }} <small>({{ c.status }})</small></button> }</div>
+    </section>
+    @if (detail(); as d) {
+      <section class="pn main-c">
+        <h2>{{ d.title }}</h2>
+        <form class="row2 gap" (ngSubmit)="savePricing()">
+          <label>{{ 'price.model' | t }}<select class="fld" name="pm" [(ngModel)]="price.model"><option value="Free">{{ 'price.free' | t }}</option><option value="OneTime">{{ 'price.oneTime' | t }}</option><option value="PayPerLesson">{{ 'price.perLesson' | t }}</option><option value="SubscriptionOnly">{{ 'price.subOnly' | t }}</option></select></label>
+          @if (price.model === 'OneTime') { <label>{{ 'wallet.amount' | t }}<input class="fld n" type="number" min="1" name="pa" [(ngModel)]="price.amount" /></label> }
+          <label>{{ 'price.currency' | t }}<input class="fld n" maxlength="3" name="pc" [(ngModel)]="price.currency" /></label>
+          <label>{{ 'price.days' | t }}<input class="fld n" type="number" min="1" name="pd" [(ngModel)]="price.days" /></label>
+          <ion-button type="submit" size="small" fill="outline">{{ 'build.save' | t }}</ion-button>
+        </form>
+        <section class="pn">
+          <h2>{{ 'build.staff' | t }}</h2>
+          <p class="mut">{{ 'build.staffHint' | t }}</p>
+          @if (staff() === null) { <ion-spinner></ion-spinner> }
+          @for (m of staffDraft(); track m.userId) {
+            <div class="rv"><span><b>{{ m.fullName }}</b> <span class="tag">{{ m.staffRole }}</span></span>
+              <ion-button size="small" fill="clear" color="danger" (click)="dropStaff(m.userId)">{{ 'build.delete' | t }}</ion-button></div>
+          }
+          <div class="row2">
+            <input class="fld" name="ss" [(ngModel)]="staffSearch" (ngModelChange)="searchStaff()" [placeholder]="'build.searchUser' | t" />
+            <select class="fld" name="sr" [(ngModel)]="staffRole"><option value="CoInstructor">{{ 'build.coInstructor' | t }}</option><option value="TeachingAssistant">{{ 'build.ta' | t }}</option></select>
+          </div>
+          @for (u of staffMatches(); track u.id) {
+            <div class="rv"><span>{{ u.fullName }} <small class="mut">{{ u.email }}</small></span>
+              <ion-button size="small" fill="outline" (click)="addStaff(u)">{{ 'build.addStaff' | t }}</ion-button></div>
+          }
+          <ion-button size="small" (click)="reviewStaff()" [disabled]="staff() === null">{{ 'build.saveStaff' | t }}</ion-button>
+          @if (pendingStaff(); as ps) {
+            <div class="pn confirm">
+              <h3>{{ 'build.confirmStaffTitle' | t }}</h3>
+              <p class="mut">{{ 'build.confirmStaffConsequence' | t }}</p>
+              @for (m of ps; track m.userId) { <div class="row2"><span>{{ m.fullName }}</span><span class="tag">{{ m.staffRole }}</span></div> }
+              @if (!ps.length) { <p class="mut">{{ 'build.staffNone' | t }}</p> }
+              <div class="row2">
+                <ion-button color="danger" (click)="confirmStaff()">{{ 'build.confirmSave' | t }}</ion-button>
+                <ion-button fill="clear" (click)="pendingStaff.set(null)">{{ 'build.cancel' | t }}</ion-button>
+              </div>
+            </div>
+          }
+        </section>
+        <section class="pn">
+          <h2>{{ 'build.prereqs' | t }}</h2>
+          @if (prereqUnavailable()) { <p class="mut">{{ 'build.prereqUnavailable' | t }}</p> }
+          @else {
+            <p class="mut">{{ 'build.prereqHint' | t }}</p>
+            @if (prereqs() === null) { <ion-spinner></ion-spinner> }
+            @for (c of courses() ?? []; track c.id) {
+              @if (c.id !== selected) {
+                <label class="chk"><input type="checkbox" [name]="'pq' + c.id" [attr.name]="'pq' + c.id" [ngModel]="prereqDraft().includes(c.id)" (ngModelChange)="togglePrereq(c.id)" [ngModelOptions]="{ standalone: true }" /> {{ c.title }}</label>
+              }
+            }
+            <ion-button size="small" (click)="reviewPrereq()" [disabled]="prereqs() === null">{{ 'build.savePrereqs' | t }}</ion-button>
+          }
+          @if (pendingPrereq(); as pp) {
+            <div class="pn confirm">
+              <h3>{{ 'build.confirmPrereqTitle' | t }}</h3>
+              <p class="mut">{{ 'build.confirmPrereqConsequence' | t }}</p>
+              @for (id of pp; track id) { <div class="row2"><span>{{ prereqTitle(id) }}</span></div> }
+              @if (!pp.length) { <p class="mut">{{ 'build.prereqNone' | t }}</p> }
+              <div class="row2">
+                <ion-button color="danger" (click)="confirmPrereq()">{{ 'build.confirmSave' | t }}</ion-button>
+                <ion-button fill="clear" (click)="pendingPrereq.set(null)">{{ 'build.cancel' | t }}</ion-button>
+              </div>
+            </div>
+          }
+        </section>
+        @for (s of d.sections; track s.id; let si = $index) {
+          <div class="sec">
+            @if (editSection() === s.id) {
+              <form class="row2" (ngSubmit)="saveSection(s.id)"><input class="fld" name="sn{{ s.id }}" [(ngModel)]="secName" /><ion-button type="submit" size="small">{{ 'build.save' | t }}</ion-button><ion-button size="small" fill="clear" (click)="editSection.set('')">{{ 'build.cancel' | t }}</ion-button></form>
+            } @else {
+              <h3>{{ s.title }}</h3>
+              <span class="row2">
+                <ion-button size="small" fill="clear" [attr.aria-label]="'build.up' | t" (click)="moveSection(si, -1)" [disabled]="si === 0">↑</ion-button>
+                <ion-button size="small" fill="clear" [attr.aria-label]="'build.down' | t" (click)="moveSection(si, 1)" [disabled]="si === d.sections.length - 1">↓</ion-button>
+                <ion-button size="small" fill="outline" (click)="startRename(s.id, s.title)">{{ 'build.rename' | t }}</ion-button>
+                <ion-button size="small" fill="clear" color="danger" (click)="removeSection(s.id)">{{ confirmDelete() === s.id ? ('build.sure' | t) : ('build.delete' | t) }}</ion-button>
+              </span>
+            }
+          </div>
+          @for (l of s.lessons; track l.id; let li = $index) {
+            <div class="les"><span>{{ l.title }} <span class="tag">{{ l.lessonType }}</span></span>
+              <span class="row2">
+                <ion-button size="small" fill="clear" [attr.aria-label]="'build.up' | t" (click)="moveLesson(s.id, li, -1)" [disabled]="li === 0">↑</ion-button>
+                <ion-button size="small" fill="clear" [attr.aria-label]="'build.down' | t" (click)="moveLesson(s.id, li, 1)" [disabled]="li === s.lessons.length - 1">↓</ion-button>
+                <ion-button size="small" fill="outline" (click)="startEditLesson(l.id)">{{ 'build.edit' | t }}</ion-button>
+                @if (l.lessonType === 'InteractiveSlides') { <ion-button size="small" fill="outline" (click)="startSlides(l.id)">{{ 'build.slides' | t }}</ion-button> }
+                @if (l.lessonType === 'Video' || l.lessonType === 'Audio') { <ion-button size="small" fill="outline" (click)="startChapters(l.id)">{{ 'build.chapters' | t }}</ion-button> }
+                @if (l.lessonType === 'Video' || l.lessonType === 'Audio' || l.lessonType === 'Pdf') { <label class="up">{{ 'build.upload' | t }}<input type="file" (change)="upload(l.id, $event)" /></label> }
+                <label class="up">{{ 'build.resource' | t }}<input type="file" (change)="uploadResource(l.id, $event)" /></label>
+                <ion-button size="small" fill="outline" (click)="index(l.id)">{{ 'build.index' | t }}</ion-button>
+                <ion-button size="small" fill="clear" color="danger" (click)="removeLesson(l.id)">{{ confirmDelete() === l.id ? ('build.sure' | t) : ('build.delete' | t) }}</ion-button>
+              </span></div>
+            @if (editLesson() === l.id) {
+              <form class="row2 gap" (ngSubmit)="saveLesson(li)">
+                <input class="fld" name="en" [(ngModel)]="lesName" />
+                <input class="fld" name="eu" [(ngModel)]="lesUrl" [placeholder]="'build.url' | t" />
+                <textarea class="fld" name="et" rows="3" [(ngModel)]="lesText" [placeholder]="'build.content' | t"></textarea>
+                <ion-button type="submit" size="small">{{ 'build.save' | t }}</ion-button><ion-button size="small" fill="clear" (click)="editLesson.set('')">{{ 'build.cancel' | t }}</ion-button>
+              </form>
+              <form class="row2 gap" (ngSubmit)="saveLessonPrice(l.id)">
+                <label>{{ 'price.lesson' | t }}<input class="fld n" type="number" min="1" name="lp" [(ngModel)]="lessonPrice" /></label>
+                <ion-button type="submit" size="small" fill="outline">{{ 'price.setLesson' | t }}</ion-button><small class="mut">{{ 'price.lessonHint' | t }}</small>
+              </form>
+            }
+            @if (slideLesson() === l.id) {
+              <form class="gap stack" (ngSubmit)="saveSlides()">
+                @for (r of slideRows(); track $index) {
+                  <div class="stack"><div class="row2"><input class="fld" [name]="'st' + $index" [attr.name]="'st' + $index" [(ngModel)]="r.title" [placeholder]="'build.name' | t" /><ion-button size="small" fill="clear" color="danger" type="button" (click)="dropSlide($index)">×</ion-button></div>
+                    <textarea class="fld" [name]="'sb' + $index" [attr.name]="'sb' + $index" rows="3" [(ngModel)]="r.body" [placeholder]="'build.content' | t"></textarea>
+                    <input class="fld" [name]="'si' + $index" [attr.name]="'si' + $index" [(ngModel)]="r.imageUrl" [placeholder]="'build.imageUrl' | t" /></div>
+                }
+                <span class="row2"><ion-button size="small" fill="outline" type="button" (click)="addSlide()">{{ 'build.addSlide' | t }}</ion-button><ion-button type="submit" size="small">{{ 'build.save' | t }}</ion-button><ion-button size="small" fill="clear" type="button" (click)="slideLesson.set('')">{{ 'build.cancel' | t }}</ion-button></span>
+              </form>
+            }
+            @if (chapterLesson() === l.id) {
+              <form class="gap stack" (ngSubmit)="saveChapters()">
+                <p class="mut">{{ 'build.chaptersHint' | t }}</p>
+                @for (c of chapters; track $index) {
+                  <div class="row2"><input class="fld" name="ct{{ $index }}" [(ngModel)]="c.title" [placeholder]="'build.name' | t" /><input class="fld n" type="number" min="0" name="cs{{ $index }}" [(ngModel)]="c.startSeconds" [attr.aria-label]="'build.seconds' | t" /><ion-button size="small" fill="clear" color="danger" (click)="dropChapter($index)">×</ion-button></div>
+                }
+                <span class="row2"><ion-button size="small" fill="outline" (click)="addChapter()">{{ 'build.addChapter' | t }}</ion-button><ion-button type="submit" size="small">{{ 'build.save' | t }}</ion-button><ion-button size="small" fill="clear" (click)="chapterLesson.set('')">{{ 'build.cancel' | t }}</ion-button></span>
+              </form>
+            }
+          }
+        }
+        <form class="row2" (ngSubmit)="addSection()"><input class="fld" name="st" [(ngModel)]="sectionTitle" [placeholder]="'build.section' | t" /><ion-button type="submit" fill="outline">{{ 'build.section' | t }}</ion-button></form>
+        @if (d.sections.length) {
+          <form class="row2 gap" (ngSubmit)="addLesson()">
+            <select class="fld" name="sec" [(ngModel)]="sectionId">@for (s of d.sections; track s.id) { <option [value]="s.id">{{ s.title }}</option> }</select>
+            <input class="fld" name="lt" [(ngModel)]="lessonTitle" [placeholder]="'build.name' | t" />
+            <select class="fld" name="ty" [(ngModel)]="lessonType"><option>Video</option><option>Article</option><option>Pdf</option><option>Audio</option><option>ExternalLink</option><option>InteractiveSlides</option></select>
+            <input class="fld" name="url" [(ngModel)]="lessonUrl" [placeholder]="'build.url' | t" />
+            <textarea class="fld" name="tx" rows="2" [(ngModel)]="lessonText" [placeholder]="'build.content' | t"></textarea>
+            <ion-button type="submit">{{ 'build.lesson' | t }}</ion-button>
+          </form>
+        }
+        <ion-button fill="outline" (click)="submitApproval()">{{ 'build.submit' | t }}</ion-button>
+        @if (info()) { <span class="ok">{{ info() }}</span> }
+      </section>
+      <section class="pn side-c">
+        <h2>{{ 'build.quiz' | t }}</h2>
+        <div class="row2">
+          <select class="fld" name="ql" [(ngModel)]="quizLesson"><option value="">{{ 'build.pickLesson' | t }}</option>@for (l of lessons; track l.id) { <option [value]="l.id">{{ l.title }}</option> }</select>
+          <label>{{ 'build.mcq' | t }}<input class="fld n" type="number" min="0" max="20" name="m" [(ngModel)]="mcq" /></label>
+          <label>{{ 'build.open' | t }}<input class="fld n" type="number" min="0" max="10" name="o" [(ngModel)]="open" /></label>
+          <label>{{ 'build.cards' | t }}<input class="fld n" type="number" min="0" max="20" name="c" [(ngModel)]="cards" /></label>
+          <ion-button (click)="makeQuiz()" [disabled]="busy()">{{ 'build.makeQuiz' | t }}</ion-button>
+        </div>
+        @if (draft(); as q) {
+          <p class="mut">{{ 'build.draftNote' | t }}</p>
+          @for (m of q.result.mcqs; track $index) { <div class="qd"><b>{{ $index + 1 }}. {{ m.question }}</b><ul>@for (o of m.options; track $index) { <li [class.ok]="$index === m.correctIndex">{{ o }}</li> }</ul><small class="mut">{{ m.explanation }}</small></div> }
+          @for (m of q.result.openEnded; track $index) { <div class="qd"><b>{{ m.question }}</b><br /><small class="mut">{{ m.modelAnswer }}</small></div> }
+          @for (f of q.result.flashcards; track $index) { <div class="qd"><b>{{ f.front }}</b> → {{ f.back }}</div> }
+        }
+      </section>
+    }
+    </div>
+  }
+</div>
+</ion-content>

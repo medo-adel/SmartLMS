@@ -1,0 +1,10 @@
+@use "../dashboard.shared";
+.feat { background: radial-gradient(28rem 14rem at 100% 0%, rgba(var(--ion-color-primary-rgb), .16), transparent 70%), var(--app-card); }
+.feat-row { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.feat-txt { flex: 1 1 12rem; min-inline-size: 0; } .feat-txt h2 { font-size: clamp(1.4rem, 3.5vw, 1.9rem); margin: 0 0 .25rem; line-height: 1.15; }
+.feat-txt p { margin: 0 0 1rem; }
+.cta { display: inline-flex; align-items: center; min-block-size: 2.75rem; padding: 0 1.4rem; border-radius: 999px; font-weight: 700; text-decoration: none; background: var(--ion-color-primary); color: var(--ion-color-primary-contrast); box-shadow: 0 8px 18px -8px rgba(var(--ion-color-primary-rgb), .8); }
+.stats { display: grid; gap: .6rem; align-content: stretch; background: transparent; border: 0; box-shadow: none; padding: 0; }
+.course { margin-block-end: .9rem; } .row { display: flex; justify-content: space-between; margin-block-end: .35rem; }
+.dl { display: flex; gap: .8rem; align-items: flex-start; padding: .65rem 0; border-block-end: 1px solid var(--app-border); } .dl:last-of-type { border-block-end: 0; }
+.dl > div { display: grid; gap: .1rem; } .dot { flex: none; inline-size: .7rem; block-size: .7rem; margin-block-start: .4rem; border-radius: 50%; background: var(--ion-color-primary); box-shadow: 0 0 0 4px var(--app-chip); }

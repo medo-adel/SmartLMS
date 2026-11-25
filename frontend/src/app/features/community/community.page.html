@@ -1,0 +1,205 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'cm.title' | t }}</h1>
+
+  <div class="tabs2">
+    <button type="button" [class.on]="tab() === 'threads'" (click)="tab.set('threads')">{{ 'cm.threads' | t }}</button>
+    <button type="button" [class.on]="tab() === 'announcements'" (click)="tab.set('announcements')">{{ 'cm.announcements' | t }}</button>
+    <button type="button" [class.on]="tab() === 'chat'" (click)="tab.set('chat')">{{ 'cm.chat' | t }}</button>
+    <button type="button" [class.on]="tab() === 'live'" (click)="tab.set('live')">{{ 'cm.live' | t }}</button>
+  </div>
+
+  @if (msg()) { <p [class.ok]="msg() !== 'common.error'" [class.err]="msg() === 'common.error'">{{ msg() | t }}</p> }
+
+  @if (tab() === 'threads') {
+    <section class="pn">
+      <label class="stack">
+        <span class="mut">{{ 'asg.pick' | t }}</span>
+        <select class="fld" name="course" [(ngModel)]="course" (ngModelChange)="pickCourse()" [attr.aria-label]="'asg.pick' | t">
+          <option value="">—</option>
+          @for (c of courses() ?? []; track c.id) { <option [value]="c.id">{{ c.title }}</option> }
+        </select>
+      </label>
+      @if (failed()) { <p class="err">{{ 'common.error' | t }}</p> }
+      @if (courses() === null) { <ion-spinner></ion-spinner> }
+    </section>
+
+    @if (course && canPost() && !openThread()) {
+      <section class="pn">
+        <h2>{{ 'cm.newThread' | t }}</h2>
+        <form class="stack" (ngSubmit)="createThread()">
+          <input class="fld" name="nt" [(ngModel)]="newTitle" [placeholder]="'cm.threadTitle' | t" [attr.aria-label]="'cm.threadTitle' | t" />
+          <textarea class="fld" name="nb" rows="3" [(ngModel)]="newBody" [placeholder]="'cm.threadBody' | t" [attr.aria-label]="'cm.threadBody' | t"></textarea>
+          <ion-button type="submit" size="small">{{ 'cm.post' | t }}</ion-button>
+        </form>
+      </section>
+    }
+
+    @if (course && !openThread()) {
+      <section class="pn">
+        @for (t of threads(); track t.id) {
+          <div class="rv clickable" (click)="open(t)">
+            <div class="row2 head2">
+              <b>{{ t.title }}</b>
+              <span class="tags">
+                @if (t.isPinned) { <span class="tag">{{ 'cm.pinned' | t }}</span> }
+                @if (t.isLocked) { <span class="tag">{{ 'cm.locked' | t }}</span> }
+                <span class="tag">▲ {{ t.upvoteCount }}</span>
+              </span>
+            </div>
+            <p class="mut">{{ t.authorName }} · {{ t.createdAtUtc | date:'medium' }}</p>
+          </div>
+        } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+      </section>
+    }
+
+    @if (threadFailed()) { <p class="err">{{ 'common.error' | t }}</p> }
+    @if (openThread(); as t) {
+      <section class="pn">
+        <div class="row2 head2">
+          <h2>{{ t.title }}</h2>
+          <ion-button size="small" fill="clear" (click)="openThread.set(null)">{{ 'cm.back' | t }}</ion-button>
+        </div>
+        <p class="mut">{{ t.createdAtUtc | date:'medium' }} · ▲ {{ t.upvoteCount }}</p>
+        <p class="body">{{ t.body }}</p>
+        <span class="row2">
+          @if (canPost()) { <ion-button size="small" fill="outline" (click)="upvoteThread()">▲ {{ 'cm.upvote' | t }}</ion-button> }
+          @if (isStaff()) { <ion-button size="small" fill="clear" (click)="pin()">{{ (t.isPinned ? 'cm.unpin' : 'cm.pin') | t }}</ion-button> }
+        </span>
+
+        @for (p of t.posts; track p.id) {
+          <div class="rv">
+            <p class="body">{{ p.body }}</p>
+            <p class="mut">
+              {{ p.authorName }} · {{ p.createdAtUtc | date:'short' }} · ▲ {{ p.upvoteCount }}
+              @if (p.isInstructorPinned) { <span class="tag">{{ 'cm.pinned' | t }}</span> }
+              @if (canPost()) { <ion-button size="small" fill="clear" (click)="upvotePost(p.id)">▲</ion-button> }
+            </p>
+          </div>
+        } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+
+        @if (canPost() && !t.isLocked) {
+          <form class="stack" (ngSubmit)="reply()">
+            <textarea class="fld" name="rb" rows="2" [(ngModel)]="replyBody" [placeholder]="'cm.reply' | t" [attr.aria-label]="'cm.reply' | t"></textarea>
+            <ion-button type="submit" size="small" [disabled]="!replyBody.trim()">{{ 'cm.post' | t }}</ion-button>
+          </form>
+        }
+        @if (t.isLocked) { <p class="mut">{{ 'cm.locked' | t }}</p> }
+      </section>
+    }
+  }
+
+  @if (tab() === 'announcements') {
+    @if (isStaff()) {
+      <section class="pn">
+        <h2>{{ 'cm.newAnn' | t }}</h2>
+        <form class="stack" (ngSubmit)="announce()">
+          <select class="fld" name="ac" [(ngModel)]="annCourse" [attr.aria-label]="'asg.pick' | t">
+            <option value="">{{ 'cm.allCourses' | t }}</option>
+            @for (c of courses() ?? []; track c.id) { <option [value]="c.id">{{ c.title }}</option> }
+          </select>
+          <input class="fld" name="at" [(ngModel)]="annTitle" [placeholder]="'cm.annTitle' | t" [attr.aria-label]="'cm.annTitle' | t" />
+          <textarea class="fld" name="ab" rows="3" [(ngModel)]="annBody" [placeholder]="'cm.annBody' | t" [attr.aria-label]="'cm.annBody' | t"></textarea>
+          <ion-button type="submit" size="small">{{ 'cm.publish' | t }}</ion-button>
+        </form>
+      </section>
+    }
+    <section class="pn">
+      @for (a of announcements(); track a.id) {
+        <div class="rv">
+          <div class="row2 head2"><b>{{ a.title }}</b>@if (!a.courseId) { <span class="tag">{{ 'cm.allCourses' | t }}</span> }</div>
+          <p class="body">{{ a.body }}</p>
+          <p class="mut">{{ a.publishedAtUtc | date:'medium' }}</p>
+        </div>
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+  }
+
+  @if (tab() === 'chat') {
+    @if (rooms() === null) { <ion-spinner></ion-spinner> }
+    @if (rooms(); as rs) {
+      @if (!rs.length) { <p class="mut">{{ 'cm.noRooms' | t }}</p> }
+      <div class="stack">
+        @for (r of rs; track r.id) {
+          <button type="button" class="pn row2" [class.on]="openRoom()?.id === r.id" (click)="openChat(r)">
+            <b>{{ r.name }}</b> <span class="mut">{{ r.roomType }}</span>
+          </button>
+        }
+      </div>
+    }
+    @if (openRoom(); as room) {
+      <div class="pn" aria-live="polite">
+        <div class="row2"><b>{{ room.name }}</b>
+          @if (nextBefore()) { <ion-button size="small" fill="clear" (click)="loadOlder()">{{ 'cm.older' | t }}</ion-button> }
+        </div>
+        <div class="chatlog">
+          @for (m of messages(); track m.id) {
+            <div class="chatmsg">
+              <span class="mut">{{ m.senderName || ('cm.someone' | t) }} · {{ m.sentAtUtc | date:'short' }}</span>
+              <p>{{ m.body }}</p>
+            </div>
+          }
+          @if (!messages().length) { <p class="mut">{{ 'cm.noMessages' | t }}</p> }
+        </div>
+        <form (ngSubmit)="sendChat()">
+          <textarea name="chatBody" class="fld" rows="2" [(ngModel)]="chatBody" [placeholder]="'cm.writeMessage' | t" aria-label="chat message"></textarea>
+          <ion-button type="submit" expand="block">{{ 'cm.send' | t }}</ion-button>
+        </form>
+      </div>
+    }
+  }
+
+  @if (tab() === 'live') {
+    <div class="pn">
+      <label>{{ 'cm.course' | t }}</label>
+      <select class="fld" name="liveCourse" [(ngModel)]="liveCourse" (ngModelChange)="pickLiveCourse()" aria-label="live course">
+        <option value="">{{ 'cm.pickCourse' | t }}</option>
+        @for (c of courses() ?? []; track c.id) { <option [value]="c.id">{{ c.title }}</option> }
+      </select>
+    </div>
+    @if (liveCourse) {
+      @if (auth.hasRole('Instructor')) {
+        <form class="pn stack" (ngSubmit)="createLive()">
+          <h3>{{ 'cm.newLive' | t }}</h3>
+          <input class="fld" name="lvTitle" [(ngModel)]="lvTitle" [placeholder]="'cm.liveTitle' | t" aria-label="session title" />
+          <select class="fld" name="lvProvider" [(ngModel)]="lvProvider" aria-label="provider">
+            @for (p of providers; track p) { <option [value]="p">{{ p }}</option> }
+          </select>
+          <input class="fld" name="lvUrl" type="url" [(ngModel)]="lvUrl" placeholder="https://" aria-label="join url" />
+          <label>{{ 'cm.startsAt' | t }}</label>
+          <input class="fld" name="lvStart" type="datetime-local" [(ngModel)]="lvStart" aria-label="starts at" />
+          <label>{{ 'cm.endsAt' | t }}</label>
+          <input class="fld" name="lvEnd" type="datetime-local" [(ngModel)]="lvEnd" aria-label="ends at" />
+          <ion-button type="submit" expand="block">{{ 'cm.scheduleLive' | t }}</ion-button>
+        </form>
+      }
+      @for (s of live(); track s.id) {
+        <div class="pn">
+          <div class="row2"><b>{{ s.title }}</b> <span class="tag">{{ s.status }}</span></div>
+          <p class="mut">{{ s.provider }} · {{ s.startsAtUtc | date:'medium' }}@if (s.endsAtUtc) { – {{ s.endsAtUtc | date:'shortTime' }} }</p>
+          <div class="row2">
+            @if (auth.hasRole('Student') && s.status !== 'Ended' && s.status !== 'Cancelled') {
+              @if (pendingJoin()?.id === s.id) {
+                <a class="btn-link" [href]="pendingJoin()!.url" target="_blank" rel="noopener noreferrer">{{ 'cm.openSession' | t }}</a>
+              } @else {
+                <ion-button size="small" (click)="joinLive(s)">{{ 'cm.joinLive' | t }}</ion-button>
+              }
+            }
+            @if (isStaff() && s.joinUrl) {
+              <ion-button size="small" fill="outline" (click)="toggleAttendance(s)">{{ 'cm.attendance' | t }}</ion-button>
+            }
+          </div>
+          @if (attendance()?.id === s.id) {
+            @if (!attendance()!.rows.length) { <p class="mut">{{ 'cm.noAttendance' | t }}</p> }
+            @for (a of attendance()!.rows; track a.userId) {
+              <p class="row2"><span>{{ a.fullName }}</span> <span class="mut">{{ a.joinedAtUtc | date:'short' }}</span></p>
+            }
+          }
+        </div>
+      }
+      @if (liveCourse && !live().length) { <p class="mut">{{ 'cm.noLive' | t }}</p> }
+    }
+  }
+
+</div>
+</ion-content>

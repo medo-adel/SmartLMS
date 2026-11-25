@@ -1,0 +1,41 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'ai.studio' | t }}</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (courses() === null) { <ion-spinner></ion-spinner> }
+  @else if (courses()!.length === 0) { <p class="mut">{{ 'common.empty' | t }}</p> }
+  @else {
+    <section class="pn">
+      <select class="fld" name="course" [(ngModel)]="courseId" [attr.aria-label]="'ai.pick' | t">@for (c of courses(); track c.courseId) { <option [value]="c.courseId">{{ c.title }}</option> }</select>
+      <p class="mut">{{ 'ai.notice' | t }}</p>
+    </section>
+    <section class="pn">
+      <h2>{{ 'ai.voice' | t }}</h2>
+      <div class="row2">
+        @if (!recording()) { <ion-button (click)="record()" [disabled]="busy()">{{ 'ai.record' | t }}</ion-button> }
+        @else { <ion-button color="danger" (click)="stop()">{{ 'ai.stop' | t }}</ion-button> <span class="dot"></span> }
+        @if (busy()) { <ion-spinner></ion-spinner> }
+      </div>
+      @if (micError()) { <p class="err">{{ 'ai.micDenied' | t }}</p> }
+      @if (voice(); as v) {
+        <p><b>{{ v.transcript }}</b></p>
+        <p>{{ v.answerText }}</p>
+        @if (audioSrc(v); as src) { <audio [src]="src" controls></audio> }
+        @for (c of v.citations; track $index) { <p class="mut cite">{{ c.snippet }}</p> }
+      }
+    </section>
+    <section class="pn">
+      <h2>{{ 'ai.plan' | t }}</h2>
+      <form class="row2" (ngSubmit)="makePlan()">
+        <label>{{ 'ai.target' | t }}<input class="fld" name="target" type="date" [(ngModel)]="target" /></label>
+        <label>{{ 'ai.hours' | t }}<input class="fld" name="hours" type="number" min="1" max="60" [(ngModel)]="hours" /></label>
+        <ion-button type="submit" [disabled]="busy()">{{ 'ai.makePlan' | t }}</ion-button>
+      </form>
+      @if (plan(); as p) {
+        @if (p.note) { <p [class.err]="!p.feasible" class="mut">{{ p.note }}</p> }
+        @for (d of p.days; track d.date) { <div class="day"><b>{{ d.date | date: 'EEE d MMM' }}</b><span>{{ d.focus }}</span><span class="tag">{{ d.minutes }} min</span></div> }
+      }
+    </section>
+  }
+</div>
+</ion-content>

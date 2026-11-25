@@ -1,0 +1,24 @@
+.grid { display: grid; gap: .85rem; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); margin-block-end: 1.1rem; }
+section { background: var(--app-card); border: 1px solid var(--app-border); border-radius: var(--app-radius); box-shadow: var(--app-shadow); padding: 1.35rem 1.5rem 1.5rem; margin-block-end: 1.1rem; }
+section > .grid { margin-block-end: 0; }
+h2 { font-size: 1rem; font-weight: 700; margin: 0 0 .9rem; color: var(--app-text); }
+p { color: var(--app-text-2); }
+.muted { color: var(--app-muted); }
+.bar { block-size: .55rem; border-radius: 1rem; background: var(--app-card-2); border: 1px solid var(--app-border); box-sizing: content-box; overflow: hidden; }
+.bar > i { display: block; block-size: 100%; border-radius: 1rem; background: linear-gradient(90deg, var(--ion-color-primary), var(--brand-end)); }
+.empty { display: flex; align-items: center; gap: .6rem; margin: 0; padding: 1.1rem; border-radius: var(--app-radius-sm); background: var(--app-card-2); color: var(--app-muted); font-size: .92rem; }
+strong, b { color: var(--app-text); }
+@media (min-width: 600px) { .grid { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); } }
+
+/* Bento layout: 12 columns on desktop, single column on phones */
+.bento { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+.bento > section { margin: 0; min-inline-size: 0; }
+@media (min-width: 992px) { .bento { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.1rem; } .s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; } .s7 { grid-column: span 7; } .s8 { grid-column: span 8; } .s12 { grid-column: 1 / -1; } }
+.sec-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-block-end: 1rem; }
+.sec-head h2 { margin: 0; }
+.eyebrow { margin: 0 0 .3rem; font-size: .78rem; font-weight: 700; color: var(--app-muted); letter-spacing: .04em; text-transform: uppercase; }
+:lang(ar) .eyebrow { letter-spacing: 0; text-transform: none; font-size: .86rem; }
+.big { font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--app-text); }
+.big small { font-size: .38em; font-weight: 700; color: var(--app-muted); margin-inline-start: .35rem; letter-spacing: 0; }
+.pill { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .7rem; border-radius: 999px; font-size: .78rem; font-weight: 700; background: var(--app-chip); color: var(--app-ink); white-space: nowrap; }
+.pill.warn { background: var(--app-warn-bg); color: var(--app-warn); } .pill.bad { background: var(--app-danger-bg); color: var(--app-danger); } .pill.good { background: var(--app-ok-bg); color: var(--app-ok); }

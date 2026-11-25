@@ -1,0 +1,2361 @@
+[
+  {
+    "module": "Platform",
+    "method": "GET",
+    "path": "/api/v1/health",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Liveness check. Returns ApiResponse<HealthStatus>.",
+    "phase": 1
+  },
+  {
+    "module": "Platform",
+    "method": "GET",
+    "path": "/api/v1/tenants/current/logo",
+    "roles": [
+      "Public"
+    ],
+    "summary": "The tenant's logo image (404 when none).",
+    "phase": 2
+  },
+  {
+    "module": "Platform",
+    "method": "GET",
+    "path": "/api/v1/tenants/current/branding",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Branding for the resolved tenant (logo, colors, default language, feature flags) so the app can theme itself before login.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Register a student (or a parent when the tenant allows it). Sends an email/OTP verification.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Email + password + device fingerprint. Returns access token, refresh token, user. Fails with DEVICE_LIMIT_REACHED when the device cap is hit.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/refresh",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Rotate refresh token. Reuse of a used token revokes the chain.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Revoke the current refresh token.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/verify-email",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Verify email with the 6-digit OTP sent at registration (token links are not used).",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/otp/request",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Request an OTP (email verification, phone, login, password reset).",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/otp/verify",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Verify an OTP.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/forgot-password",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Always returns success, whether or not the account exists.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/reset-password",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Reset with the 6-digit OTP from forgot-password. Revokes all refresh tokens.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/social/{provider}",
+    "roles": [
+      "Public"
+    ],
+    "summary": "DEFERRED hook. Returns 501 NOT_IMPLEMENTED in Phase 2: provider keys and token validation are not built. Not counted as implemented.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/auth/biometric/enable",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Mark biometric unlock on for this device. The biometric check itself happens on the device and unlocks the stored refresh token.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "GET",
+    "path": "/api/v1/me",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Current user profile and roles.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "PUT",
+    "path": "/api/v1/me",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Update own profile and preferred language.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/me/change-password",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Change password; revokes other refresh tokens.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "GET",
+    "path": "/api/v1/me/devices",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "List own registered devices.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "DELETE",
+    "path": "/api/v1/me/devices/{deviceId}",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Remove one of own devices (counts toward any reset limits the tenant sets).",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "GET",
+    "path": "/api/v1/users",
+    "roles": [
+      "SA",
+      "TA",
+      "IN"
+    ],
+    "summary": "Search users in the tenant. Instructors see only students enrolled in courses they own (none until Phase 3 creates enrollments); other accounts answer 404.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/users",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create a user with roles.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "GET",
+    "path": "/api/v1/users/{id}",
+    "roles": [
+      "SA",
+      "TA",
+      "IN"
+    ],
+    "summary": "User detail.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "PUT",
+    "path": "/api/v1/users/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Update user.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "PUT",
+    "path": "/api/v1/users/{id}/roles",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Replace roles. SuperAdmin role is assignable only by SuperAdmin.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/users/{id}/deactivate",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Deactivate (soft). Revokes tokens.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "GET",
+    "path": "/api/v1/users/{id}/devices",
+    "roles": [
+      "TA",
+      "IN"
+    ],
+    "summary": "List a student's devices.",
+    "phase": 2
+  },
+  {
+    "module": "Auth, Devices and Users",
+    "method": "POST",
+    "path": "/api/v1/users/{id}/devices/reset",
+    "roles": [
+      "TA",
+      "IN"
+    ],
+    "summary": "Reset a student's devices. Writes DeviceResetLogs and AuditLogs.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "GET",
+    "path": "/api/v1/tenants",
+    "roles": [
+      "SA"
+    ],
+    "summary": "List tenants.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "POST",
+    "path": "/api/v1/tenants",
+    "roles": [
+      "SA"
+    ],
+    "summary": "Create tenant with first TenantAdmin.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "GET",
+    "path": "/api/v1/tenants/{id}",
+    "roles": [
+      "SA"
+    ],
+    "summary": "Tenant detail.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "PUT",
+    "path": "/api/v1/tenants/{id}",
+    "roles": [
+      "SA"
+    ],
+    "summary": "Update tenant, including device caps.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "POST",
+    "path": "/api/v1/tenants/{id}/support-access",
+    "roles": [
+      "SA"
+    ],
+    "summary": "Grant the calling SuperAdmin time-boxed access inside the tenant (default 60 min, max 480). Writes a SupportAccess membership and an audit row. Needed before any tenant route can be called with X-Tenant-Id.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "DELETE",
+    "path": "/api/v1/tenants/{id}/support-access",
+    "roles": [
+      "SA"
+    ],
+    "summary": "Revoke the caller's support access to the tenant.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "PUT",
+    "path": "/api/v1/tenant/settings",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Update own tenant's branding, languages, currency.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "POST",
+    "path": "/api/v1/tenant/logo",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Upload logo (multipart, field 'file'). PNG, JPEG or WebP, max 2 MB, type checked from the bytes (SVG refused). Stored under the tenant's own folder; sets LogoUrl to /api/v1/tenants/current/logo.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "GET",
+    "path": "/api/v1/tenant/feature-flags",
+    "roles": [
+      "TA"
+    ],
+    "summary": "List flags.",
+    "phase": 2
+  },
+  {
+    "module": "Tenants and Platform Admin",
+    "method": "PUT",
+    "path": "/api/v1/tenant/feature-flags/{key}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Enable or disable a feature for the tenant.",
+    "phase": 2
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/categories",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Category tree.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/categories",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create category.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/categories/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Update category.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "DELETE",
+    "path": "/api/v1/categories/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Soft delete.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/courses",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Search and filter published courses (category, level, language, price, text).",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/courses/{id}",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Course detail and outline (sections, lesson titles, free previews).",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/courses/mine",
+    "roles": [
+      "IN",
+      "TAS"
+    ],
+    "summary": "Courses I own or staff.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/courses",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Create draft course.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/courses/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Update course.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "DELETE",
+    "path": "/api/v1/courses/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Soft delete.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/courses/{id}/submit-for-approval",
+    "roles": [
+      "IN"
+    ],
+    "summary": "Submit draft for admin approval.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/courses/{id}/approve",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Approve and publish.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/courses/{id}/reject",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Reject with comment.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/courses/{id}/staff",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "List co-instructors and teaching assistants.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/courses/{id}/staff",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Replace staff list.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/courses/{id}/prerequisites",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Replace prerequisite courses.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/courses/{courseId}/sections",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Create section (with optional drip rule).",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/sections/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Update section.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "DELETE",
+    "path": "/api/v1/sections/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Soft delete.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/courses/{courseId}/sections/order",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Reorder sections.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/sections/{sectionId}/lessons",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Create lesson of any type.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/lessons/{id}",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Lesson content. Enforces enrollment or lesson grant, drip rules and prerequisites; returns 403 with reason otherwise.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/lessons/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Update lesson.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "DELETE",
+    "path": "/api/v1/lessons/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Soft delete.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/sections/{sectionId}/lessons/order",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Reorder lessons.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/lessons/{id}/media",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Upload lesson video, audio or PDF (multipart, resumable chunks). Triggers AI ingest if the tenant enables it.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/lessons/{id}/stream",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Authorized media stream or signed short-lived URL. Records a PlaybackSession.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/lessons/{id}/resources",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Attach downloadable resource.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/lessons/{id}/resources/{resourceId}/download",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Download resource (authorized).",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/lessons/{id}/chapters",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Replace chapter markers.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/lessons/{id}/slides",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Replace interactive slide content.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/lessons/{id}/interactive-quizzes",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Quiz pause points for the player.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/lessons/{id}/interactive-quizzes",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Replace quiz pause points.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/interactive-quizzes/{id}/answer",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Answer an embedded quiz. Returns correctness and whether playback may continue.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/learning-paths",
+    "roles": [
+      "Public"
+    ],
+    "summary": "List published learning paths.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "GET",
+    "path": "/api/v1/learning-paths/{id}",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Path detail with ordered courses.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "POST",
+    "path": "/api/v1/learning-paths",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Create path.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "PUT",
+    "path": "/api/v1/learning-paths/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Update path and course order.",
+    "phase": 3
+  },
+  {
+    "module": "Catalog and Course Builder",
+    "method": "DELETE",
+    "path": "/api/v1/learning-paths/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Soft delete.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/courses/{id}/enroll",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Enroll in a free course or one already entitled by purchase/voucher/subscription.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/me/enrollments",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My courses with progress.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/learning-paths/{id}/enroll",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Enroll in a path.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "PUT",
+    "path": "/api/v1/lessons/{id}/progress",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Heartbeat: last position, watched seconds, completion, speed. Idempotent.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/courses/{id}/progress",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My progress in a course.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/lessons/{id}/notes",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My notes on a lesson.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/lessons/{id}/notes",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Add timestamped note.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "PUT",
+    "path": "/api/v1/notes/{id}",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Edit note.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "DELETE",
+    "path": "/api/v1/notes/{id}",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Delete note.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/lessons/{id}/bookmarks",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My bookmarks.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/lessons/{id}/bookmarks",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Add bookmark.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "DELETE",
+    "path": "/api/v1/bookmarks/{id}",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Delete bookmark.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/study-sessions",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Record a study session for hours and streak tracking.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/courses/{courseId}/threads",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Course forum and lesson Q&A threads (filter by lessonId).",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/courses/{courseId}/threads",
+    "roles": [
+      "ST",
+      "IN",
+      "TAS"
+    ],
+    "summary": "Start thread or question.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/threads/{id}",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Thread with posts.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/threads/{id}/posts",
+    "roles": [
+      "ST",
+      "IN",
+      "TAS"
+    ],
+    "summary": "Reply.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/threads/{id}/upvote",
+    "roles": [
+      "ST",
+      "IN",
+      "TAS"
+    ],
+    "summary": "Toggle upvote.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/posts/{id}/upvote",
+    "roles": [
+      "ST",
+      "IN",
+      "TAS"
+    ],
+    "summary": "Toggle upvote.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/threads/{id}/pin",
+    "roles": [
+      "IN",
+      "TAS"
+    ],
+    "summary": "Pin a thread or mark an answer as instructor-pinned.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/courses/{courseId}/live-sessions",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Scheduled live classes.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/courses/{courseId}/live-sessions",
+    "roles": [
+      "IN",
+      "TAS"
+    ],
+    "summary": "Schedule a live class with a Zoom, Meet or Jitsi link.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/live-sessions/{id}/join",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Record attendance and return the join URL.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/live-sessions/{id}/attendance",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Attendance list.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/announcements",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Announcements visible to me.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/announcements",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Publish announcement (also pushed via SignalR and FCM).",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "My notifications.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/notifications/{id}/read",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Mark read.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/notifications/push-token",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Register FCM token for this device.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/chat/rooms",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "My chat rooms.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/chat/rooms/{id}/messages",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Message history (cursor paging).",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "POST",
+    "path": "/api/v1/chat/rooms/{id}/messages",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Send message (SignalR is the live path; this is the fallback).",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/gamification/me",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My XP, level, streak and badges.",
+    "phase": 3
+  },
+  {
+    "module": "Learning, Progress and Engagement",
+    "method": "GET",
+    "path": "/api/v1/gamification/leaderboard",
+    "roles": [
+      "ST",
+      "IN",
+      "TA"
+    ],
+    "summary": "Course or global leaderboard (?courseId=).",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/courses/{courseId}/question-banks",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "List question banks.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/question-banks",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Create bank.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/question-banks/{id}/questions",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Questions with filters (type, difficulty, topic).",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/question-banks/{id}/questions",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Add question (all seven types).",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "PUT",
+    "path": "/api/v1/questions/{id}",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Update question.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "DELETE",
+    "path": "/api/v1/questions/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Soft delete.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/question-banks/{id}/import",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Import questions from CSV or JSON.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/courses/{courseId}/exams",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Exams and quizzes visible to me.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/courses/{courseId}/exams",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Create exam with pool rules, timer, attempts, passing score, proctoring flags.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "PUT",
+    "path": "/api/v1/exams/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Update exam.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/exams/{id}/publish",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Publish.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/exams/{id}/attempts",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Start attempt. Freezes the question set, starts the server-side timer. Rejects past the attempt limit.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/attempts/{id}",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Questions for the attempt (no correct answers) and remaining time.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "PUT",
+    "path": "/api/v1/attempts/{id}/answers",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Autosave answers.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/attempts/{id}/events",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Report tab switch or focus loss. Stored as ProctoringEvents. May void the attempt if the exam sets a limit.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/attempts/{id}/submit",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Submit. Auto-grades objective questions; essays and short answers wait for manual grading.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/attempts/{id}/result",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Result and feedback, subject to the exam's review policy.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/exams/{id}/attempts",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "All attempts, scores and proctoring flags.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "PUT",
+    "path": "/api/v1/attempt-answers/{id}/grade",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Manual grade. Audited.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/courses/{courseId}/assignments",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Assignments.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/courses/{courseId}/assignments",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Create with rubric, group and peer-review settings.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "PUT",
+    "path": "/api/v1/assignments/{id}",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Update.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/assignments/{id}/groups",
+    "roles": [
+      "ST",
+      "IN"
+    ],
+    "summary": "Create or join a team.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/assignments/{id}/submissions",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Submit text, link and files (new version on resubmission).",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/assignments/{id}/submissions",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Submissions with grading state.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/submissions/{id}",
+    "roles": [
+      "ST",
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Submission detail (students see only their own or their team's).",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "PUT",
+    "path": "/api/v1/submissions/{id}/grade",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Rubric scores and feedback. Audited.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/submissions/{id}/comments",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Inline comment anchored to text range or file page.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/submissions/{id}/return",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Return for resubmission.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "POST",
+    "path": "/api/v1/assignments/{id}/peer-reviews/assign",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Create peer-review assignments (async job).",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "GET",
+    "path": "/api/v1/peer-reviews/mine",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Reviews I must write.",
+    "phase": 3
+  },
+  {
+    "module": "Assessments and Assignments",
+    "method": "PUT",
+    "path": "/api/v1/peer-reviews/{id}",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Submit review with rubric scores.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "POST",
+    "path": "/api/v1/parent/links",
+    "roles": [
+      "PA"
+    ],
+    "summary": "Request a link using the student's link code.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "POST",
+    "path": "/api/v1/students/me/link-codes",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Create a one-time code the student gives to a parent.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "PUT",
+    "path": "/api/v1/parent/links/{id}",
+    "roles": [
+      "TA",
+      "IN"
+    ],
+    "summary": "Approve or revoke a link.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "GET",
+    "path": "/api/v1/parent/children",
+    "roles": [
+      "PA"
+    ],
+    "summary": "Linked students.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "GET",
+    "path": "/api/v1/parent/children/{studentId}/summary",
+    "roles": [
+      "PA"
+    ],
+    "summary": "Attendance, grades, weekly study hours, risk alerts.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "GET",
+    "path": "/api/v1/parent/alerts",
+    "roles": [
+      "PA"
+    ],
+    "summary": "Low-performance alerts.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "POST",
+    "path": "/api/v1/certificates/issue",
+    "roles": [
+      "TA",
+      "IN"
+    ],
+    "summary": "Issue a certificate manually. Automatic issuing runs on course or path completion.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "GET",
+    "path": "/api/v1/certificates/mine",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My certificates.",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "GET",
+    "path": "/api/v1/certificates/{id}/pdf",
+    "roles": [
+      "ST",
+      "TA",
+      "IN"
+    ],
+    "summary": "Download PDF (with QR code).",
+    "phase": 3
+  },
+  {
+    "module": "Parent Portal and Certificates",
+    "method": "GET",
+    "path": "/api/v1/certificates/verify/{verificationCode}",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Public verification: holder name, course, issue date, status. No email or phone.",
+    "phase": 3
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/cart",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My cart.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/cart/items",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Add course, lesson, bundle, plan or path.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "DELETE",
+    "path": "/api/v1/cart/items/{id}",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Remove.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/cart/coupon",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Apply a coupon; validates expiry, limits and scope.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/orders/checkout",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Create order from cart. Body picks the payment method: gateway, wallet, voucher or manual.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/orders",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My orders.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/orders/{id}",
+    "roles": [
+      "ST",
+      "TA"
+    ],
+    "summary": "Order detail.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/orders/{id}/invoice",
+    "roles": [
+      "ST",
+      "TA"
+    ],
+    "summary": "Invoice PDF.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/payments/gateways/{gateway}/webhook",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Gateway callback (Paymob, Fawry, Stripe). Verified by signature before any state change.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/bundles",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Bundles.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/bundles",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create bundle.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/subscription-plans",
+    "roles": [
+      "Public"
+    ],
+    "summary": "Plans.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/subscription-plans",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create plan.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/subscriptions",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Start subscription.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/subscriptions/{id}/cancel",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Cancel at period end.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/lessons/{id}/unlock",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Unlock a pay-per-lesson lesson from wallet balance.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/wallet",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Balance.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/wallet/transactions",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Ledger.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/wallet/topup/gateway",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Start gateway top-up.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/wallet/topup/voucher",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Top up with a voucher code.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/vouchers/redeem",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Redeem a course-access voucher.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/voucher-batches",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create batch. Returns a BackgroundJob id; the CSV is produced by the job.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/voucher-batches",
+    "roles": [
+      "TA"
+    ],
+    "summary": "List batches and status.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/voucher-batches/{id}/export",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Download the batch CSV (only available after generation, within retention).",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/voucher-batches/{id}/void",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Void unused codes.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/manual-payments",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Submit offline transfer proof with receipt image (multipart).",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/manual-payments/mine",
+    "roles": [
+      "ST"
+    ],
+    "summary": "My submissions and status.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/manual-payments",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Review queue.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/manual-payments/{id}/approve",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Approve. Completes the order or credits the wallet in one transaction. Audited.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/manual-payments/{id}/reject",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Reject with reason.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/coupons",
+    "roles": [
+      "TA"
+    ],
+    "summary": "List coupons.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/coupons",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create coupon.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "PUT",
+    "path": "/api/v1/coupons/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Update coupon.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/affiliate/me",
+    "roles": [
+      "ST",
+      "IN"
+    ],
+    "summary": "My referral code, link, referrals and commissions.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/affiliate/profiles",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Enable a user as affiliate with a commission percent.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "GET",
+    "path": "/api/v1/instructor/revenue",
+    "roles": [
+      "IN"
+    ],
+    "summary": "My revenue share and payouts.",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "POST",
+    "path": "/api/v1/instructor-payouts/calculate",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Calculate payouts for a period (async job).",
+    "phase": 4
+  },
+  {
+    "module": "Commerce, Wallet and Vouchers",
+    "method": "PUT",
+    "path": "/api/v1/instructor-payouts/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Approve or mark paid.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/dashboards/student",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Progress, deadlines, skill radar.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/dashboards/instructor",
+    "roles": [
+      "IN"
+    ],
+    "summary": "Enrollment trends, lesson drop-off heatmap, quiz difficulty, revenue.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/dashboards/admin",
+    "roles": [
+      "TA"
+    ],
+    "summary": "KPIs, approval queues, revenue.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/reports/{kind}/export",
+    "roles": [
+      "TA",
+      "IN"
+    ],
+    "summary": "CSV or Excel export (async for large data).",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/audit-logs",
+    "roles": [
+      "TA",
+      "SA"
+    ],
+    "summary": "Filter by user, entity, action, date.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/recycle-bin",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Soft-deleted items by entity type.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "POST",
+    "path": "/api/v1/recycle-bin/{entity}/{id}/restore",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Restore. Audited.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/api-keys",
+    "roles": [
+      "TA"
+    ],
+    "summary": "List keys (prefix only).",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "POST",
+    "path": "/api/v1/api-keys",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create key. Full key returned once.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "DELETE",
+    "path": "/api/v1/api-keys/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Revoke.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/webhooks",
+    "roles": [
+      "TA"
+    ],
+    "summary": "List endpoints.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "POST",
+    "path": "/api/v1/webhooks",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Create endpoint with event types. Secret returned once.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "PUT",
+    "path": "/api/v1/webhooks/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Update.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "DELETE",
+    "path": "/api/v1/webhooks/{id}",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Delete.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/webhooks/{id}/deliveries",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Delivery log.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "POST",
+    "path": "/api/v1/webhooks/deliveries/{id}/retry",
+    "roles": [
+      "TA"
+    ],
+    "summary": "Retry a failed delivery.",
+    "phase": 4
+  },
+  {
+    "module": "Dashboards, Audit, Recycle Bin, Webhooks and API Keys",
+    "method": "GET",
+    "path": "/api/v1/jobs/{id}",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Background job status (Pending, Processing, Completed, Failed). Owner or admin only.",
+    "phase": 3
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/lessons/{lessonId}/ingest",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Queue ingest (extract, transcribe, chunk, embed). 202 + job id.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "GET",
+    "path": "/api/v1/ai/lessons/{lessonId}/index-status",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Index state.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/courses/{courseId}/tutor/chat",
+    "roles": [
+      "ST",
+      "IN"
+    ],
+    "summary": "Course tutor with citations. Answers only from that course's material.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/courses/{courseId}/video/semantic-search",
+    "roles": [
+      "ST",
+      "IN"
+    ],
+    "summary": "Find timestamps and snippets across course transcripts.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/lessons/{lessonId}/generate-quiz",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Generate MCQs, open questions, flashcards. Output is a draft the instructor reviews.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/lessons/{lessonId}/summarize",
+    "roles": [
+      "ST",
+      "IN"
+    ],
+    "summary": "Takeaways, key terms, chapters.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/lessons/{lessonId}/mindmap",
+    "roles": [
+      "ST",
+      "IN"
+    ],
+    "summary": "Mind map nodes and edges.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/submissions/{id}/grade-essay",
+    "roles": [
+      "IN",
+      "TA",
+      "TAS"
+    ],
+    "summary": "Provisional score and feedback against the rubric. Never written as the final grade without an instructor action.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/assignments/{id}/plagiarism-check",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Queue batch similarity check. 202 + job id.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "GET",
+    "path": "/api/v1/ai/submissions/{id}/plagiarism",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Similarity scores and flagged matches for human review.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/courses/{courseId}/voice-tutor",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Audio in (multipart), text and audio out.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "POST",
+    "path": "/api/v1/ai/courses/{courseId}/study-plan",
+    "roles": [
+      "ST"
+    ],
+    "summary": "Day-by-day plan.",
+    "phase": 5
+  },
+  {
+    "module": "AI (through the .NET API)",
+    "method": "GET",
+    "path": "/api/v1/ai/students/{studentId}/risk",
+    "roles": [
+      "IN",
+      "TA"
+    ],
+    "summary": "Dropout risk score and suggested interventions (advisory).",
+    "phase": 5
+  },
+  {
+    "module": "SignalR Hubs",
+    "method": "WS",
+    "path": "/hubs/notifications",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Notifications, announcements, job status changes (jobCompleted, jobFailed).",
+    "phase": 3
+  },
+  {
+    "module": "SignalR Hubs",
+    "method": "WS",
+    "path": "/hubs/chat",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Room chat. Server checks room membership on join and send.",
+    "phase": 3
+  },
+  {
+    "module": "SignalR Hubs",
+    "method": "WS",
+    "path": "/hubs/live",
+    "roles": [
+      "Auth"
+    ],
+    "summary": "Live class presence and Q&A.",
+    "phase": 3
+  }
+]

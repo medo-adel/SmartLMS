@@ -1,0 +1,9 @@
+<svg [attr.viewBox]="'0 0 ' + width + ' ' + layout().height" role="img" aria-label="Mind map">
+  @for (l of layout().lines; track $index) { <line [attr.x1]="l.x1" [attr.y1]="l.y1" [attr.x2]="l.x2" [attr.y2]="l.y2" /> }
+  @for (n of layout().nodes; track n.id) {
+    <g [attr.transform]="'translate(' + n.x + ',' + n.y + ')'">
+      <rect x="-68" y="-17" width="136" height="34" rx="17" />
+      <text text-anchor="middle" dy="5">{{ short(n.label) }}<title>{{ n.label }}</title></text>
+    </g>
+  }
+</svg>

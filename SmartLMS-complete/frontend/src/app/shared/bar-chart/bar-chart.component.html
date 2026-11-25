@@ -1,0 +1,8 @@
+<div class="chart" role="img" [attr.aria-label]="ariaLabel()">
+  <div class="y"><span>{{ max() | number: '1.0-0' }}</span><span>0</span></div>
+  <div class="plot" [style.--n]="bars().length">
+    @for (b of bars(); track $index) {
+      <div class="col" [title]="b.label + ': ' + b.value"><i [style.block-size.%]="b.pct"></i><span class="x" dir="ltr">{{ b.label }}</span></div>
+    }
+  </div>
+</div>

@@ -1,0 +1,62 @@
+<ion-content class="reg" [fullscreen]="true">
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      @if (tenant.branding()?.logoUrl; as logo) { <img class="logo" [src]="logo" [alt]="tenant.branding()?.name" /> }
+      <strong>{{ tenant.branding()?.name ?? ('app.name' | t) }}</strong>
+    </div>
+    <div class="lang" role="group" [attr.aria-label]="'common.language' | t">
+      <button type="button" [class.on]="i18n.lang() === 'en'" [attr.aria-pressed]="i18n.lang() === 'en'" (click)="setLang('en')">EN</button>
+      <button type="button" [class.on]="i18n.lang() === 'ar'" [attr.aria-pressed]="i18n.lang() === 'ar'" (click)="setLang('ar')">ع</button>
+    </div>
+  </header>
+
+  <section class="pn card">
+    <h1>{{ (isForgot ? 'forgot.title' : 'reg.title') | t }}</h1>
+    <p class="muted">{{ (isForgot ? 'forgot.subtitle' : 'reg.subtitle') | t }}</p>
+
+    @if (step === 'form') {
+      <form class="stack" (ngSubmit)="submitForm()" novalidate>
+        @if (!isForgot) {
+          <ion-input name="fullName" fill="outline" labelPlacement="stacked" autocomplete="name" [label]="'reg.fullName' | t" [(ngModel)]="fullName"></ion-input>
+          <ion-input name="academy" fill="outline" labelPlacement="stacked" [label]="'reg.academy' | t" [(ngModel)]="academy"></ion-input>
+        }
+        <ion-input name="email" type="email" inputmode="email" autocomplete="username" fill="outline" labelPlacement="stacked" [label]="'login.email' | t" [(ngModel)]="email"></ion-input>
+        @if (!isForgot) {
+          <ion-input name="password" type="password" autocomplete="new-password" fill="outline" labelPlacement="stacked" [label]="'login.password' | t" [(ngModel)]="password"></ion-input>
+          <ion-input name="phone" type="tel" inputmode="tel" autocomplete="tel" fill="outline" labelPlacement="stacked" [label]="'reg.phone' | t" [(ngModel)]="phone"></ion-input>
+        }
+        @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
+        <ion-button type="submit" expand="block" [disabled]="busy()">
+          @if (busy()) { <ion-spinner name="crescent" color="light"></ion-spinner> } @else { {{ (isForgot ? 'forgot.send' : 'reg.submit') | t }} }
+        </ion-button>
+      </form>
+    }
+
+    @if (step === 'code') {
+      <p class="ok">{{ info() }}</p>
+      <form class="stack" (ngSubmit)="submitCode()" novalidate>
+        <ion-input name="code" inputmode="numeric" autocomplete="one-time-code" fill="outline" labelPlacement="stacked" [label]="'reg.code' | t" [(ngModel)]="code"></ion-input>
+        @if (isForgot) {
+          <ion-input name="newPassword" type="password" autocomplete="new-password" fill="outline" labelPlacement="stacked" [label]="'forgot.newPassword' | t" [(ngModel)]="newPassword"></ion-input>
+        }
+        @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
+        <ion-button type="submit" expand="block" [disabled]="busy()">
+          @if (busy()) { <ion-spinner name="crescent" color="light"></ion-spinner> } @else { {{ (isForgot ? 'forgot.reset' : 'reg.verify') | t }} }
+        </ion-button>
+        @if (!isForgot) { <ion-button type="button" fill="clear" expand="block" [disabled]="busy()" (click)="resend()">{{ 'reg.resend' | t }}</ion-button> }
+      </form>
+    }
+
+    @if (step === 'done') {
+      <p class="ok">{{ (isForgot ? 'forgot.done' : 'reg.done') | t }}</p>
+      <ion-button expand="block" routerLink="/login">{{ 'reg.toLogin' | t }}</ion-button>
+    }
+
+    <div class="links">
+      <a routerLink="/login">{{ 'reg.toLogin' | t }}</a>
+      @if (!isForgot) { <a routerLink="/forgot">{{ 'login.toForgot' | t }}</a> }
+    </div>
+  </section>
+</div>
+</ion-content>

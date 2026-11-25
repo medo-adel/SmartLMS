@@ -1,0 +1,49 @@
+<ion-content>
+<div class="pg">
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (!course()) { <ion-spinner></ion-spinner> }
+  @else {
+    <header class="hero">
+      <div class="cover big" aria-hidden="true"><span>{{ course()!.title.charAt(0) }}</span></div>
+      <div class="meta"><span class="tag">{{ course()!.level }}</span>@if (course()!.estimatedHours) { <span class="tag">{{ course()!.estimatedHours }} h</span> }</div>
+      <h1>{{ course()!.title }}</h1>
+      <p class="lead">{{ course()!.description || course()!.shortDescription }}</p>
+    </header>
+    <div class="layout2">
+    <div class="main">
+    <section class="pn">
+      <h2>{{ 'course.outline' | t }}</h2>
+      @for (s of course()!.sections; track s.id) {
+        <h3>{{ s.title }}</h3>
+        @for (l of s.lessons; track l.id) {
+          <div class="les">
+            <span><i class="num" aria-hidden="true">{{ $index + 1 }}</i> {{ l.title }} <small class="mut">{{ l.lessonType }} {{ minutes(l.durationSeconds) }}</small>
+              @if (l.isFreePreview) { <span class="tag">{{ 'course.preview' | t }}</span> }</span>
+            @if (enrolled() || l.isFreePreview) { <ion-button size="small" fill="outline" [routerLink]="['/app/learn', course()!.id, l.id]">{{ 'course.start' | t }}</ion-button> }
+          </div>
+        }
+      }
+    </section>
+    @if (exams().length) {
+      <section class="pn">
+        <h2>{{ 'course.exams' | t }}</h2>
+        @for (e of exams(); track e.id) {
+          <div class="les"><span>{{ e.title }} <small class="mut">{{ e.kind }} · {{ e.durationMinutes ?? '-' }} min</small></span>
+            <ion-button size="small" [routerLink]="['/app/exam', e.id]">{{ 'course.takeExam' | t }}</ion-button></div>
+        }
+      </section>
+    }
+    </div>
+    <aside class="side buy pn">
+      <div class="row2">
+        <span class="price">@if (!isFree) { {{ course()!.price }} {{ course()!.currency }} } @else { {{ 'cat.free' | t }} }</span>
+        @if (enrolled()) { <span class="ok">{{ 'course.enrolled' | t }}</span> }
+        @else if (isFree) { <ion-button (click)="enroll()">{{ 'course.enroll' | t }}</ion-button> }
+        @else { <ion-button (click)="addToCart()">{{ 'course.addCart' | t }}</ion-button> <ion-button fill="outline" routerLink="/app/cart">{{ 'nav.cart' | t }}</ion-button> }
+      </div>
+      @if (message()) { <p class="ok">{{ message() | t }}</p> }
+    </aside>
+    </div>
+  }
+</div>
+</ion-content>

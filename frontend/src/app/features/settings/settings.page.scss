@@ -1,0 +1,10 @@
+.rv { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .6rem 0; border-block-end: 1px solid var(--app-border); }
+.stack { display: grid; gap: .6rem; }
+label { display: grid; gap: .2rem; font-size: .8rem; }
+.clr { inline-size: 4.5rem; min-block-size: 2.9rem; padding: .25rem; }
+.n { inline-size: 7rem; flex: none; }
+.n2 { inline-size: 6rem; flex: none; }
+.inner { margin: .4rem 0 .8rem; background: var(--app-field); }
+.logo { block-size: 3rem; inline-size: auto; border-radius: .6rem; margin-block-end: .5rem; }
+.sw { border: 1px solid var(--app-border-strong); background: var(--app-card); color: var(--app-text); border-radius: 99px; padding: .35rem 1rem; font: inherit; font-size: .85rem; cursor: pointer; }
+.sw.on { background: var(--app-ok); color: #fff; border-color: transparent; }

@@ -1,0 +1,6 @@
+@use "../dashboard.shared";
+.stats { display: grid; gap: .6rem; align-content: start; } .stats h2 { margin-block-end: .4rem; }
+.queue { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+.exports { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.exports ion-select { flex: 1 1 14rem; max-inline-size: 20rem; }
+@media (min-width: 992px) { .rev app-bar-chart { --plot-h: 15.5rem; } }

@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartLMS.Application\SmartLMS.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.25" />
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.25" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.4.0.200" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="SkiaSharp" Version="4.157.0" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" Version="4.157.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.157.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\Amiri-Regular.ttf" LogicalName="Fonts.Amiri-Regular.ttf" />
+    <None Include="Assets\Fonts\Amiri-OFL.txt" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

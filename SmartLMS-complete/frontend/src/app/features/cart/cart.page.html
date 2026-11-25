@@ -1,0 +1,66 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'cart.title' | t }}</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (!cart()) { <div class="pn sk" style="min-height:12rem" aria-busy="true"></div> }
+  @else {
+    @if (checkoutError()) { <p class="err">{{ 'cart.failed' | t }}</p> }
+    @if (outcome(); as o) {
+      <section class="pn">
+        @switch (state()) {
+          @case ('paid') { <p class="ok">{{ 'cart.paid' | t }} ({{ o.total }} {{ o.currency }})</p> }
+          @case ('gateway') {
+            <p>{{ 'cart.gatewayWait' | t }} ({{ o.total }} {{ o.currency }})</p>
+            <a class="lnk" [href]="url" target="_blank" rel="noopener noreferrer">{{ 'cart.gatewayOpen' | t }}</a>
+            <p class="mut">{{ 'cart.gatewayHint' | t }}</p>
+          }
+          @case ('manual') {
+            <p>{{ 'cart.manualWait' | t }} <b>{{ o.total }} {{ o.currency }}</b></p>
+            @if (receiptSent()) { <p class="ok">{{ 'cart.receiptSent' | t }}</p> }
+            @else {
+              <form class="stack" (ngSubmit)="sendReceipt()">
+                <select class="fld" name="mm" [(ngModel)]="manualMethod"><option value="VodafoneCash">Vodafone Cash</option><option value="InstaPay">InstaPay</option><option value="BankTransfer">Bank transfer</option></select>
+                <input class="fld" name="ref" [(ngModel)]="reference" [placeholder]="'wallet.ref' | t" />
+                <input class="fld" name="sender" [(ngModel)]="sender" [placeholder]="'wallet.sender' | t" />
+                <input class="fld" name="receipt" type="file" accept="image/png,image/jpeg,application/pdf" (change)="pick($event)" />
+                <p class="mut">{{ 'wallet.receiptHint' | t }}</p>
+                <ion-button type="submit" [disabled]="busy() || !receipt">{{ 'wallet.submit' | t }}</ion-button>
+              </form>
+            }
+          }
+          @default { <p>{{ 'cart.done' | t }}</p> }
+        }
+      </section>
+    }
+    @if (cart()!.items.length === 0) { <div class="empty"><p>{{ 'cart.empty' | t }}</p></div> }
+    @else {
+      <div class="layout2"><div class="main">
+      <section class="pn">
+        @for (i of cart()!.items; track i.id) {
+          <div class="it"><span>{{ i.description }} @if (!i.available) { <span class="err">!</span> }</span><span class="row2"><b>{{ i.price }} {{ i.currency }}</b><ion-button size="small" fill="clear" color="danger" (click)="remove(i.id)">{{ 'cart.remove' | t }}</ion-button></span></div>
+        }
+        <div class="it"><span>{{ 'cart.subtotal' | t }}</span><b>{{ cart()!.subtotal }} {{ cart()!.currency }}</b></div>
+        @if (preview(); as p) { <div class="it"><span>{{ 'cart.total' | t }} ({{ p.code }})</span><b class="ok">{{ p.total }} {{ p.currency }}</b></div> }
+      </section>
+      </div><aside class="side">
+      <section class="pn">
+        <form class="row2" (ngSubmit)="check()"><input class="fld" name="coupon" [(ngModel)]="coupon" [placeholder]="'cart.coupon' | t" /><ion-button type="submit" fill="outline">{{ 'cart.apply' | t }}</ion-button></form>
+        <input class="fld" name="referral" [(ngModel)]="referral" [placeholder]="'cart.referral' | t" autocomplete="off" />
+      </section>
+      <section class="pn">
+        <h2>{{ 'cart.method' | t }}</h2>
+        <div class="tabs2">
+          <button [class.on]="method === 'wallet'" (click)="method = 'wallet'">{{ 'cart.wallet' | t }}</button>
+          <button [class.on]="method === 'voucher'" (click)="method = 'voucher'">{{ 'cart.voucher' | t }}</button>
+          <button [class.on]="method === 'gateway'" (click)="method = 'gateway'">{{ 'cart.gateway' | t }}</button>
+          <button [class.on]="method === 'manual'" (click)="method = 'manual'">{{ 'cart.manual' | t }}</button>
+        </div>
+        @if (method === 'gateway') { <select class="fld" name="gw" [(ngModel)]="gateway"><option value="Paymob">Paymob</option><option value="Fawry">Fawry</option><option value="Stripe">Stripe</option></select> }
+        @if (method === 'voucher') { <input class="fld" name="voucher" [(ngModel)]="voucher" [placeholder]="'wallet.code' | t" autocomplete="off" /> }
+        <ion-button expand="block" (click)="checkout()" [disabled]="busy()">{{ 'cart.checkout' | t }}</ion-button>
+      </section>
+      </aside></div>
+    }
+  }
+</div>
+</ion-content>

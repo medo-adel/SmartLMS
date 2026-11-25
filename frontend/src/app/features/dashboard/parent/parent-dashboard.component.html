@@ -1,0 +1,27 @@
+@if (failed()) { <app-dash-error (retry)="load()" /> }
+@else if (children(); as kids) {
+  @if (kids.length === 0) { <h2>{{ 'dash.parent.title' | t }}</h2><p class="empty">{{ 'dash.parent.empty' | t }}</p> }
+  @else {
+    <h2 class="display">{{ 'dash.parent.title' | t }}</h2>
+    <ion-segment [scrollable]="true" [value]="selected()" (ionChange)="select($event.detail.value)">
+      @for (c of kids; track c.studentId) { <ion-segment-button [value]="c.studentId"><ion-label>{{ c.fullName }}</ion-label></ion-segment-button> }
+    </ion-segment>
+    @if (summary(); as s) {
+      <div class="bento">
+      <div class="s12 grid top">
+        <app-kpi-card [label]="'dash.parent.avg' | t" icon="ribbon-outline" [value]="s.averageExamScorePercent === null ? '-' : s.averageExamScorePercent + '%'" />
+        <app-kpi-card [label]="'dash.parent.hours' | t" icon="time-outline" [value]="s.weeklyStudyHours" />
+        <app-kpi-card [label]="'dash.parent.attendance' | t" icon="calendar-outline" [value]="s.attendancePercent === null ? ('dash.parent.notTracked' | t) : s.attendancePercent + '%'" />
+      </div>
+      <section class="s7"><h2>{{ 'dash.parent.courses' | t }}</h2>
+        @for (c of s.courses; track c.title) {
+          <div class="course"><div class="row"><strong>{{ c.title }}</strong><span class="muted">{{ c.progressPercent }}%</span></div><div class="bar"><i [style.inline-size.%]="c.progressPercent"></i></div></div>
+        } @empty { <p class="empty">{{ 'common.empty' | t }}</p> }
+      </section>
+      <section class="s5"><h2>{{ 'dash.parent.alerts' | t }}</h2>
+        @for (a of s.riskAlerts; track a) { <p class="alert">{{ ('dash.parent.alert.' + a) | t }}</p> } @empty { <p class="empty">{{ 'dash.parent.noAlerts' | t }}</p> }
+      </section>
+      </div>
+    } @else { <app-dash-skeleton [count]="3" /> }
+  }
+} @else { <app-dash-skeleton [count]="3" /> }

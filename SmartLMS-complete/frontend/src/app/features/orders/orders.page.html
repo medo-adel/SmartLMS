@@ -1,0 +1,73 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'orders.title' | t }}</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (orders() === null) { <div class="pn sk" style="min-height:10rem" aria-busy="true"></div> }
+  @else {
+    <div class="layout2"><div class="main">
+    <section class="pn">
+      @for (o of orders(); track o.id) {
+        <div class="rv"><span><b>{{ o.total }} {{ o.currency }}</b> <span class="tag">{{ o.status }}</span> <span class="tag">{{ o.paymentMethod }}</span><br /><small class="mut">{{ o.createdAtUtc | date: 'medium' }}</small></span>
+          <span class="row2">
+          <ion-button size="small" fill="outline" (click)="toggleDetail(o)">{{ 'ord.details' | t }}</ion-button>
+          @if (o.status === 'Paid') { <ion-button size="small" fill="outline" (click)="invoice(o)">{{ 'orders.invoice' | t }}</ion-button> }</span></div>
+        @if (detailFor() === o.id) {
+          @if (detail() === null) { <ion-spinner></ion-spinner> }
+          @if (detail(); as od) {
+            <div class="pn">
+              <h3>{{ 'ord.details' | t }}</h3>
+              @for (it of od.items; track it.id) {
+                <div class="row2"><span>{{ it.description }} <span class="tag">{{ it.itemType }}</span> ×{{ it.quantity }}</span><b>{{ it.lineTotal }} {{ od.currency }}</b></div>
+              }
+              <div class="row2"><span>{{ 'ord.subtotal' | t }}</span><b>{{ od.subtotal }} {{ od.currency }}</b></div>
+              @if (od.discountTotal > 0) { <div class="row2"><span>{{ 'ord.discount' | t }}</span><b>-{{ od.discountTotal }} {{ od.currency }}</b></div> }
+              <div class="row2"><span>{{ 'ord.total' | t }}</span><b>{{ od.total }} {{ od.currency }}</b></div>
+              @if (od.invoiceNumber) { <p class="mut">{{ 'ord.invoiceNo' | t }}: {{ od.invoiceNumber }}</p> }
+              @for (pm of od.payments; track pm.id) {
+                <div class="row2"><span>{{ pm.method }} <span class="tag">{{ pm.status }}</span></span><b>{{ pm.amount }} {{ pm.currency }}</b></div>
+                @if (pm.failureReason) { <p class="err">{{ pm.failureReason }}</p> }
+              }
+            </div>
+          }
+        }
+      } @empty { <div class="empty"><p>{{ 'orders.empty' | t }}</p></div> }
+    </section>
+    </div><aside class="side">
+    @if (aff(); as a) {
+      <section class="pn">
+        <h2>{{ 'aff.title' | t }}</h2>
+        <p>{{ 'aff.code' | t }}: <b>{{ a.referralCode }}</b> · {{ a.commissionPercent }}%</p>
+        <div class="row2"><p class="mut">{{ 'aff.how' | t }}</p><ion-button size="small" fill="outline" (click)="copy(a)">{{ copied() ? ('aff.copied' | t) : ('aff.copy' | t) }}</ion-button></div>
+        <p class="mut">{{ 'aff.total' | t }}: <b>{{ a.totalCredited }}</b> · {{ 'aff.refs' | t }}: {{ a.referrals.length }}</p>
+        @for (c of a.commissions; track c.id) { <div class="rv"><span>{{ c.amount }} <span class="tag">{{ c.status }}</span></span><small class="mut">{{ c.createdAtUtc | date: 'medium' }}</small></div> }
+        @for (r of a.referrals; track r.referredUserId) { <div class="rv"><span>{{ r.name }}</span><small class="mut">{{ r.createdAtUtc | date: 'medium' }}</small></div> }
+      </section>
+    } @else if (noAff()) { <p class="mut">{{ 'aff.none' | t }}</p> }
+    </aside></div>
+  }
+  @if (subs() !== null) {
+    <section class="pn">
+      <h2>{{ 'ord.subscriptions' | t }}</h2>
+      @for (sub of subs() ?? []; track sub.id) {
+        <div class="rv">
+          <span><b>{{ sub.planName }}</b> · {{ sub.price }} {{ sub.currency }} · {{ sub.billingPeriod }} · <span class="tag">{{ sub.status }}</span>
+            <span class="mut"> · {{ 'ord.until' | t }} {{ sub.currentPeriodEndUtc | date:'mediumDate' }}</span></span>
+          @if (sub.status === 'Active') { <ion-button size="small" fill="outline" color="danger" (click)="reviewCancel(sub)">{{ 'ord.cancelSub' | t }}</ion-button> }
+        </div>
+      }
+      @if (!(subs() ?? []).length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+    @if (pendingCancel(); as pc) {
+      <div class="pn confirm">
+        <h3>{{ 'ord.confirmCancelTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'ord.plan' | t }}</span><b>{{ pc.planName }}</b></div>
+        <p class="mut">{{ 'ord.cancelConsequence' | t }} {{ pc.currentPeriodEndUtc | date:'mediumDate' }}.</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmCancel()">{{ 'ord.confirmCancel' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingCancel.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+  }
+</div>
+</ion-content>

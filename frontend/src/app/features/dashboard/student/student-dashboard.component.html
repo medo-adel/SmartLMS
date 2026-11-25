@@ -1,0 +1,33 @@
+@if (failed()) { <app-dash-error (retry)="load()" /> }
+@else if (data(); as d) {
+  <div class="bento">
+    <section class="s7 feat">
+      @if (d.enrollments[0]; as e) {
+        <p class="eyebrow">{{ 'dash.student.continue' | t }}</p>
+        <div class="feat-row">
+          <app-ring [value]="e.progressPercent" [size]="7.5" [label]="e.title" />
+          <div class="feat-txt"><h2 class="display">{{ e.title }}</h2><p class="muted">{{ e.progressPercent }}% {{ 'dash.student.complete' | t }}</p>
+            <a class="cta" [routerLink]="['/app/courses', e.courseId]">{{ 'dash.student.open' | t }}</a></div>
+        </div>
+      } @else { <h2>{{ 'dash.student.courses' | t }}</h2><p class="empty">{{ 'dash.student.noCourses' | t }}</p> }
+    </section>
+    <section class="s5 stats">
+      <app-kpi-card [flat]="true" [label]="'dash.student.xp' | t" icon="trophy-outline" [value]="d.xp" />
+      <app-kpi-card [flat]="true" [label]="'dash.student.streak' | t" icon="flame-outline" [value]="d.streak" />
+      <app-kpi-card [flat]="true" [label]="'dash.student.longest' | t" icon="ribbon-outline" [value]="d.longestStreak" />
+    </section>
+    <section class="s6"><h2>{{ 'dash.student.courses' | t }}</h2>
+      @for (e of d.enrollments; track e.courseId) {
+        <div class="course"><div class="row"><strong>{{ e.title }}</strong><span class="muted">{{ e.progressPercent }}%</span></div>
+          <div class="bar"><i [style.inline-size.%]="e.progressPercent"></i></div></div>
+      } @empty { <p class="empty">{{ 'dash.student.noCourses' | t }}</p> }
+    </section>
+    <section class="s6"><h2>{{ 'dash.student.deadlines' | t }}</h2>
+      @for (x of d.upcomingDeadlines; track x.id) { <div class="dl"><span class="dot"></span><div><strong>{{ x.title }}</strong><span class="muted">{{ x.dueAtUtc | date: 'medium' }}</span></div></div> }
+      @empty { <p class="empty">{{ 'dash.student.noDeadlines' | t }}</p> }
+    </section>
+    <section class="s12"><h2>{{ 'dash.student.radar' | t }}</h2>
+      @if (radar().length >= 3) { <app-radar-chart [data]="radar()" /> } @else { <p class="empty">{{ 'dash.student.radarEmpty' | t }}</p> }
+    </section>
+  </div>
+} @else { <app-dash-skeleton [count]="3" /> }

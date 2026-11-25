@@ -1,0 +1,12 @@
+.head2 { justify-content: space-between; align-items: center; margin-block-end: 1.25rem; }
+.head2 h1 { margin: 0; }
+.rv { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .6rem 0; border-block-end: 1px solid var(--app-border); }
+.stack { display: grid; gap: .6rem; }
+label { display: grid; gap: .2rem; font-size: .8rem; }
+.n { inline-size: 11rem; flex: none; }
+.inner { margin: .4rem 0 .8rem; background: var(--app-field); }
+.tag { margin-inline-start: .3rem; }
+.tag.off { opacity: .55; }
+.pick { border: 1px solid var(--app-border-strong); background: var(--app-card); color: var(--app-text); border-radius: 99px; padding: .3rem .8rem; font: inherit; font-size: .82rem; cursor: pointer; }
+.pick.on { background: var(--ion-color-primary); color: var(--ion-color-primary-contrast); border-color: transparent; }
+.pager { justify-content: center; margin-block-start: .8rem; }

@@ -1,0 +1,45 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'exam.title' | t }}</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="start()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (result(); as r) {
+    <section class="pn res">
+      <h2>{{ 'exam.score' | t }}</h2>
+      <p class="big">{{ r.score ?? '-' }} / {{ r.maxScore ?? '-' }}</p>
+      @if (r.passed === true) { <p class="ok">{{ 'exam.passed' | t }}</p> } @else if (r.passed === false) { <p class="err">{{ 'exam.failed' | t }}</p> }
+      @if (r.awaitingManualGrading > 0) { <p class="mut">{{ 'exam.manual' | t }}: {{ r.awaitingManualGrading }}</p> }
+      <ion-button routerLink="/app/courses" fill="outline">{{ 'nav.courses' | t }}</ion-button>
+    </section>
+  }
+  @else if (!attempt()) { <ion-spinner></ion-spinner> }
+  @else {
+    <div class="bar pn">
+      @if (left() !== null) { <span>{{ 'exam.left' | t }}: <b class="clock">{{ clock() }}</b></span> }
+      <small class="mut">{{ 'exam.tab' | t }}</small>
+      @if (saved()) { <span class="ok">{{ 'exam.saved' | t }}</span> }
+    </div>
+    @for (q of attempt()!.questions; track q.attemptQuestionId; let i = $index) {
+      <section class="pn">
+        <h2>{{ i + 1 }}. {{ q.text }} <small class="mut">({{ q.points }})</small></h2>
+        @if (isText(q)) {
+          <textarea class="fld" rows="3" [value]="text(q)" (input)="setText(q, $any($event.target).value)"></textarea>
+        } @else if (q.type === 'Matching') {
+          @for (o of q.options ?? []; track o.id) {
+            <div class="row2"><span class="lbl">{{ o.text }}</span>
+              <select class="fld" [value]="pair(q, o.id)" (change)="setPair(q, o.id, $any($event.target).value)"><option value=""></option>@for (m of q.matchTargets ?? []; track m) { <option [value]="m">{{ m }}</option> }</select></div>
+          }
+        } @else {
+          @for (o of q.options ?? []; track o.id) {
+            <label class="opt">
+              @if (isMulti(q)) { <input type="checkbox" [checked]="isChecked(q, o.id)" (change)="toggle(q, o.id)" /> }
+              @else { <input type="radio" [name]="q.attemptQuestionId" [checked]="isChecked(q, o.id)" (change)="setSingle(q, o.id)" /> }
+              <span>{{ o.text }}</span>
+            </label>
+          }
+        }
+      </section>
+    }
+    <div class="row2"><ion-button fill="outline" (click)="save()">{{ 'common.save' | t }}</ion-button><ion-button (click)="submit()" [disabled]="busy()">{{ 'exam.submit' | t }}</ion-button></div>
+  }
+</div>
+</ion-content>

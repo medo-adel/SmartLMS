@@ -1,0 +1,4 @@
+.rv { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .6rem 0; border-block-end: 1px solid var(--app-border); }
+.stack { display: grid; gap: .6rem; }
+label { display: grid; gap: .2rem; font-size: .8rem; }
+.n { inline-size: 6rem; flex: none; }

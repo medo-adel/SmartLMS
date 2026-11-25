@@ -1,0 +1,8 @@
+@use "../dashboard.shared";
+.heat { display: grid; gap: .4rem; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); }
+.cell { padding: .5rem; border-radius: .5rem; display: grid; gap: .15rem; font-size: .85rem;
+  background: rgb(220 38 38 / calc(.08 + var(--h) * .6)); color: var(--app-text); }
+.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q { margin-block-end: .75rem; } .row { display: flex; justify-content: space-between; gap: .5rem; } .note { margin-block-start: 0; }
+.cell { border: 1px solid var(--app-border); }
+.cell b { font-variant-numeric: tabular-nums; }

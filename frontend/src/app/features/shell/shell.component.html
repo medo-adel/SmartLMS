@@ -1,0 +1,32 @@
+<ion-split-pane contentId="main" when="lg">
+  <ion-menu contentId="main" class="sidebar" menuId="sidebar">
+    <ion-content>
+      <div class="brand">
+        @if (tenant.branding()?.logoUrl; as logo) { <img [src]="logo" alt="" /> } @else { <span class="mono" aria-hidden="true">{{ (tenant.branding()?.name ?? ('app.name' | t)).charAt(0) }}</span> }
+        <strong>{{ tenant.branding()?.name ?? ('app.name' | t) }}</strong>
+      </div>
+      <ion-list lines="none">
+        @for (i of items(); track i.path) {
+          <ion-item button detail="false" [routerLink]="i.path" routerLinkActive="active" (click)="closeMenu()">
+            <ion-icon slot="start" [name]="i.icon"></ion-icon><ion-label>{{ i.label | t }}</ion-label>
+          </ion-item>
+        }
+      </ion-list>
+      <div class="who">
+        <div class="me"><span class="avatar">{{ auth.user()?.fullName?.charAt(0) }}</span><span>{{ auth.user()?.fullName }}</span></div>
+        <button type="button" class="out" (click)="logout()" [attr.aria-label]="'common.logout' | t"><ion-icon name="log-out-outline"></ion-icon><span>{{ 'common.logout' | t }}</span></button>
+      </div>
+    </ion-content>
+  </ion-menu>
+  <div class="ion-page" id="main">
+    @if (!net.online()) { <div class="offline-bar" role="status"><ion-icon name="cloud-offline-outline"></ion-icon><span>{{ 'dl.bar' | t }} · {{ 'dl.pending' | t }}: {{ sync.pending() }}</span></div> }
+    <ion-tabs>
+      <ion-tab-bar slot="bottom" class="mobile-tabs">
+        @for (i of tabs(); track i.path) {
+          <ion-tab-button [tab]="i.tab" [layout]="'icon-top'"><ion-icon [name]="i.icon"></ion-icon><ion-label>{{ i.label | t }}</ion-label></ion-tab-button>
+        }
+        <button type="button" class="more" (click)="openMenu()"><ion-icon name="ellipsis-horizontal-outline"></ion-icon><span>{{ 'nav.menu' | t }}</span></button>
+      </ion-tab-bar>
+    </ion-tabs>
+  </div>
+</ion-split-pane>

@@ -1,0 +1,180 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'ops.title' | t }}</h1>
+  <div class="tabs2">
+    <button type="button" [class.on]="tab() === 'audit'" (click)="go('audit')">{{ 'ops.audit' | t }}</button>
+    <button type="button" [class.on]="tab() === 'bin'" (click)="go('bin')">{{ 'ops.bin' | t }}</button>
+    <button type="button" [class.on]="tab() === 'keys'" (click)="go('keys')">{{ 'ops.keys' | t }}</button>
+    <button type="button" [class.on]="tab() === 'hooks'" (click)="go('hooks')">{{ 'ops.hooks' | t }}</button>
+  </div>
+  @if (msg()) { <p [class.ok]="msg() !== 'common.error' && msg() !== 'ops.errKey'" [class.err]="msg() === 'common.error' || msg() === 'ops.errKey'">{{ msg() | t }}</p> }
+
+  @if (tab() === 'audit') {
+    <form class="pn row2" (ngSubmit)="loadAudit()">
+      <input class="fld" name="fEntity" [(ngModel)]="fEntity" [placeholder]="'ops.entity' | t" aria-label="entity" />
+      <select class="fld" name="fAction" [(ngModel)]="fAction" aria-label="action">
+        <option value="">{{ 'ops.anyAction' | t }}</option>
+        @for (a of auditActions; track a) { <option [value]="a">{{ a }}</option> }
+      </select>
+      <input class="fld" name="fFrom" type="date" [(ngModel)]="fFrom" aria-label="from" />
+      <ion-button type="submit">{{ 'ops.filter' | t }}</ion-button>
+    </form>
+    @if (audit() === null) { <ion-spinner></ion-spinner> }
+    @if (audit(); as a) {
+      @for (r of a.items; track r.id) {
+        <div class="pn">
+          <div class="row2"><b>{{ r.action }}</b> <span>{{ r.entityName }}</span> <span class="mut">{{ r.occurredAtUtc | date:'short' }}</span></div>
+          <p class="mut">{{ r.userName || '—' }}@if (r.ipAddress) { · {{ r.ipAddress }} } · {{ r.entityId }}</p>
+        </div>
+      }
+      @if (!a.items.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+      <p class="mut">{{ a.totalCount }} {{ 'ops.rows' | t }}</p>
+    }
+  }
+
+  @if (tab() === 'bin') {
+    <div class="pn row2">
+      @if (bin(); as b) {
+        <select class="fld" name="binEntity" [(ngModel)]="binEntity" (ngModelChange)="loadBin()" aria-label="entity filter">
+          <option value="">{{ 'ops.allEntities' | t }}</option>
+          @for (e of b.supportedEntities; track e) { <option [value]="e">{{ e }}</option> }
+        </select>
+      }
+    </div>
+    @if (bin() === null) { <ion-spinner></ion-spinner> }
+    @if (bin(); as b) {
+      @for (i of b.items; track i.entity + i.id) {
+        <div class="row2 pn">
+          <span><span class="tag">{{ i.entity }}</span> <b class="kname">{{ i.name }}</b> <span class="mut">· {{ i.deletedAtUtc | date:'short' }}@if (i.deletedBy) { · {{ i.deletedBy }} }</span></span>
+          <ion-button size="small" fill="outline" (click)="reviewRestore(i.entity, i.id, i.name)">{{ 'ops.restore' | t }}</ion-button>
+        </div>
+      }
+      @if (!b.items.length) { <p class="mut">{{ 'ops.binEmpty' | t }}</p> }
+    }
+    @if (pendingRestore(); as pr) {
+      <div class="pn confirm">
+        <h3>{{ 'ops.confirmRestoreTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'ops.entity' | t }}</span><span class="tag">{{ pr.entity }}</span></div>
+        <div class="row2"><span>{{ 'ops.itemName' | t }}</span><b>{{ pr.name }}</b></div>
+        <p class="mut">{{ 'ops.restoreConsequence' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmRestore()">{{ 'ops.confirmRestore' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingRestore.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+  }
+
+  @if (tab() === 'keys') {
+    @if (newKey(); as nk) {
+      <div class="pn">
+        <h3>{{ 'ops.keyCreated' | t }}</h3>
+        <p class="err">{{ 'ops.keyOnce' | t }}</p>
+        <p><b class="keyval">{{ nk.key }}</b></p>
+        <ion-button size="small" fill="outline" (click)="newKey.set(null)">{{ 'ops.keySaved' | t }}</ion-button>
+      </div>
+    }
+    <form class="pn stack" (ngSubmit)="createKey()">
+      <h3>{{ 'ops.newKey' | t }}</h3>
+      <input class="fld" name="keyName" [(ngModel)]="keyName" [placeholder]="'ops.keyName' | t" aria-label="key name" />
+      <input class="fld" name="keyScopes" [(ngModel)]="keyScopes" [placeholder]="'ops.keyScopes' | t" aria-label="scopes" />
+      <label>{{ 'ops.keyExpiry' | t }}</label>
+      <input class="fld" name="keyExpiry" type="date" [(ngModel)]="keyExpiry" aria-label="expiry" />
+      <ion-button type="submit" expand="block">{{ 'ops.createKey' | t }}</ion-button>
+    </form>
+    @if (keys() === null) { <ion-spinner></ion-spinner> }
+    @if (keys(); as ks) {
+      @for (k of ks; track k.id) {
+        <div class="row2 pn">
+          <span><b class="kname">{{ k.name }}</b> <span class="mut">{{ k.prefix }}… · {{ scopesOf(k) }}</span>
+            @if (k.revokedAtUtc) { <span class="tag">{{ 'ops.revokedTag' | t }}</span> }
+            @if (k.expiresAtUtc) { <span class="mut"> · {{ 'ops.expires' | t }} {{ k.expiresAtUtc | date:'mediumDate' }}</span> }
+          </span>
+          @if (!k.revokedAtUtc) {
+            <ion-button size="small" fill="clear" color="medium" (click)="reviewRevoke(k)">{{ 'ops.revoke' | t }}</ion-button>
+          }
+        </div>
+      }
+      @if (!ks.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+    }
+    @if (pendingRevoke(); as pv) {
+      <div class="pn confirm">
+        <h3>{{ 'ops.confirmRevokeTitle' | t }}</h3>
+        <div class="row2"><span>{{ 'ops.keyLabel' | t }}</span><b>{{ pv.name }}</b> <span class="mut">{{ pv.prefix }}…</span></div>
+        <p class="mut">{{ 'ops.revokeConsequence' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmRevoke()">{{ 'ops.confirmRevoke' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingRevoke.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+  }
+  @if (tab() === 'hooks') {
+    @if (hooks() === null) { <ion-spinner></ion-spinner> }
+    <form class="pn stack" (ngSubmit)="createHook()">
+      <h3>{{ 'ops.addHook' | t }}</h3>
+      <p class="mut">{{ 'ops.hookHint' | t }}</p>
+      <input class="fld" name="hu" dir="ltr" [(ngModel)]="hookUrl" placeholder="https://" [attr.aria-label]="'ops.hookUrl' | t" />
+      <div class="row2">
+        @for (t of eventTypes; track t) { <label class="chk"><input type="checkbox" [name]="'ht' + t" [attr.name]="'ht' + t" [(ngModel)]="hookTypes[t]" /> {{ t }}</label> }
+      </div>
+      <label class="chk"><input type="checkbox" name="ha" [(ngModel)]="hookActive" /> {{ 'ops.hookActive' | t }}</label>
+      <ion-button type="submit" size="small">{{ 'ops.addHook' | t }}</ion-button>
+    </form>
+    @if (newHook(); as nh) {
+      <div class="pn confirm">
+        <h3>{{ 'ops.hookSecret' | t }}</h3>
+        <p class="mut">{{ 'ops.hookSecretWarn' | t }}</p>
+        <p dir="ltr"><b>{{ nh.secret }}</b></p>
+      </div>
+    }
+    @for (h of hooks() ?? []; track h.id) {
+      <div class="pn">
+        @if (editHook() === h.id) {
+          <form class="stack" (ngSubmit)="saveHook()">
+            <input class="fld" name="eu" dir="ltr" [(ngModel)]="editUrl" />
+            <div class="row2">
+              @for (t of eventTypes; track t) { <label class="chk"><input type="checkbox" [name]="'et' + t" [(ngModel)]="editTypes[t]" /> {{ t }}</label> }
+            </div>
+            <label class="chk"><input type="checkbox" name="ea" [(ngModel)]="editActive" /> {{ 'ops.hookActive' | t }}</label>
+            <div class="row2">
+              <ion-button type="submit" size="small">{{ 'common.save' | t }}</ion-button>
+              <ion-button size="small" fill="clear" type="button" (click)="editHook.set('')">{{ 'common.cancel' | t }}</ion-button>
+            </div>
+          </form>
+        } @else {
+          <div class="rv"><span><b dir="ltr">{{ h.url }}</b><br />
+            <small class="mut">{{ h.eventTypes.join(', ') }} · <span class="tag">{{ h.isActive ? ('ops.active' | t) : ('ops.inactive' | t) }}</span>
+            @if (h.consecutiveFailures > 0) { <span class="tag">{{ 'ops.failures' | t }}: {{ h.consecutiveFailures }}</span> }</small></span>
+            <span class="row2">
+              <ion-button size="small" fill="outline" (click)="toggleDeliveries(h)">{{ 'ops.deliveries' | t }}</ion-button>
+              <ion-button size="small" fill="outline" (click)="startEditHook(h)">{{ 'ops.editHook' | t }}</ion-button>
+              <ion-button size="small" fill="clear" color="danger" (click)="reviewHookDelete(h)">{{ 'ops.deleteHook' | t }}</ion-button>
+            </span></div>
+        }
+        @if (deliveriesFor() === h.id) {
+          @if (deliveries() === null) { <ion-spinner></ion-spinner> }
+          @if (deliveries(); as dl) {
+            @for (d of dl.items; track d.id) {
+              <div class="rv"><span><span class="tag">{{ d.eventType }}</span> <span class="tag">{{ d.status }}</span> · {{ 'ops.attempts' | t }}: {{ d.attemptCount }}
+                <br /><small class="mut">@if (d.lastHttpStatus !== null) { HTTP {{ d.lastHttpStatus }} · }{{ d.lastError }} @if (d.nextAttemptAtUtc) { · {{ 'ops.nextAttempt' | t }} {{ d.nextAttemptAtUtc | date:'short' }} }</small></span>
+                @if (d.status === 'Failed') { <ion-button size="small" fill="outline" (click)="retryDelivery(d.id)">{{ 'ops.retry' | t }}</ion-button> }</div>
+            } @empty { <p class="mut">{{ 'ops.noDeliveries' | t }}</p> }
+          }
+        }
+      </div>
+    } @empty { @if (hooks() !== null) { <p class="mut">{{ 'common.empty' | t }}</p> } }
+    @if (pendingHookDelete(); as pd) {
+      <div class="pn confirm">
+        <h3>{{ 'ops.confirmDeleteHookTitle' | t }}</h3>
+        <div class="row2"><span>URL</span><b dir="ltr">{{ pd.url }}</b></div>
+        <p class="mut">{{ 'ops.confirmDeleteHookConsequence' | t }}</p>
+        <div class="row2">
+          <ion-button color="danger" (click)="confirmHookDelete()">{{ 'ops.deleteHook' | t }}</ion-button>
+          <ion-button fill="clear" (click)="pendingHookDelete.set(null)">{{ 'common.cancel' | t }}</ion-button>
+        </div>
+      </div>
+    }
+  }
+</div>
+</ion-content>

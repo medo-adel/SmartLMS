@@ -1,0 +1,37 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'dl.title' | t }}</h1>
+  <section class="pn">
+    <p>{{ (net.online() ? 'dl.online' : 'dl.offline') | t }}</p>
+    <div class="row2">
+      <span>{{ 'dl.pending' | t }}: <b>{{ sync.pending() }}</b></span>
+      <ion-button size="small" fill="outline" [disabled]="!net.online() || sync.pending() === 0" (click)="syncNow()">{{ 'dl.syncNow' | t }}</ion-button>
+      @if (result()) { <small class="mut">{{ result() | t }}</small> }
+    </div>
+  </section>
+  @if (sync.rejected().length > 0) {
+    <section class="pn warn" role="alert">
+      <p><b>{{ 'dl.rejected' | t }}: {{ sync.rejected().length }}</b></p>
+      <p class="mut">{{ 'dl.rejectedHelp' | t }}</p>
+      <ul class="mut">@for (r of reasons(); track r.k) { <li>{{ r.count }} × {{ r.k | t }}</li> }</ul>
+      <ion-button size="small" fill="outline" (click)="sync.dismissRejected()">{{ 'dl.dismiss' | t }}</ion-button>
+    </section>
+  }
+  <section class="pn">
+    <h2>{{ 'dl.saved.title' | t }}</h2>
+    @if (!offline.supported) { <p class="mut">{{ 'dl.webNote' | t }}</p> }
+    @else {
+      <p class="mut">{{ 'dl.storage' | t }}: {{ bytes(offline.usedBytes()) }}. {{ 'dl.rule' | t }}</p>
+      @for (e of offline.entries(); track e.lessonId) {
+        <div class="rv">
+          <span><b>{{ e.title }}</b> <span class="tag">{{ e.lessonType }}</span><br /><small class="mut">{{ bytes(e.sizeBytes) }} · {{ (expired(e.downloadedAtUtc) ? 'dl.expired' : 'dl.until') | t }} {{ expiry(e.downloadedAtUtc) | date: 'mediumDate' }}</small></span>
+          <span class="row2">
+            <ion-button size="small" [routerLink]="['/app/learn', e.courseId, e.lessonId]">{{ 'dl.open' | t }}</ion-button>
+            <ion-button size="small" fill="outline" color="danger" (click)="remove(e.lessonId)">{{ 'dl.remove' | t }}</ion-button>
+          </span>
+        </div>
+      } @empty { <p class="mut">{{ 'dl.none' | t }}</p> }
+    }
+  </section>
+</div>
+</ion-content>

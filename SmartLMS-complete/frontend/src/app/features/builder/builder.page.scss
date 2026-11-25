@@ -1,0 +1,13 @@
+h3 { font-size: .95rem; margin: .8rem 0 .3rem; }
+.les { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .4rem 0; border-block-end: 1px solid var(--app-border); flex-wrap: wrap; }
+.gap, form.row2 + form { }
+.gap { margin-block: .8rem; }
+.up { font-size: .8rem; display: grid; gap: .2rem; }
+label { display: grid; gap: .2rem; font-size: .8rem; }
+.n { inline-size: 5rem; flex: none; }
+.qd { padding: .5rem 0; border-block-end: 1px solid var(--app-border); }
+ul { margin: .3rem 0; padding-inline-start: 1.2rem; }
+textarea { flex-basis: 100%; }
+form.row2 { margin-block: .6rem; }
+.sec { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .4rem; }
+.stack { display: grid; gap: .5rem; }

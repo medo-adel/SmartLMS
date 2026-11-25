@@ -1,0 +1,7 @@
+.stack { display: grid; gap: .6rem; }
+.row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: end; }
+label { display: grid; gap: .2rem; font-size: .8rem; }
+.n { inline-size: 7rem; flex: none; }
+.rv { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .5rem 0; border-block-end: 1px solid var(--app-border); }
+.chk { display: flex; gap: .4rem; align-items: center; font-size: .85rem; }
+.ok { color: var(--app-success, #15803d); }

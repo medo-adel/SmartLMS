@@ -1,0 +1,5 @@
+.ex { display: grid; gap: 1rem; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .45rem 0; border-block-end: 1px solid var(--app-border); inline-size: 100%; background: none; border-inline: 0; border-block-start: 0; font: inherit; color: inherit; text-align: start; }
+button.row { cursor: pointer; }
+.ts { background: var(--app-chip, #e6f4f1); color: var(--ion-color-primary); border: 0; border-radius: 8px; padding: .1rem .5rem; font: inherit; font-weight: 700; cursor: pointer; }
+.form { display: grid; gap: .5rem; margin-block-end: .5rem; }

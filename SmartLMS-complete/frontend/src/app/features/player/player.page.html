@@ -1,0 +1,69 @@
+<ion-content>
+<div class="pg">
+  @if (locked()) { <section class="pn"><p class="err">{{ 'course.noAccess' | t }}</p><ion-button [routerLink]="['/app/courses', courseId]">{{ 'cat.open' | t }}</ion-button>
+    @if (canUnlock()) { <ion-button fill="outline" (click)="unlock()">{{ 'player.unlock' | t }}</ion-button> }
+    @if (unlockMsg()) { <p class="mut">{{ unlockMsg() | t }}</p> }</section> }
+  @else if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (!lesson()) { <ion-spinner></ion-spinner> }
+  @else {
+    <div class="head row2"><h1>{{ lesson()!.title }}</h1><span class="tag">{{ lesson()!.lessonType }}</span></div>
+    @if (offlineMode()) { <p class="mut off">{{ 'dl.playingOffline' | t }}</p> }
+    <div class="layout" [class.with-drawer]="drawer()">
+      <div class="main">
+        @if (mediaUrl(); as src) {
+          <div class="stage">
+            @if (lesson()!.lessonType === 'Video') {
+              <video #media [src]="src" controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline (timeupdate)="onTime()" (ended)="complete()"></video>
+            } @else if (lesson()!.lessonType === 'Audio') {
+              <audio #media [src]="src" controls controlsList="nodownload" (ended)="complete()"></audio>
+            } @else { <iframe [src]="safeUrl()" title="document"></iframe> }
+            <div class="wm" [style.left.%]="wm().x" [style.top.%]="wm().y" aria-hidden="true">{{ wm().text }}</div>
+            @if (hidden()) { <div class="privacy"><span>{{ 'player.privacy' | t }}</span></div> }
+            @if (quiz(); as q) {
+              <div class="iq">
+                <strong>{{ q.question.text }}</strong>
+                @for (o of q.options; track o.id) { <ion-button size="small" fill="outline" (click)="answerQuiz(o.id)">{{ o.text }}</ion-button> }
+                @if (quizMsg()) { <span class="err">{{ quizMsg() | t }}</span> }
+              </div>
+            }
+          </div>
+          <div class="row2 tools">
+            @if (lesson()!.lessonType === 'Video') {
+              <label>{{ 'player.speed' | t }}
+                <select class="fld sp" (change)="setSpeed($any($event.target).value)"><option value="0.75">0.75x</option><option value="1" selected>1x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></label>
+            }
+            <small class="mut">{{ 'player.limit' | t }}</small>
+          </div>
+        }
+        @if (canDownload()) {
+          <div class="row2 tools">
+            @if (offline.entry(lessonId)) { <ion-button size="small" fill="outline" (click)="removeDownload()">{{ 'dl.remove' | t }}</ion-button><small class="mut">{{ 'dl.saved' | t }}</small> }
+            @else if (offline.supported) { <ion-button size="small" fill="outline" [disabled]="!!offline.busy() || !net.online()" (click)="download()">{{ (offline.busy() ? 'dl.downloading' : 'dl.download') | t }}</ion-button> }
+            @else { <small class="mut">{{ 'dl.webNote' | t }}</small> }
+            @if (dlMsg()) { <small class="mut">{{ dlMsg() | t }}</small> }
+          </div>
+        }
+        @if (lesson()!.lessonType === 'InteractiveSlides') {
+          <section class="pn">
+            @if (slide(); as sl) {
+              <h2>{{ sl.content.title }}</h2>
+              @if (sl.content.imageUrl) { <img class="sl" [src]="sl.content.imageUrl" alt="" /> }
+              <div class="txt">{{ sl.content.body }}</div>
+              <div class="row2"><ion-button size="small" fill="outline" (click)="go(-1)" [disabled]="slideIx() === 0">{{ 'slides.prev' | t }}</ion-button><span class="mut">{{ slideIx() + 1 }} {{ 'slides.of' | t }} {{ slides().length }}</span><ion-button size="small" fill="outline" (click)="go(1)" [disabled]="slideIx() >= slides().length - 1">{{ 'slides.next' | t }}</ion-button></div>
+            } @else { <p class="mut">{{ 'common.empty' | t }}</p> }
+          </section>
+        }
+        <app-lesson-extras [lessonId]="lessonId" [timed]="lesson()!.lessonType === 'Video' || lesson()!.lessonType === 'Audio'" [now]="nowFn" (seek)="seek($event)" />
+        @if (lesson()!.contentMarkdown) { <section class="pn"><h2>{{ 'player.notes' | t }}</h2><div class="txt">{{ lesson()!.contentMarkdown }}</div></section> }
+        @if (lesson()!.externalUrl) { <section class="pn"><a [href]="lesson()!.externalUrl" target="_blank" rel="noopener noreferrer">{{ lesson()!.externalUrl }}</a></section> }
+        <div class="row2">
+          <ion-button (click)="complete()">{{ 'player.complete' | t }}</ion-button>
+          @if (next(); as n) { <ion-button fill="outline" [routerLink]="['/app/learn', courseId, n.id]">{{ 'player.next' | t }}: {{ n.title }}</ion-button> }
+          <ion-button fill="outline" (click)="drawer.set(!drawer())">{{ 'player.ask' | t }}</ion-button>
+        </div>
+      </div>
+      @if (drawer()) { <app-ai-drawer [courseId]="courseId" [lessonId]="lessonId" (closed)="drawer.set(false)" (seek)="seek($event)" /> }
+    </div>
+  }
+</div>
+</ion-content>

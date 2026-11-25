@@ -1,0 +1,114 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'hw.title' | t }}</h1>
+
+  @if (reviews().length) {
+    <section class="pn">
+      <h2>{{ 'hw.reviews' | t }} <span class="tag">{{ reviews().length }}</span></h2>
+      @for (rv of reviews(); track rv.id) {
+        <div class="rv">
+          <div class="row2 head2">
+            <b>{{ rv.assignmentTitle }}</b>
+            <span class="tag">{{ rv.status }}</span>
+          </div>
+          <ion-button size="small" fill="outline" (click)="openReview(rv)">{{ (reviewFor() === rv.id ? 'approvals.hide' : 'hw.reviewNow') | t }}</ion-button>
+          @if (reviewFor() === rv.id) {
+            <div class="pn inner">
+              @if (reviewWork(); as w) {
+                @if (w.textContent) { <p class="subtext">{{ w.textContent }}</p> }
+                @if (w.linkUrl) { <a [href]="w.linkUrl" target="_blank" rel="noopener noreferrer" dir="ltr">{{ w.linkUrl }}</a> }
+              } @else { <ion-spinner></ion-spinner> }
+              @if (rv.status === 'Assigned') {
+                <form class="stack" (ngSubmit)="submitReview(rv)">
+                  @for (r of rv.rubric; track r.id) {
+                    <label>{{ r.name }} ({{ r.maxPoints }} {{ 'asg.pts' | t }})
+                      <input class="fld n" type="number" min="0" [max]="r.maxPoints" [attr.name]="'rv' + r.id" [(ngModel)]="reviewScores[r.id]" />
+                    </label>
+                  }
+                  <textarea class="fld" name="rc" rows="2" [(ngModel)]="reviewComments" [placeholder]="'hw.reviewComments' | t" [attr.aria-label]="'hw.reviewComments' | t"></textarea>
+                  <ion-button type="submit" size="small">{{ 'hw.sendReview' | t }}</ion-button>
+                </form>
+              } @else { <p class="mut">{{ 'hw.reviewDone' | t }}</p> }
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <section class="pn">
+    <label class="stack">
+      <span class="mut">{{ 'asg.pick' | t }}</span>
+      <select class="fld" name="course" [(ngModel)]="course" (ngModelChange)="pickCourse()" [attr.aria-label]="'asg.pick' | t">
+        <option value="">—</option>
+        @for (e of enrollments() ?? []; track e.id) { <option [value]="e.courseId">{{ e.title }}</option> }
+      </select>
+    </label>
+    @if (failed()) { <p class="err">{{ 'common.error' | t }}</p> }
+    @if (enrollments() === null) { <ion-spinner></ion-spinner> }
+  </section>
+
+  @if (msg()) { <p [class.ok]="msg() !== 'common.error'" [class.err]="msg() === 'common.error'">{{ msg() | t }}</p> }
+
+  @if (course) {
+    <section class="pn">
+      @for (a of items(); track a.id) {
+        <div class="rv">
+          <div class="row2 head2">
+            <b>{{ a.title }}</b>
+            <span class="tags">
+              @if (a.mine) { <span class="tag mine">{{ a.mine.status }}@if (a.mine.totalScore !== null) { · {{ a.mine.totalScore }} / {{ a.maxPoints ?? '—' }} }</span> }
+              @if (a.isGroup) { <span class="tag">{{ 'asg.group' | t }}</span> }
+              @if (a.peerReviewEnabled) { <span class="tag">{{ 'asg.peer' | t }}</span> }
+            </span>
+          </div>
+          <p class="mut">
+            {{ a.dueAtUtc ? ('asg.due' | t) + ': ' + (a.dueAtUtc | date:'medium') : ('asg.noDue' | t) }}
+            @if (a.maxPoints) { · {{ a.maxPoints }} {{ 'asg.pts' | t }} }
+          </p>
+          @if (a.instructions) { <p>{{ a.instructions }}</p> }
+          <ion-button size="small" fill="outline" (click)="toggle(a)">{{ (openId() === a.id ? 'approvals.hide' : 'hw.open') | t }}</ion-button>
+
+          @if (openId() === a.id) {
+            <div class="pn inner">
+              @if (mySubmission()[a.id]; as mine) {
+                @if (mine) {
+                  <div class="work">
+                    <p class="mut">{{ 'hw.yours' | t }}: v{{ mine.version }} · {{ mine.status }}@if (mine.totalScore !== null) { · {{ mine.totalScore }} / {{ mine.maxPoints ?? '—' }} }@if (mine.isLate) { · {{ 'asg.late' | t }} }</p>
+                    @if (mine.textContent) { <p class="subtext">{{ mine.textContent }}</p> }
+                    @if (mine.linkUrl) { <a [href]="mine.linkUrl" target="_blank" rel="noopener noreferrer" dir="ltr">{{ mine.linkUrl }}</a> }
+                    @if (mine.feedback) { <p><b>{{ 'asg.feedback' | t }}:</b> {{ mine.feedback }}</p> }
+                    @for (c of mine.comments; track c.id) { <p class="comment">{{ c.body }} <small class="mut">{{ c.createdAtUtc | date:'short' }}</small></p> }
+                  </div>
+                }
+              }
+              @if (a.isGroup) {
+                <div class="stack">
+                  @if (teamId()[a.id]) {
+                    <p class="ok">{{ 'hw.teamReady' | t }}</p>
+                    <p class="mut">{{ 'hw.teamCode' | t }} <code dir="ltr">{{ teamId()[a.id] }}</code></p>
+                  } @else {
+                    <div class="row2">
+                      <input class="fld" [attr.name]="'tn' + a.id" [(ngModel)]="teamName" [placeholder]="'hw.teamName' | t" [attr.aria-label]="'hw.teamName' | t" />
+                      <ion-button size="small" fill="outline" (click)="createTeam(a)">{{ 'hw.createTeam' | t }}</ion-button>
+                    </div>
+                    <div class="row2">
+                      <input class="fld" dir="ltr" [attr.name]="'jc' + a.id" [(ngModel)]="joinCode" [placeholder]="'hw.joinCode' | t" [attr.aria-label]="'hw.joinCode' | t" />
+                      <ion-button size="small" fill="outline" (click)="joinTeam(a)">{{ 'hw.joinTeam' | t }}</ion-button>
+                    </div>
+                  }
+                </div>
+              }
+              <form class="stack" (ngSubmit)="submit(a)">
+                <textarea class="fld" name="st" rows="4" [(ngModel)]="submitText" [placeholder]="'hw.yourText' | t" [attr.aria-label]="'hw.yourText' | t"></textarea>
+                <input class="fld" dir="ltr" name="sl" type="url" [(ngModel)]="submitLink" placeholder="https://" [attr.aria-label]="'hw.yourLink' | t" />
+                <ion-button type="submit" size="small">{{ 'hw.submit' | t }}</ion-button>
+              </form>
+            </div>
+          }
+        </div>
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+  }
+</div>
+</ion-content>

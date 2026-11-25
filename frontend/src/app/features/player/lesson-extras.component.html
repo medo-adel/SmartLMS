@@ -1,0 +1,48 @@
+<div class="ex">
+  @if (chapters().length) {
+    <section class="pn"><h2>{{ 'ex.chapters' | t }}</h2>
+      @for (c of chapters(); track c.id) { <button class="row" type="button" (click)="seek.emit(c.startSeconds)"><span>{{ c.title }}</span><small class="mut">{{ clock(c.startSeconds) }}</small></button> }
+    </section>
+  }
+  @if (files().length) {
+    <section class="pn"><h2>{{ 'ex.resources' | t }}</h2>
+      @for (r of files(); track r.id) { <div class="row"><span>{{ r.title }} <small class="mut">{{ size(r.sizeBytes) }}</small></span><ion-button size="small" fill="outline" (click)="download(r)">{{ 'ex.download' | t }}</ion-button></div> }
+    </section>
+  }
+  <section class="pn">
+    <h2>{{ 'ex.myNotes' | t }}</h2>
+    <form class="form" (ngSubmit)="addNote()">
+      <textarea class="fld" name="nb" rows="2" [(ngModel)]="body" [placeholder]="(timed() ? 'ex.noteAt' : 'ex.note') | t" maxlength="2000"></textarea>
+      <ion-button type="submit" size="small" [disabled]="!body.trim()">{{ 'ex.addNote' | t }}</ion-button>
+    </form>
+    @for (n of notes(); track n.id) {
+      <div class="row">
+        @if (editingNote === n.id) {
+          <span>
+            @if (n.timestampSeconds !== null) { <button class="ts" type="button" (click)="seek.emit(n.timestampSeconds)">{{ clock(n.timestampSeconds) }}</button> }
+            <textarea class="fld" name="edit-nb" rows="2" [(ngModel)]="editBody" maxlength="4000" aria-label="edit note"></textarea>
+          </span>
+          <span>
+            <ion-button size="small" (click)="saveNote(n)" [disabled]="!editBody.trim()">{{ 'common.save' | t }}</ion-button>
+            <ion-button size="small" fill="clear" (click)="editingNote = null">{{ 'common.cancel' | t }}</ion-button>
+          </span>
+        } @else {
+          <span>@if (n.timestampSeconds !== null) { <button class="ts" type="button" (click)="seek.emit(n.timestampSeconds)">{{ clock(n.timestampSeconds) }}</button> } {{ n.body }}</span>
+          <span>
+            <ion-button size="small" fill="clear" (click)="startEditNote(n)">{{ 'common.edit' | t }}</ion-button>
+            <ion-button size="small" fill="clear" color="danger" (click)="removeNote(n.id)">{{ 'build.delete' | t }}</ion-button>
+          </span>
+        }
+      </div>
+    } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+  </section>
+  @if (timed()) {
+    <section class="pn">
+      <h2>{{ 'ex.bookmarks' | t }}</h2>
+      <ion-button size="small" fill="outline" (click)="addMark()">{{ 'ex.addBookmark' | t }}</ion-button>
+      @for (m of marks(); track m.id) {
+        <div class="row"><button class="ts" type="button" (click)="seek.emit(m.timestampSeconds)">{{ clock(m.timestampSeconds) }}</button><span>{{ m.label }}</span><ion-button size="small" fill="clear" color="danger" (click)="removeMark(m.id)">{{ 'build.delete' | t }}</ion-button></div>
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+  }
+</div>

@@ -1,0 +1,171 @@
+SmartLMS - full Windows setup and run guide
+===========================================
+
+Follow top to bottom. Everything runs on your machine. This bundle
+contains the complete frontend and the complete backend. The AI helper
+service the backend can optionally call is a separate external service
+and is NOT included; the app runs fine without it (AI features stay
+inactive). No payment keys are included and no real charges are possible
+until you add your own Paymob test keys (step 7).
+
+0. What you need installed
+--------------------------
+- Windows 10 or 11.
+- .NET SDK 10.0.x: https://dotnet.microsoft.com/download
+  Check in a new terminal:   dotnet --version   (should print 10.0.x)
+- Node.js 24 LTS, version 24.15.0 or newer: https://nodejs.org
+  (Node 22 also works if it is 22.22.3 or newer. Node 20 is too old:
+  Angular 22 and the jsdom test library both require the versions
+  above.)  Check:   node --version
+- SQL Server. Easiest local options: SQL Server Express (free) or
+  Developer edition. Details in step 3.
+
+1. Extract
+----------
+The zip contains ONE top folder called SmartLMS-complete.
+a) Extract the zip anywhere (right-click, Extract All).
+b) Move or rename that SmartLMS-complete folder to C:\SmartLMS.
+You should end up with:
+   C:\SmartLMS\backend
+   C:\SmartLMS\frontend
+   C:\SmartLMS\docs
+All paths below assume exactly this.
+
+2. Set the JWT signing key (required)
+-------------------------------------
+The API refuses to start without a signing key. It is never stored in
+the repo. From a terminal:
+
+  cd C:\SmartLMS\backend\src\SmartLMS.API
+  dotnet user-secrets init
+  dotnet user-secrets set "Jwt:SigningKey" "PUT-A-LONG-RANDOM-STRING-HERE-32-CHARS-MIN"
+
+Use your own random value, at least 32 characters. (An environment
+variable Jwt__SigningKey also works if you prefer.)
+
+3. SQL Server connection
+------------------------
+No manual database creation is needed: on first run in Development the
+API applies migrations and creates the SmartLMSDb database itself.
+You only need the connection string in
+backend\src\SmartLMS.API\appsettings.json (ConnectionStrings:
+DefaultConnection) to point at a server that exists:
+
+- SQL Server EXPRESS: a default Express install is a NAMED instance
+  called SQLEXPRESS, so use:
+    Server=.\SQLEXPRESS;Database=SmartLMSDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true;
+- SQL Server DEVELOPER edition with a default instance, or any default
+  instance: the shipped string works as-is (Server=.;...).
+- A named instance with another name: Server=.\INSTANCENAME;...
+- SQL login instead of Windows auth: replace Trusted_Connection=True
+  with User Id=...;Password=...;
+
+4. Create your admin accounts (before first run)
+------------------------------------------------
+The seed creates the demo tenant "demo" automatically, but admin
+accounts are only created from values YOU supply. In the same terminal
+(still in backend\src\SmartLMS.API):
+
+  dotnet user-secrets set "Seed:DemoAdminEmail" "admin@example.com"
+  dotnet user-secrets set "Seed:DemoAdminPassword" "CHOOSE-A-STRONG-PASSWORD"
+
+Use an email and password of your choosing. On first run this creates
+the TenantAdmin of the demo tenant, already email-confirmed, so you can
+log in with it directly. These are your local dev credentials; nothing
+is bundled.
+
+Optional, for the platform SuperAdmin (operations console across
+tenants; logs in without a tenant):
+  dotnet user-secrets set "Seed:SuperAdminEmail" "root@example.com"
+  dotnet user-secrets set "Seed:SuperAdminPassword" "CHOOSE-ANOTHER-STRONG-PASSWORD"
+
+5. Trust the local HTTPS certificate (once per machine)
+-------------------------------------------------------
+The API runs on https://localhost:7200. Browsers block calls to it
+until the ASP.NET Core dev certificate is trusted:
+
+  dotnet dev-certs https --trust
+
+Confirm the prompt, then restart any open browser windows.
+
+6. Build, test, and run the backend
+-----------------------------------
+  cd C:\SmartLMS\backend
+  dotnet build SmartLMS.sln
+    Expected: Build succeeded, 0 errors, 7 warnings. All 7 are
+    pre-existing warnings carried over from the original codebase and
+    reviewed; the round-2 update adds none.
+  dotnet test SmartLMS.sln
+    Expected: Passed! - Failed: 0, Passed: 143
+    (139 existing tests + 4 added smoke tests for the new read routes.
+    The test host uses its own temporary SQLite file database, so tests
+    do NOT need your SQL Server and do NOT touch your data.)
+  cd src\SmartLMS.API
+  dotnet run --launch-profile https
+
+The API listens on https://localhost:7200 (and http://localhost:5057).
+On first run it creates the database, migrates, and seeds the demo
+tenant plus your admin from step 4. Verification codes (OTP) are
+written to this API console in Development (Otp:LogCodes), so you can
+read login/verification codes from the console while testing.
+Keep this terminal open.
+
+7. Optional: your own service keys (only if you want them)
+----------------------------------------------------------
+None are required for the app to run; leave them empty and the related
+features stay inactive. All go through user-secrets or environment
+variables, never into committed files:
+- Payments (Paymob): keys under "Payments:Gateways:Paymob" - SecretKey,
+  PublicKey, HmacSecret, IntegrationId. Use TEST keys until you are
+  ready for real charges.
+- AI service: "AiService:BaseUrl" and "AiService:ApiKey". The AI
+  service itself is a separate external service, not part of this
+  bundle; without it, AI features stay inactive.
+- Email and file storage: sections "Email" and "Storage".
+
+8. Run the frontend
+-------------------
+In a SECOND terminal:
+
+  cd C:\SmartLMS\frontend
+  npm ci
+  npm start
+
+The app is served at http://localhost:4200.
+The frontend already points at https://localhost:7200/api/v1 and tenant
+"demo" (frontend\src\environments\environment.ts). If you changed the
+API address in step 6, edit apiBaseUrl there. CORS for localhost:4200
+is already allowed by the backend.
+
+9. Try the full course workflow
+-------------------------------
+With both terminals running:
+1. Log in as the tenant admin you seeded in step 4
+   (email + password, tenant "demo" is preselected).
+2. Register an instructor and a student from the app's registration
+   page (choose the role; Student is the default). Each registration
+   sends an email-verification code: read it from the API console
+   (step 6), enter it, then log in.
+3. As the instructor: create a course, add a section and a lesson,
+   submit for approval.
+4. As the tenant admin: approve and publish the course.
+5. As the student: enroll and open the lesson.
+6. Exam round trip: instructor builds questions in the bank and creates
+   an exam; student takes it; instructor grades it.
+
+10. If something fails
+----------------------
+- Build errors: send the full error text (never passwords or keys).
+- API won't start: check step 2 (signing key) and step 3 (SQL Server
+  running, right instance name, reachable).
+- Browser blocks the API or login silently fails: redo step 5 and
+  restart the browser.
+- Frontend can't reach the API: confirm the API is running on
+  https://localhost:7200 and check environment.ts.
+- Tests: run  dotnet test SmartLMS.sln  again; a fresh run recreates
+  its temporary database.
+
+Note for readers of the docs folder: earlier packages said the backend
+update was "not compiled or run". That note is SUPERSEDED: the exact
+code in this bundle was compiled and tested on 2026-11-25 - see
+docs\README-VERIFICATION.txt (build 0 errors, 143/143 tests pass).

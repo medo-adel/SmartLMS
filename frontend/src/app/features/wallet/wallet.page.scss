@@ -1,0 +1,8 @@
+.bal { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: .2rem; color: var(--ion-color-primary-contrast); border: 0; padding: 1.6rem 1.75rem;
+  background: radial-gradient(26rem 12rem at 100% 0%, rgb(255 255 255 / 20%), transparent 65%), linear-gradient(135deg, var(--ion-color-primary), var(--brand-end)); box-shadow: 0 14px 30px -14px rgba(var(--ion-color-primary-rgb), .7); }
+.bal .mut { color: rgb(255 255 255 / 82%); font-weight: 600; letter-spacing: .03em; }
+.amt { font-size: clamp(2.2rem, 6vw, 3rem); font-weight: 700; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 992px) { .two { grid-template-columns: 1fr 1fr; } }
+.stack { display: grid; gap: .7rem; }
+.tx { display: flex; justify-content: space-between; align-items: center; padding: .7rem 0; border-block-end: 1px solid var(--app-border); }

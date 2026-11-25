@@ -1,0 +1,7 @@
+.rv { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .6rem 0; border-block-end: 1px solid var(--app-border); }
+.inner { margin: .4rem 0 .8rem; background: var(--app-field); }
+.sec { padding: .35rem 0; }
+.sec ul { margin: .25rem 0 .4rem; padding-inline-start: 1.2rem; }
+.sec small { margin-inline-start: .4rem; }
+.sec li { font-size: .9rem; color: var(--app-text-2); }
+.inner a { color: var(--ion-color-primary); font-weight: 600; text-decoration: none; }

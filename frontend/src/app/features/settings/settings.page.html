@@ -1,0 +1,88 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'set.title' | t }}</h1>
+
+  <section class="pn">
+    <h2>{{ 'set.identity' | t }}</h2>
+    <form class="stack" (ngSubmit)="saveIdentity()">
+      <input class="fld" name="sn" [(ngModel)]="name" [placeholder]="'ten.name' | t" [attr.aria-label]="'ten.name' | t" />
+      <div class="row2">
+        <label>{{ 'set.primary' | t }}<input class="fld clr" type="color" name="sp" [(ngModel)]="primaryColor" /></label>
+        <label>{{ 'set.secondary' | t }}<input class="fld clr" type="color" name="ss" [(ngModel)]="secondaryColor" /></label>
+        <label>{{ 'set.accent' | t }}<input class="fld clr" type="color" name="sa" [(ngModel)]="accentColor" /></label>
+      </div>
+      <div class="row2">
+        <label>{{ 'ten.lang' | t }}
+          <select class="fld" name="sl" [(ngModel)]="defaultLanguage"><option value="ar">العربية</option><option value="en">English</option></select>
+        </label>
+        <label>{{ 'ten.tz' | t }}<input class="fld" dir="ltr" name="stz" [(ngModel)]="timeZoneId" placeholder="Africa/Cairo" [attr.aria-label]="'ten.tz' | t" /></label>
+        <label>{{ 'ten.currency' | t }}<input class="fld n" dir="ltr" name="sc" [(ngModel)]="currency" placeholder="EGP" [attr.aria-label]="'ten.currency' | t" /></label>
+      </div>
+      <p class="mut">{{ 'set.tzNote' | t }}</p>
+      <ion-button type="submit" [disabled]="!name.trim() || !timeZoneId.trim() || !currency.trim()">{{ 'set.save' | t }}</ion-button>
+    </form>
+    @if (info() === 'saved') { <p class="ok">{{ 'set.saved' | t }}</p> }
+  </section>
+
+  <section class="pn">
+    <h2>{{ 'set.logo' | t }}</h2>
+    @if (tenant.branding()?.logoUrl; as logo) { <img class="logo" [src]="logo" alt="logo" /> }
+    <p class="mut">{{ 'set.logoHint' | t }}</p>
+    <div class="row2">
+      <input class="fld" type="file" accept="image/png,image/jpeg,image/webp" [attr.aria-label]="'set.logo' | t" (change)="pickLogo($event)" />
+      <ion-button size="small" [disabled]="!logoFile" (click)="uploadLogo()">{{ 'set.upload' | t }}</ion-button>
+    </div>
+    @if (info() === 'logo') { <p class="ok">{{ 'set.logoDone' | t }}</p> }
+  </section>
+
+  <section class="pn">
+    <h2>{{ 'set.flags' | t }}</h2>
+    @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+    @else if (flags() === null) { <ion-spinner></ion-spinner> }
+    @else {
+      @for (f of flags(); track f.key) {
+        <div class="rv">
+          <span dir="ltr">{{ f.key }}</span>
+          <button class="sw" [class.on]="f.isEnabled" (click)="toggleFlag(f)">{{ (f.isEnabled ? 'set.flagOn' : 'set.flagOff') | t }}</button>
+        </div>
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    }
+  </section>
+
+  <section class="pn">
+    <h2>{{ 'set.cats' | t }}</h2>
+    @if (info() === 'catAdded') { <p class="ok">{{ 'set.catAdded' | t }}</p> }
+    @if (info() === 'catSaved') { <p class="ok">{{ 'set.catSaved' | t }}</p> }
+    @if (info() === 'catDeleted') { <p class="ok">{{ 'set.catDeleted' | t }}</p> }
+    <form class="row2" (ngSubmit)="addCategory()">
+      <input class="fld" name="cn" [(ngModel)]="catName" [placeholder]="'set.catName' | t" [attr.aria-label]="'set.catName' | t" />
+      <select class="fld" name="cp" [(ngModel)]="catParent">
+        <option value="">{{ 'set.catParent' | t }}</option>
+        @for (c of cats() ?? []; track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+      </select>
+      <input class="fld n2" type="number" name="co" [(ngModel)]="catOrder" [placeholder]="'set.catOrder' | t" [attr.aria-label]="'set.catOrder' | t" />
+      <ion-button type="submit" size="small" [disabled]="!catName.trim()">{{ 'set.catAdd' | t }}</ion-button>
+    </form>
+    @for (c of cats() ?? []; track c.id) {
+      <div class="rv">
+        <span><b>{{ c.name }}</b> <span class="tag" dir="ltr">{{ c.slug }}</span> <small class="mut">#{{ c.sortOrder }}</small></span>
+        <span class="row2">
+          <ion-button size="small" fill="outline" (click)="editingCat() === c.id ? editingCat.set('') : startCat(c)">{{ 'users.edit' | t }}</ion-button>
+          <ion-button size="small" fill="clear" color="danger" [attr.aria-label]="'set.catDelete' | t" (click)="deleteCat(c.id)">{{ (confirmDeleteCat() === c.id ? 'common.confirm' : 'set.catDelete') | t }}</ion-button>
+        </span>
+      </div>
+      @if (editingCat() === c.id) {
+        <form class="pn inner row2" (ngSubmit)="saveCat(c.id)">
+          <input class="fld" name="ecn{{ c.id }}" [(ngModel)]="catEdit['name']" [placeholder]="'set.catName' | t" [attr.aria-label]="'set.catName' | t" />
+          <select class="fld" name="ecp{{ c.id }}" [(ngModel)]="catEdit['parentCategoryId']">
+            <option value="">{{ 'set.catParent' | t }}</option>
+            @for (p of cats() ?? []; track p.id) { @if (p.id !== c.id) { <option [value]="p.id">{{ p.name }}</option> } }
+          </select>
+          <input class="fld n2" type="number" name="eco{{ c.id }}" [(ngModel)]="catEdit['sortOrder']" [attr.aria-label]="'set.catOrder' | t" />
+          <ion-button type="submit" size="small">{{ 'common.save' | t }}</ion-button>
+        </form>
+      }
+    } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+  </section>
+</div>
+</ion-content>

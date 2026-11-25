@@ -1,0 +1,43 @@
+<ion-content>
+<div class="page">
+  <h1 class="title">{{ 'profile.title' | t }}</h1>
+  <section class="block head">
+    <span class="avatar">{{ auth.user()?.fullName?.charAt(0) }}</span>
+    <div><h2>{{ auth.user()?.fullName }}</h2>
+    <p class="muted" dir="ltr">{{ auth.user()?.email }}</p>
+    <p>@for (r of auth.user()?.roles; track r) { <ion-chip>{{ r }}</ion-chip> }</p></div>
+  </section>
+  <section class="block">
+    <h3>{{ 'common.language' | t }}</h3>
+    <ion-segment [value]="i18n.lang()" (ionChange)="setLang($event.detail.value)">
+      <ion-segment-button value="en"><ion-label>{{ 'common.english' | t }}</ion-label></ion-segment-button>
+      <ion-segment-button value="ar"><ion-label>{{ 'common.arabic' | t }}</ion-label></ion-segment-button>
+    </ion-segment>
+  </section>
+  <section class="block">
+    <h3>{{ 'profile.biometric' | t }}</h3>
+    @if (bio.available()) {
+      <ion-button size="small" (click)="toggleBio()">{{ (bio.enabled() ? 'profile.biometric.off' : 'profile.biometric.on') | t }}</ion-button>
+    } @else { <p class="muted">{{ 'profile.biometric.unavailable' | t }}</p> }
+    @if (bioMessage()) { <p class="muted">{{ bioMessage() }}</p> }
+  </section>
+  <section class="block">
+    <h3>{{ 'profile.changePw' | t }}</h3>
+    <form class="stack" (ngSubmit)="changePassword()">
+      <input class="fld" type="password" name="curPw" [(ngModel)]="curPw" [placeholder]="'profile.curPw' | t" autocomplete="current-password" [attr.aria-label]="'profile.curPw' | t" />
+      <input class="fld" type="password" name="newPw" [(ngModel)]="newPw" [placeholder]="'profile.newPw' | t" autocomplete="new-password" [attr.aria-label]="'profile.newPw' | t" />
+      <input class="fld" type="password" name="newPw2" [(ngModel)]="newPw2" [placeholder]="'profile.newPw2' | t" autocomplete="new-password" [attr.aria-label]="'profile.newPw2' | t" />
+      <ion-button type="submit" size="small">{{ 'profile.changePw' | t }}</ion-button>
+    </form>
+    @if (pwMsg()) { <p [class.ok]="!pwErr()" [style.color]="pwErr() ? 'var(--ion-color-danger)' : ''">{{ pwMsg() | t }}</p> }
+  </section>
+  <section class="block">
+    <h3>{{ 'profile.devices' | t }}</h3>
+    @for (d of devices(); track d.id) {
+      <div class="dev"><div class="info"><strong>{{ d.deviceName || d.platform || d.deviceType }}</strong>
+        <span class="muted">{{ d.deviceType }} · {{ (d.isActive ? 'profile.device.active' : 'profile.device.inactive') | t }} · {{ 'profile.lastSeen' | t }} {{ d.lastSeenAtUtc | date: 'medium' }}</span></div>
+        @if (d.isActive) { <ion-button size="small" color="danger" fill="outline" (click)="remove(d)">{{ 'profile.removeDevice' | t }}</ion-button> }</div>
+    }
+  </section>
+</div>
+</ion-content>

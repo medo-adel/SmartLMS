@@ -1,0 +1,72 @@
+<ion-content class="login" [fullscreen]="true">
+<div class="layout">
+  <main class="formside">
+    <header class="top">
+      <div class="brand">
+        @if (tenant.branding()?.logoUrl; as logo) { <img class="logo" [src]="logo" [alt]="tenant.branding()?.name" /> } @else { <span class="mono" aria-hidden="true">{{ initial }}</span> }
+        <strong>{{ tenant.branding()?.name ?? ('app.name' | t) }}</strong>
+      </div>
+      <div class="lang" role="group" [attr.aria-label]="'common.language' | t">
+        <button type="button" [class.on]="i18n.lang() === 'en'" [attr.aria-pressed]="i18n.lang() === 'en'" (click)="setLang('en')">EN</button>
+        <button type="button" [class.on]="i18n.lang() === 'ar'" [attr.aria-pressed]="i18n.lang() === 'ar'" (click)="setLang('ar')">ع</button>
+      </div>
+    </header>
+    <section class="panel">
+      <h1 class="display">{{ 'login.title' | t }}</h1>
+      <p class="muted">{{ 'login.subtitle' | t }}</p>
+      <form (ngSubmit)="submit()" novalidate>
+        <ion-input name="email" type="email" inputmode="email" autocomplete="username" fill="outline" labelPlacement="stacked" [label]="'login.email' | t" [(ngModel)]="email" [attr.aria-invalid]="error() ? 'true' : null"></ion-input>
+        <div class="pw">
+          <ion-input name="password" [type]="showPw() ? 'text' : 'password'" autocomplete="current-password" fill="outline" labelPlacement="stacked" [label]="'login.password' | t" [(ngModel)]="password" [attr.aria-invalid]="error() ? 'true' : null"></ion-input>
+          <button type="button" class="eye" (click)="showPw.set(!showPw())" [attr.aria-label]="(showPw() ? 'login.hidePw' : 'login.showPw') | t" [attr.aria-pressed]="showPw()">
+            <ion-icon [name]="showPw() ? 'eye-off-outline' : 'eye-outline'" aria-hidden="true"></ion-icon>
+          </button>
+        </div>
+        @if (error()) { <p class="error" role="alert"><ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon><span>{{ error() }}</span></p> }
+        <ion-button type="submit" expand="block" size="large" [disabled]="busy()">
+          @if (busy()) { <ion-spinner name="crescent" color="light"></ion-spinner><span class="sr-only">{{ 'login.signing' | t }}</span> } @else { {{ 'login.submit' | t }} }
+        </ion-button>
+      </form>
+      <div class="academy">
+        @if (editAcademy()) {
+          <ion-input name="academy" fill="outline" labelPlacement="stacked" [label]="'login.academyHint' | t" [(ngModel)]="academy" (keyup.enter)="saveAcademy()"></ion-input>
+          <p class="plat-hint">{{ 'login.platformHint' | t }}</p>
+          <div class="acts">
+            <ion-button size="small" (click)="saveAcademy()">{{ 'common.save' | t }}</ion-button>
+            <ion-button size="small" fill="outline" (click)="editAcademy.set(false)">{{ 'login.cancel' | t }}</ion-button>
+          </div>
+        } @else {
+          <span class="where">{{ 'login.academy' | t }}<strong dir="ltr">{{ tenant.tenantKey() || ('login.platform' | t) }}</strong></span>
+          <button type="button" class="change" (click)="editAcademy.set(true)"><ion-icon name="create-outline" aria-hidden="true"></ion-icon>{{ 'login.change' | t }}</button>
+        }
+      </div>
+      <div class="links">
+        <a routerLink="/register">{{ 'login.toRegister' | t }}</a>
+        <a routerLink="/forgot">{{ 'login.toForgot' | t }}</a>
+      </div>
+    </section>
+    <p class="foot">{{ 'login.tagline' | t }}</p>
+  </main>
+
+  <aside class="stage" aria-hidden="true">
+    <div class="orb o1"></div><div class="orb o2"></div>
+    <div class="board">
+      <div class="c ring-card">
+        <svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="48"/><circle class="val" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="72 100"/></svg>
+        <b>72<small>%</small></b>
+        <i class="sk-l w1"></i><i class="sk-l w2"></i>
+      </div>
+      <div class="c streak"><ion-icon name="flame-outline"></ion-icon><b>14</b><i class="sk-l w2"></i></div>
+      <div class="c bars"><span style="--h:38%"></span><span style="--h:56%"></span><span style="--h:44%"></span><span style="--h:72%"></span><span style="--h:62%"></span><span class="hi" style="--h:92%"></span></div>
+      <div class="c path">
+        <div class="step done"></div><div class="step done"></div><div class="step now"></div><div class="step"></div>
+      </div>
+      <div class="c badge"><ion-icon name="trophy-outline"></ion-icon></div>
+    </div>
+    <p class="quote display">{{ tenant.branding()?.name ?? ('app.name' | t) }}</p>
+    <ul class="points">
+      <li>{{ 'login.f1' | t }}</li><li>{{ 'login.f2' | t }}</li><li>{{ 'login.f3' | t }}</li>
+    </ul>
+  </aside>
+</div>
+</ion-content>

@@ -1,0 +1,20 @@
+# Phase 8: offline sync, tests, security audit, deployment preparation
+
+## Built
+- **Offline lessons (native app only).** `OfflineService` downloads a lesson file with Capacitor Filesystem into the app-private data dir (`offline/<userId>/<lessonId>`), keeps a manifest (lesson and course snapshot) in Preferences, enforces a 300 MB cap (the file passes through memory as base64) and 14-day expiry, and removes copies on logout. The player plays the local copy when offline or when the request fails with status 0. Page: `/app/downloads` (Student).
+- **Progress sync.** `ProgressSyncService` keeps a per-user queue in Preferences, one coalesced entry per lesson, flushes in order when the device is back online and signed in, drops 4xx entries, stops on retryable errors, and persists after every entry. Entries carry `recordedAtUtc`.
+- **Server (watched-time validation).** Watched seconds decide which lessons qualify for subscription revenue (PHASE4.md, "qualified learning time"), so every heartbeat, live or replayed, is validated on the server. Credit is whole seconds and never more than the wall-clock time since the lesson's accounting clock (`LastAccessedAtUtc`). The clock advances only by the seconds actually credited, so fractions of a second carry to the next heartbeat (nothing is rounded up, nothing is lost). If a client claims fewer seconds than elapsed, the rest was idle and the clock jumps to the heartbeat time. So the sum of credits can never exceed real elapsed time, however many requests arrive. The update is a compare-and-swap on the clock (`UPDATE ... WHERE LastAccessedAtUtc = <value read>`); a concurrent request that loses re-reads and recomputes against the new clock (up to 6 tries). The first heartbeat of a lesson has no baseline and credits at most 60 s (the player never sends more). An offline replay is also an idempotent event: its `RecordedAtUtc` must be newer than the clock or it credits and moves nothing, so a retry after a lost response is ignored. A recorded time more than 2 minutes in the future is not trusted (credits nothing, moves nothing, completion still honoured); up to 2 minutes ahead it is stored unchanged so its retry is ignored too. No event-id column was added (it would need a migration); the timestamp watermark gives the same protection.
+- **Tradeoffs, on purpose.** (1) A genuine older offline entry that reaches the server after a newer heartbeat from another device loses its watched time (multi-device is conservative). (2) A student whose very first heartbeat for a lesson happens offline (never opened it online) gets at most 60 s credited for it: conservative for the academy, slightly unfair to that student. This is a product decision, kept for now. (3) The tests for concurrency run on SQLite with a shared in-memory host, so they prove the compare-and-swap logic, not SQL Server's behaviour under real parallel load.
+- **Sync errors.** 401 keeps entries queued until sign-in. Other 4xx (not enrolled, lesson gone) are removed from the queue but now recorded and shown on the Downloads page ("Progress updates the server refused", with Dismiss) until the user dismisses them. The notice lists the causes (403 not allowed, 404 lesson not found, other 4xx) with counts, not lesson titles.
+- **Deployment prep and README.** See `DEPLOYMENT.md`, the repo-root `README.md`.
+
+## Tests added
+Frontend: offline utilities, sync queue (6), offline service (6) with a mocked Filesystem plugin. Backend: 4 new tests (replay ordering, security headers, endpoint authorization x2).
+
+## Limits
+- Never run on an Android or iOS device. Filesystem, Network and Preferences are Capacitor plugins mocked in unit tests, so the native download path has no real-device evidence. On the web the Downloads page and player show a note that downloads need the app.
+- The sync queue is covered by unit tests and one backend integration test, never end to end against a running API.
+- Notes, bookmarks, the AI tutor and interactive quizzes need a connection.
+- Downloaded files are not encrypted by the app.
+- Docker files were not run.
+- The security audit is a review, not a penetration test.

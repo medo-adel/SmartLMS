@@ -1,0 +1,8 @@
+<svg viewBox="-10 -5 120 110" role="img" aria-label="radar">
+  @for (r of rings(); track $index) { <polygon [attr.points]="r" class="ring" /> }
+  @for (a of axes(); track $index) {
+    <line x1="50" y1="50" [attr.x2]="a.end.x" [attr.y2]="a.end.y" class="ring" />
+    <text [attr.x]="a.label.x" [attr.y]="a.label.y" text-anchor="middle">{{ a.text }}</text>
+  }
+  <polygon [attr.points]="shape()" class="shape" />
+</svg>

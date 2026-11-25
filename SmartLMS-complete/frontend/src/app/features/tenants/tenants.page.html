@@ -1,0 +1,93 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'ten.title' | t }}</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (items() === null) { <ion-spinner></ion-spinner> }
+  @else {
+    <section class="pn">
+      <h2>{{ 'ten.new' | t }}</h2>
+      <form class="stack" (ngSubmit)="create()">
+        <div class="row2">
+          <input class="fld" name="tn" [(ngModel)]="name" [placeholder]="'ten.name' | t" [attr.aria-label]="'ten.name' | t" />
+          <input class="fld" name="ts" dir="ltr" [(ngModel)]="slug" [placeholder]="'ten.slug' | t" [attr.aria-label]="'ten.slug' | t" />
+        </div>
+        <input class="fld" name="td" dir="ltr" [(ngModel)]="subdomain" [placeholder]="'ten.subdomain' | t" [attr.aria-label]="'ten.subdomain' | t" />
+        <div class="row2">
+          <input class="fld" name="tan" [(ngModel)]="adminFullName" [placeholder]="'ten.adminName' | t" [attr.aria-label]="'ten.adminName' | t" />
+          <input class="fld" name="tae" type="email" dir="ltr" [(ngModel)]="adminEmail" [placeholder]="'ten.adminEmail' | t" [attr.aria-label]="'ten.adminEmail' | t" />
+        </div>
+        <input class="fld" name="tap" type="password" autocomplete="new-password" [(ngModel)]="adminPassword" [placeholder]="'ten.adminPassword' | t" [attr.aria-label]="'ten.adminPassword' | t" />
+        <div class="row2">
+          <label>{{ 'ten.maxMobile' | t }}<input class="fld n" type="number" min="0" name="tmm" [(ngModel)]="maxMobile" /></label>
+          <label>{{ 'ten.maxWeb' | t }}<input class="fld n" type="number" min="0" name="tmw" [(ngModel)]="maxWeb" /></label>
+          <label>{{ 'ten.lang' | t }}
+            <select class="fld" name="tl" [(ngModel)]="defaultLanguage"><option value="ar">العربية</option><option value="en">English</option></select>
+          </label>
+        </div>
+        <div class="row2">
+          <label>{{ 'ten.tz' | t }}<input class="fld" dir="ltr" name="ttz" [(ngModel)]="timeZoneId" /></label>
+          <label>{{ 'ten.currency' | t }}<input class="fld n" dir="ltr" name="tc" [(ngModel)]="currency" /></label>
+        </div>
+        <ion-button type="submit" [disabled]="!name.trim() || !slug.trim() || !adminFullName.trim() || !adminEmail.trim() || adminPassword.length < 10">{{ 'ten.create' | t }}</ion-button>
+      </form>
+      @if (info() === 'created') { <p class="ok">{{ 'ten.created' | t }}</p> }
+    </section>
+
+    <section class="pn">
+      <h2>{{ 'ten.list' | t }}</h2>
+      @if (info() === 'saved') { <p class="ok">{{ 'ten.saved' | t }}</p> }
+      @if (info() === 'granted') { <p class="ok">{{ 'ten.grant' | t }} ✓</p> }
+      @if (info() === 'revoked') { <p class="ok">{{ 'ten.revoked' | t }}</p> }
+      @for (t of items(); track t.id) {
+        <div class="rv">
+          <span>
+            <b>{{ t.name }}</b> <span class="tag" dir="ltr">{{ t.slug }}</span>
+            <span class="tag" [class.off]="!t.isActive">{{ t.isActive ? ('ten.active' | t) : ('ten.inactive' | t) }}</span><br />
+            <small class="mut" dir="ltr">{{ t.defaultLanguage }} · {{ t.timeZoneId }} · {{ t.currency }} · mob {{ t.maxMobileDevices }} · web {{ t.maxWebDevices }}</small>
+            @if (granted()[t.id]) { <br /><small class="ok">{{ 'ten.grantedUntil' | t }}: {{ granted()[t.id] | date: 'medium' }}</small> }
+          </span>
+          <span class="row2">
+            <ion-button size="small" fill="outline" (click)="editing() === t.id ? editing.set('') : startEdit(t)">{{ 'ten.edit' | t }}</ion-button>
+            <ion-button size="small" fill="outline" (click)="supportFor.set(supportFor() === t.id ? '' : t.id)">{{ 'ten.support' | t }}</ion-button>
+          </span>
+        </div>
+
+        @if (editing() === t.id) {
+          <form class="pn inner stack" (ngSubmit)="saveEdit(t.id)">
+            <div class="row2">
+              <input class="fld" name="en" [(ngModel)]="edit['name']" [placeholder]="'ten.name' | t" [attr.aria-label]="'ten.name' | t" />
+              <input class="fld" dir="ltr" name="ed" [(ngModel)]="edit['subdomain']" [placeholder]="'ten.subdomain' | t" [attr.aria-label]="'ten.subdomain' | t" />
+            </div>
+            <div class="row2">
+              <label>{{ 'ten.maxMobile' | t }}<input class="fld n" type="number" min="0" name="emm" [(ngModel)]="edit['maxMobileDevices']" /></label>
+              <label>{{ 'ten.maxWeb' | t }}<input class="fld n" type="number" min="0" name="emw" [(ngModel)]="edit['maxWebDevices']" /></label>
+              <label>{{ 'ten.lang' | t }}
+                <select class="fld" name="el" [(ngModel)]="edit['defaultLanguage']"><option value="ar">العربية</option><option value="en">English</option></select>
+              </label>
+            </div>
+            <div class="row2">
+              <label>{{ 'ten.tz' | t }}<input class="fld" dir="ltr" name="etz" [(ngModel)]="edit['timeZoneId']" /></label>
+              <label>{{ 'ten.currency' | t }}<input class="fld n" dir="ltr" name="ec" [(ngModel)]="edit['currency']" /></label>
+              <label class="chk"><input type="checkbox" name="ea" [(ngModel)]="edit['isActive']" /> {{ 'ten.active' | t }}</label>
+            </div>
+            <div class="row2">
+              <ion-button type="submit" size="small">{{ 'common.save' | t }}</ion-button>
+              <ion-button type="button" size="small" fill="clear" (click)="editing.set('')">{{ 'login.cancel' | t }}</ion-button>
+            </div>
+          </form>
+        }
+
+        @if (supportFor() === t.id) {
+          <div class="pn inner">
+            <form class="row2" (ngSubmit)="grant(t.id)">
+              <label>{{ 'ten.minutes' | t }}<input class="fld n" type="number" min="1" max="480" name="sm" [(ngModel)]="minutes" /></label>
+              <ion-button type="submit" size="small">{{ 'ten.grant' | t }}</ion-button>
+              <ion-button type="button" size="small" fill="clear" color="danger" [attr.aria-label]="'ten.revoke' | t" (click)="revoke(t.id)">{{ (confirmRevoke() === t.id ? 'common.confirm' : 'ten.revoke') | t }}</ion-button>
+            </form>
+          </div>
+        }
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+  }
+</div>
+</ion-content>

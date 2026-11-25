@@ -1,0 +1,10 @@
+<ion-content class="ion-padding">
+  <main class="box">
+    <div class="ico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <h1>{{ 'lock.title' | t }}</h1>
+    <p>{{ 'lock.text' | t }}</p>
+    @if (failed()) { <p class="error" role="alert">{{ 'lock.failed' | t }}</p> }
+    <ion-button expand="block" (click)="unlock()">{{ 'lock.unlock' | t }}</ion-button>
+    <ion-button expand="block" fill="clear" (click)="usePassword()">{{ 'lock.usePassword' | t }}</ion-button>
+  </main>
+</ion-content>

@@ -1,0 +1,8 @@
+:host { --pad: 1.25rem; }
+ion-content { --background: var(--app-bg); }
+.box { max-inline-size: 26rem; margin: 14vh auto 0; text-align: center; background: var(--app-card); border: 1px solid var(--app-border); border-radius: var(--app-radius); box-shadow: var(--app-shadow); padding: 2.2rem 1.8rem 1.6rem; }
+.ico { inline-size: 4.2rem; block-size: 4.2rem; margin: 0 auto 1.2rem; border-radius: 50%; display: grid; place-items: center; color: var(--ion-color-primary-contrast); background: linear-gradient(135deg, var(--ion-color-primary), var(--brand-end)); box-shadow: 0 12px 24px -10px rgba(var(--ion-color-primary-rgb), .7); }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 2rem; margin: 0 0 .5rem; letter-spacing: -.02em; }
+:lang(ar) h1 { font-family: var(--font-body); font-weight: 800; }
+p { color: var(--app-text-2); margin: 0 0 1.4rem; }
+.error { color: var(--ion-color-danger); background: var(--app-danger-bg); border-radius: 12px; padding: .6rem .8rem; }

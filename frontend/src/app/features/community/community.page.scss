@@ -1,0 +1,10 @@
+.rv.clickable { cursor: pointer; }
+.rv .tags { display: inline-flex; gap: .3rem; flex-wrap: wrap; }
+.body { white-space: pre-wrap; }
+textarea.fld { resize: vertical; font-family: inherit; }
+.chatlog { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: .5rem; margin: .5rem 0; }
+.chatmsg p { margin: .1rem 0 0; }
+.chatmsg { border-bottom: 1px solid rgba(0,0,0,.06); padding-bottom: .4rem; }
+.pn.on { outline: 2px solid var(--ion-color-primary, #0e7a6d); }
+.btn-link { display: inline-block; background: var(--ion-color-primary); color: var(--ion-color-primary-contrast); border-radius: 999px; padding: .45rem 1.1rem; font-weight: 700; text-decoration: none; }
+button.pn { width: 100%; box-sizing: border-box; text-align: start; font: inherit; color: inherit; cursor: pointer; }

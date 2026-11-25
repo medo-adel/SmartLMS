@@ -1,0 +1,58 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'pay.title' | t }}</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (queue() === null) { <ion-spinner></ion-spinner> }
+  @else {
+    <section class="pn">
+      <h2>{{ 'pay.queue' | t }}</h2>
+      <div class="tabs2">
+        <button [class.on]="status === 'Pending'" (click)="setStatus('Pending')">{{ 'pay.pending' | t }}</button>
+        <button [class.on]="status === 'Approved'" (click)="setStatus('Approved')">{{ 'pay.approved' | t }}</button>
+        <button [class.on]="status === 'Rejected'" (click)="setStatus('Rejected')">{{ 'pay.rejected' | t }}</button>
+      </div>
+      @for (m of queue(); track m.id) {
+        <div class="rv">
+          <span><b>{{ m.userName }}</b> · {{ m.amount }} · {{ m.method }} <span class="tag">{{ m.purpose }}</span><br /><small class="mut">{{ m.senderReference }} {{ m.senderPhoneOrAccount }} · {{ m.createdAtUtc | date: 'medium' }}</small></span>
+          <span class="row2">
+            <ion-button size="small" fill="outline" (click)="receipt(m.id)">{{ 'pay.receipt' | t }}</ion-button>
+            @if (status === 'Pending') {
+              <ion-button size="small" (click)="approve(m.id)">{{ 'pay.approve' | t }}</ion-button>
+              <ion-button size="small" fill="clear" color="danger" (click)="rejecting.set(m.id)">{{ 'pay.reject' | t }}</ion-button>
+            }
+          </span>
+        </div>
+        @if (rejecting() === m.id) {
+          <form class="row2" (ngSubmit)="reject(m.id)"><input class="fld" name="rs" [(ngModel)]="reason" [placeholder]="'pay.reason' | t" /><ion-button type="submit" size="small" color="danger">{{ 'pay.reject' | t }}</ion-button></form>
+        }
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+    <section class="pn">
+      <h2>{{ 'pay.newBatch' | t }}</h2>
+      <form class="stack" (ngSubmit)="createBatch()">
+        <input class="fld" name="bn" [(ngModel)]="name" [placeholder]="'build.name' | t" />
+        <div class="row2">
+          <input class="fld" name="bp" [(ngModel)]="prefix" maxlength="8" [placeholder]="'pay.prefix' | t" />
+          <label>{{ 'pay.qty' | t }}<input class="fld n" type="number" min="1" name="bq" [(ngModel)]="quantity" /></label>
+          <select class="fld" name="bt" [(ngModel)]="voucherType"><option value="WalletCredit">{{ 'pay.walletCredit' | t }}</option><option value="CourseAccess">{{ 'pay.courseAccess' | t }}</option></select>
+        </div>
+        @if (voucherType === 'CourseAccess') {
+          <select class="fld" name="bc" [(ngModel)]="courseId"><option value="">{{ 'pay.pickCourse' | t }}</option>@for (c of courses(); track c.id) { <option [value]="c.id">{{ c.title }}</option> }</select>
+        } @else { <input class="fld" type="number" min="1" name="bw" [(ngModel)]="walletAmount" [placeholder]="'wallet.amount' | t" /> }
+        <label>{{ 'pay.expires' | t }}<input class="fld" type="date" name="be" [(ngModel)]="expires" /></label>
+        <ion-button type="submit" [disabled]="!name.trim()">{{ 'pay.generate' | t }}</ion-button>
+      </form>
+      @if (info() === 'batch') { <p class="ok">{{ 'pay.batchQueued' | t }}</p> }
+    </section>
+    <section class="pn">
+      <h2>{{ 'pay.batches' | t }}</h2>
+      @for (b of batches(); track b.id) {
+        <div class="rv">
+          <span><b>{{ b.name }}</b> <span class="tag">{{ b.status }}</span><br /><small class="mut">{{ b.voucherType }} · {{ b.quantity }} · {{ 'pay.unused' | t }} {{ b.unused }} · {{ 'pay.redeemed' | t }} {{ b.redeemed }} · {{ 'pay.voided' | t }} {{ b.voided }}</small></span>
+          <span class="row2"><ion-button size="small" fill="outline" (click)="csv(b)">CSV</ion-button><ion-button size="small" fill="clear" color="danger" (click)="voidBatch(b.id)">{{ 'pay.void' | t }}</ion-button></span>
+        </div>
+      } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+    </section>
+  }
+</div>
+</ion-content>

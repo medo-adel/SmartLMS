@@ -1,0 +1,5 @@
+:host { display: block; }
+svg { inline-size: 100%; max-block-size: 18rem; }
+.ring { fill: none; stroke: var(--app-border-strong); stroke-width: .3; }
+.shape { fill: rgba(var(--ion-color-primary-rgb), 0.28); stroke: var(--app-ink); stroke-width: .8; }
+text { font-size: 4px; fill: var(--app-text); }

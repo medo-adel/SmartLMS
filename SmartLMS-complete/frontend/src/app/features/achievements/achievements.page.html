@@ -1,0 +1,107 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'ach.title' | t }}</h1>
+
+  @if (auth.hasRole('Student')) {
+    @if (me(); as g) {
+      <div class="pn">
+        <div class="row2">
+          <div><span class="big">{{ g.xp }}</span> <span class="mut">XP · {{ 'ach.level' | t }} {{ g.level }}</span></div>
+          <div class="mut">{{ 'ach.streak' | t }}: {{ g.currentStreakDays }} · {{ 'ach.bestStreak' | t }}: {{ g.longestStreakDays }}</div>
+        </div>
+        @if (g.badges.length) {
+          <div class="row2">@for (b of g.badges; track b.code) { <span class="tag">{{ b.name }}</span> }</div>
+        }
+      </div>
+    }
+  }
+
+  <div class="pn">
+    <h3>{{ 'ach.leaderboard' | t }}</h3>
+    @if (board() === null) { <ion-spinner></ion-spinner> }
+    @if (board(); as rows) {
+      @if (!rows.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+      @for (r of rows; track r.rank) {
+        <p class="row2" [class.ok]="r.isMe"><span>{{ r.rank }}. {{ r.name }}@if (r.isMe) { ({{ 'ach.you' | t }}) }</span> <b>{{ r.xp }} XP</b></p>
+      }
+    }
+  </div>
+
+  @if (auth.hasRole('Student')) {
+    <div class="pn">
+      <h3>{{ 'ach.certificates' | t }}</h3>
+      @if (certs() === null) { <ion-spinner></ion-spinner> }
+      @if (certs(); as cs) {
+        @if (!cs.length) { <p class="mut">{{ 'ach.noCerts' | t }}</p> }
+        @for (c of cs; track c.id) {
+          <div class="row2">
+            <span><b>{{ c.courseTitle }}</b> · <span class="mut">{{ c.issuedAtUtc | date:'mediumDate' }}</span></span>
+            <ion-button size="small" fill="outline" [disabled]="downloading() === c.id" (click)="downloadCert(c)">{{ 'ach.downloadPdf' | t }}</ion-button>
+          </div>
+          <p class="mut">{{ 'ach.verifyCode' | t }}: {{ c.verificationCode }}</p>
+        }
+      }
+    </div>
+
+    <div class="pn">
+      <h3>{{ 'ach.shareWithParent' | t }}</h3>
+      <p class="mut">{{ 'ach.shareHint' | t }}</p>
+      @if (linkCode(); as lc) {
+        <p><b class="big">{{ lc.code }}</b></p>
+        <p class="mut">{{ 'ach.codeExpires' | t }} {{ lc.expiresAtUtc | date:'short' }}</p>
+      } @else {
+        <ion-button fill="outline" (click)="makeLinkCode()">{{ 'ach.generateCode' | t }}</ion-button>
+      }
+    </div>
+  }
+
+  <div class="pn">
+    <h3>{{ 'ach.verifyTitle' | t }}</h3>
+    <form (ngSubmit)="checkVerify()" class="row2">
+      <input class="fld" name="verifyCode" [(ngModel)]="verifyCode" [placeholder]="'ach.verifyCode' | t" aria-label="verification code" />
+      <ion-button type="submit" fill="outline">{{ 'ach.verify' | t }}</ion-button>
+    </form>
+    @if (verifyFailed()) { <p class="err">{{ 'ach.verifyNotFound' | t }}</p> }
+    @if (verify(); as v) {
+      <p [class.ok]="v.valid" [class.err]="!v.valid">{{ v.status }} — {{ v.holderName }}, {{ v.course }}, {{ v.issuedAtUtc | date:'mediumDate' }}</p>
+    }
+  </div>
+
+  @if (auth.hasRole('TenantAdmin') || auth.hasRole('Instructor')) {
+    <div class="pn stack">
+      <h3>{{ 'ach.issue' | t }}</h3>
+      <p class="mut">{{ 'ach.issueHint' | t }}</p>
+      <label for="issueCourseSel">{{ 'ach.pickCourse' | t }}</label>
+      <select class="fld" id="issueCourseSel" name="issueCourseId" [(ngModel)]="issueCourseId" aria-label="course">
+        <option value="">{{ 'ach.pickCourse' | t }}</option>
+        @for (c of issueCourses() ?? []; track c.id) { <option [value]="c.id">{{ c.title }} ({{ c.status }})</option> }
+      </select>
+      @if (pickedStudent(); as st) {
+        <div class="row2">
+          <span>{{ 'ach.student' | t }}: <b>{{ st.fullName }}</b>@if (st.email) { <span class="mut"> · {{ st.email }}</span> }</span>
+          <ion-button size="small" fill="clear" (click)="pickedStudent.set(null)">{{ 'common.change' | t }}</ion-button>
+        </div>
+      } @else {
+        <form class="row2" (ngSubmit)="findStudents()">
+          <input class="fld" name="studentQuery" [(ngModel)]="studentQuery" [placeholder]="'ach.searchStudent' | t" aria-label="search student" />
+          <ion-button type="submit" size="small">{{ 'ach.search' | t }}</ion-button>
+        </form>
+        @if (studentHits(); as hits) {
+          @for (u of hits; track u.id) {
+            <button type="button" class="pn hit" (click)="pickStudent(u)">{{ u.fullName }}@if (u.email) { <span class="mut"> · {{ u.email }}</span> }</button>
+          }
+          @if (!hits.length) { <p class="mut">{{ 'common.empty' | t }}</p> }
+        }
+      }
+      <ion-button expand="block" (click)="issue()">{{ 'ach.issueNow' | t }}</ion-button>
+      @if (issueErr()) { <p class="err">{{ issueErr() | t }}</p> }
+      @if (issued(); as r) {
+        <div class="pn">
+          <p class="ok">{{ 'ach.issued' | t }}</p>
+          <div class="row2"><span>{{ 'ach.verifyCode' | t }}</span><b class="mono">{{ r.verificationCode }}</b></div>
+        </div>
+      }
+    </div>
+  }
+</div>
+</ion-content>

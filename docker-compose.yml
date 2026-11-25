@@ -1,0 +1,72 @@
+# Local / staging trial stack. Nothing here deploys anywhere. Copy .env.example to .env and fill it first.
+#   docker compose up --build                    (sqlserver, api, ai, web)
+#   docker compose --profile llm up --build      (adds an Ollama container for the AI tutor)
+#   docker compose --profile cache up --build    (adds Redis; the API does not use it yet, see docs/DEPLOYMENT.md)
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./backend
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=SmartLMSDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true;"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
+      AiService__BaseUrl: http://ai:8001
+      AiService__ApiKey: ${AI_SERVICE_KEY:?set AI_SERVICE_KEY in .env}
+      Cors__AllowedOrigins__0: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      # Certificate PDFs need an https URL outside Development; set PUBLIC_ORIGIN to your https origin before issuing certificates.
+      Certificates__VerificationBaseUrl: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      Storage__Root: /data/storage
+      Database__AutoMigrate: "true"
+      Seed__Enabled: ${SEED_DEMO:-true}
+      Seed__DemoTenant: ${SEED_DEMO:-true}
+      Otp__LogCodes: ${OTP_LOG_CODES:-false}
+    volumes:
+      - storage:/data/storage
+
+  ai:
+    build: ./ai-service
+    environment:
+      AI_SERVICE_KEY: ${AI_SERVICE_KEY:?set AI_SERVICE_KEY in .env}
+      OLLAMA_BASE_URL: http://ollama:11434
+      MEDIA_ROOT: /data/storage
+      CHROMA_PERSIST_DIR: /data/chroma
+    volumes:
+      - storage:/data/storage:ro
+      - chroma:/data/chroma
+
+  web:
+    build: ./frontend
+    depends_on: [api]
+    ports:
+      - "8080:80"
+
+  ollama:
+    profiles: [llm]
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+
+  redis:
+    profiles: [cache]
+    image: redis:7-alpine
+
+volumes:
+  sqldata:
+  storage:
+  chroma:
+  ollama:

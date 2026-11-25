@@ -1,0 +1,70 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'approvals.title' | t }} @if (pendingCount() > 0) { <span class="tag">{{ pendingCount() }}</span> }</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (courses() === null) { <ion-spinner></ion-spinner> }
+  @else {
+    <div class="tabs2">
+      @for (t of tabs; track t) {
+        <button [class.on]="tab === t" (click)="setTab(t)">{{ ('approvals.tab.' + t) | t }}</button>
+      }
+    </div>
+    @if (info() === 'approved') { <p class="ok">{{ 'approvals.approved' | t }}</p> }
+    @if (info() === 'rejected') { <p class="ok">{{ 'approvals.rejected' | t }}</p> }
+    <section class="pn">
+      @for (c of shown(); track c.id) {
+        <div class="rv">
+          <span><b>{{ c.title }}</b> <span class="tag">{{ ('approvals.status.' + c.status) | t }}</span><br />
+            <small class="mut" dir="ltr">{{ 'approvals.owner' | t }}: {{ c.ownerInstructorId.slice(0, 8) }}</small></span>
+          <span class="row2">
+            <ion-button size="small" fill="outline" (click)="togglePreview(c.id)">{{ (previewId() === c.id ? 'approvals.hide' : 'approvals.view') | t }}</ion-button>
+            @if (c.status === 'PendingApproval') {
+              <ion-button size="small" (click)="approve(c.id)">{{ 'approvals.approve' | t }}</ion-button>
+              <ion-button size="small" fill="clear" color="danger" (click)="rejecting.set(c.id)">{{ 'approvals.reject' | t }}</ion-button>
+            }
+          </span>
+        </div>
+        @if (previewId() === c.id) {
+          <div class="pn inner">
+            @if (previewFailed()) { <p class="err">{{ 'common.error' | t }}</p> }
+            @else if (preview(); as d) {
+              <p class="mut">{{ d.shortDescription }} · {{ d.level }} · {{ d.pricingModel }}{{ d.price ? ' · ' + d.price + ' ' + (d.currency ?? '') : '' }}</p>
+              @for (s of d.sections; track s.id) {
+                <div class="sec">
+                  <b>{{ s.title }}</b> <small class="mut">{{ s.lessons.length }} {{ 'approvals.lessons' | t }}</small>
+                  <ul>@for (l of s.lessons; track l.id) { <li>{{ l.title }} <span class="tag">{{ l.lessonType }}</span>@if (l.isFreePreview) { <span class="tag">preview</span> }</li> }</ul>
+                </div>
+              }
+              <a [routerLink]="['/app/courses', c.id]">{{ 'approvals.openFull' | t }}</a>
+            } @else { <ion-spinner></ion-spinner> }
+          </div>
+        }
+        @if (rejecting() === c.id) {
+          <form class="row2" (ngSubmit)="reject(c.id)">
+            <input class="fld" name="cm" [(ngModel)]="comment" [placeholder]="'approvals.comment' | t" [attr.aria-label]="'approvals.comment' | t" />
+            <ion-button type="submit" size="small" color="danger" [disabled]="!comment.trim()">{{ 'approvals.reject' | t }}</ion-button>
+          </form>
+        }
+      } @empty { <p class="mut">{{ tab === 'PendingApproval' ? ('approvals.empty' | t) : ('common.empty' | t) }}</p> }
+    </section>
+  }
+
+  @if (linksUnavailable()) {
+    <section class="pn"><p class="mut">{{ 'appr.linksUnavailable' | t }}</p></section>
+  }
+  @if (pendingLinks()?.length) {
+    <section class="pn">
+      <h2>{{ 'appr.parentLinks' | t }}</h2>
+      @for (l of pendingLinks()!; track l.linkId) {
+        <div class="row2">
+          <span>{{ l.parentName }} → {{ l.studentName }}</span>
+          <span>
+            <ion-button size="small" (click)="setLink(l.linkId, true)">{{ 'appr.approveLink' | t }}</ion-button>
+            <ion-button size="small" fill="clear" color="danger" (click)="setLink(l.linkId, false)">{{ 'appr.revokeLink' | t }}</ion-button>
+          </span>
+        </div>
+      }
+    </section>
+  }
+</div>
+</ion-content>

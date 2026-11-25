@@ -1,0 +1,15 @@
+.wrap { max-inline-size: 30rem; margin: 0 auto; padding: 1.5rem 1.1rem 3rem; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-block-end: 1.5rem; }
+.brand { display: flex; align-items: center; gap: .6rem; font-size: 1.05rem; }
+.brand .logo { block-size: 2rem; inline-size: auto; border-radius: .45rem; }
+.lang { display: flex; gap: .25rem; }
+.lang button { border: 1px solid var(--app-border-strong); background: var(--app-card); color: var(--app-text); border-radius: 99px; padding: .3rem .8rem; font: inherit; cursor: pointer; }
+.lang button.on { background: var(--ion-color-primary); color: var(--ion-color-primary-contrast); border-color: transparent; }
+.card h1 { font-size: 1.7rem; font-weight: 800; margin: 0 0 .3rem; letter-spacing: -.02em; }
+.card .muted { color: var(--app-muted); margin: 0 0 1.1rem; }
+.stack { display: grid; gap: .7rem; }
+.links { display: flex; justify-content: center; gap: 1.2rem; flex-wrap: wrap; margin-block-start: 1.1rem; font-size: .88rem; }
+.links a { color: var(--ion-color-primary); text-decoration: none; font-weight: 600; }
+.links a:hover { text-decoration: underline; }
+.err { color: var(--app-danger); margin: 0; }
+.ok { color: var(--app-ok); font-weight: 600; }

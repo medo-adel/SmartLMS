@@ -1,0 +1,27 @@
+@if (failed()) { <app-dash-error (retry)="load()" /> }
+@else if (data(); as d) {
+  <div class="bento">
+  <div class="s12 grid">
+    <app-kpi-card [label]="'dash.instructor.courses' | t" icon="library-outline" [value]="d.courses" />
+    <app-kpi-card [label]="'dash.instructor.students' | t" icon="people-outline" [value]="d.totalStudents" />
+    <app-kpi-card [label]="'dash.instructor.revenue' | t" icon="cash-outline" [value]="(d.grossRevenue | number: '1.0-2')!" />
+  </div>
+  <p class="muted note s12">{{ d.revenueNote }}</p>
+  <section class="s7"><h2>{{ 'dash.instructor.trend' | t }}</h2>
+    @if (trend().length) { <app-bar-chart [data]="trend()" [ariaLabel]="'dash.instructor.trend' | t" /> } @else { <p class="empty">{{ 'common.empty' | t }}</p> }
+  </section>
+  <section class="s5"><h2>{{ 'dash.instructor.dropoff' | t }}</h2><p class="muted">{{ 'dash.instructor.dropoffHint' | t }}</p>
+    <div class="heat">
+      @for (l of d.lessonDropOff; track l.lessonId) {
+        <div class="cell" [style.--h]="heat(l.dropOffPercent)" [title]="l.title"><span class="t">{{ l.title }}</span><b>{{ l.dropOffPercent }}%</b></div>
+      } @empty { <p class="empty">{{ 'common.empty' | t }}</p> }
+    </div>
+  </section>
+  <section class="s12"><h2>{{ 'dash.instructor.difficulty' | t }}</h2>
+    @for (q of d.quizDifficulty; track q.questionId) {
+      <div class="q"><div class="row"><span>{{ q.text }}</span><b>{{ q.correctPercent }}% {{ 'dash.instructor.correct' | t }}</b></div>
+        <div class="bar"><i [style.inline-size.%]="q.correctPercent"></i></div><small class="muted">{{ q.answers }} {{ 'dash.instructor.answers' | t }}</small></div>
+    } @empty { <p class="empty">{{ 'common.empty' | t }}</p> }
+  </section>
+  </div>
+} @else { <app-dash-skeleton [count]="3" /> }

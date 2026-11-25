@@ -1,0 +1,187 @@
+--- a/SmartLMS.Infrastructure/Services/Commerce/RevenueService.cs
++++ b/SmartLMS.Infrastructure/Services/Commerce/RevenueService.cs
+@@ -235,6 +235,13 @@
+         await audit.WriteAsync(AuditLogAction.Update, "SubscriptionAllocationControls", t.Id, new { old, @new = r }, ct);
+         return await GetSubscriptionControlsAsync(ct);
+     }
++    /// <summary>GET /courses/{id}/learning-weight: the current non-video learning weight (null when never set), so the form can prefill instead of overwriting blind.</summary>
++    public async Task<object> GetLearningWeightAsync(Guid courseId, CancellationToken ct)
++    {
++        if (!await db.Courses.AnyAsync(c => c.Id == courseId, ct)) throw new NotFoundException("Course not found.");
++        var w = await db.CourseLearningWeights.AsNoTracking().FirstOrDefaultAsync(x => x.CourseId == courseId, ct);
++        return new { courseId, nonVideoCourseSeconds = w?.NonVideoCourseSeconds };
++    }
+     public sealed record LearningWeightRequest(int NonVideoCourseSeconds);
+     /// <summary>TenantAdmin approves how much learning time ALL the non-video content of a course is worth together. It is shared over the course's non-video lessons, so adding or splitting lessons never multiplies it.</summary>
+     public async Task<object> SetLearningWeightAsync(Guid courseId, LearningWeightRequest r, CancellationToken ct)
+--- a/SmartLMS.Infrastructure/Services/Commerce/CommerceService.cs
++++ b/SmartLMS.Infrastructure/Services/Commerce/CommerceService.cs
+@@ -275,6 +275,13 @@
+         var line = await PriceAsync(CartItemItemType.Plan, r.PlanId, Guid.Empty, ct); await EnsureNotOwnedAsync(line, Uid, ct);
+         return await CreateOrderAsync([line], new CheckoutRequest(r.PaymentMethod, Gateway: r.Gateway), false, ct);
+     }
++    /// <summary>GET /subscriptions/mine: the caller's subscriptions with plan display fields. Powers the cancel UI; ids stay server-side.</summary>
++    public async Task<object> MySubscriptionsAsync(CancellationToken ct) =>
++        await (from us in db.UserSubscriptions.AsNoTracking() join pl in db.SubscriptionPlans.AsNoTracking() on us.PlanId equals pl.Id
++               where us.UserId == Uid
++               orderby us.StartedAtUtc descending
++               select new { id = us.Id, planName = pl.Name, price = pl.Price, currency = pl.Currency, billingPeriod = pl.BillingPeriod.ToString(), status = us.Status.ToString(), startedAtUtc = us.StartedAtUtc, currentPeriodEndUtc = us.CurrentPeriodEndUtc, cancelledAtUtc = us.CancelledAtUtc }).ToListAsync(ct);
++
+     public async Task CancelSubscriptionAsync(Guid id, CancellationToken ct)
+     {
+         var s = await db.UserSubscriptions.FirstOrDefaultAsync(x => x.Id == id && x.UserId == Uid, ct) ?? throw new NotFoundException("Subscription not found.");
+--- a/SmartLMS.Infrastructure/Services/Lms/ContentService.cs
++++ b/SmartLMS.Infrastructure/Services/Lms/ContentService.cs
+@@ -68,6 +68,13 @@
+         await db.SaveChangesAsync(ct);
+     }
+ 
++    /// <summary>GET /courses/{id}/prerequisites: the current prerequisite courses with titles, so the editor can prefill instead of overwriting blind.</summary>
++    public async Task<object> ListPrerequisitesAsync(Guid courseId, CancellationToken ct)
++    {
++        await OwnedCourseAsync(courseId, ct);
++        return await (from pr in db.CoursePrerequisites join c in db.Courses on pr.PrerequisiteCourseId equals c.Id where pr.CourseId == courseId orderby c.Title select new { courseId = c.Id, title = c.Title }).ToListAsync(ct);
++    }
++
+     public async Task SetPrerequisitesAsync(Guid courseId, PrerequisitesRequest r, CancellationToken ct)
+     {
+         await OwnedCourseAsync(courseId, ct);
+--- a/SmartLMS.Infrastructure/Services/Lms/AssessmentService.cs
++++ b/SmartLMS.Infrastructure/Services/Lms/AssessmentService.cs
+@@ -488,6 +488,14 @@
+         }
+         res.Add(sb.ToString()); return res;
+     }
++    /// <summary>GET /exams/{id} for authors: the full editable settings so the edit form can prefill instead of overwriting fields it cannot see. UpdateExamAsync never touches question rules, and Kind is immutable after creation.</summary>
++    public async Task<object> GetExamAsync(Guid id, CancellationToken ct)
++    {
++        var e = await OwnedExamAsync(id, ct);
++        var hasAttempts = await db.ExamAttempts.AnyAsync(a => a.ExamId == id, ct);
++        return new { e.Id, e.CourseId, e.Title, Kind = e.Kind.ToString(), e.Instructions, e.DurationMinutes, e.MaxAttempts, e.PassingScorePercent, e.AvailableFromUtc, e.AvailableUntilUtc, e.TabSwitchDetection, e.MaxTabSwitches, e.IsPublished, locked = e.IsPublished && hasAttempts };
++    }
++
+     public async Task UpdateExamAsync(Guid id, ExamRequest r, CancellationToken ct)
+     {
+         var e = await OwnedExamAsync(id, ct);
+--- a/SmartLMS.Infrastructure/Services/Lms/AssignmentService.cs
++++ b/SmartLMS.Infrastructure/Services/Lms/AssignmentService.cs
+@@ -79,8 +79,12 @@
+     {
+         await EnsureCourseReaderAsync(courseId, ct); var staff = await IsStaffAsync(courseId, ct);
+         var q = db.Assignments.Where(a => a.CourseId == courseId); if (!staff) q = q.Where(a => a.IsPublished);
++        var uid = Uid;
++        // The caller's newest submission per assignment (their own, or their team's). Students use it to reopen their work and see grades; it is null when they never submitted.
+         return await q.OrderBy(a => a.DueAtUtc).Select(a => new { a.Id, a.Title, a.Instructions, a.DueAtUtc, a.MaxPoints, a.IsGroup, a.MaxGroupSize, a.AllowResubmission, a.PeerReviewEnabled, a.IsPublished,
+-            rubric = db.AssignmentRubricCriteria.Where(c => c.AssignmentId == a.Id).OrderBy(c => c.SortOrder).Select(c => new { c.Id, c.Name, c.Description, c.MaxPoints }).ToList() }).ToListAsync(ct);
++            rubric = db.AssignmentRubricCriteria.Where(c => c.AssignmentId == a.Id).OrderBy(c => c.SortOrder).Select(c => new { c.Id, c.Name, c.Description, c.MaxPoints }).ToList(),
++            mine = db.Submissions.Where(s => s.AssignmentId == a.Id && (s.UserId == uid || s.AssignmentGroupId != null && db.AssignmentGroupMembers.Any(m => m.AssignmentGroupId == s.AssignmentGroupId && m.UserId == uid)))
++                .OrderByDescending(s => s.Version).Select(s => new { s.Id, s.Version, Status = s.Status.ToString(), s.TotalScore, s.IsLate, s.SubmittedAtUtc }).FirstOrDefault() }).ToListAsync(ct);
+     }
+     public async Task<Guid> CreateAsync(Guid courseId, AssignmentRequest r, CancellationToken ct)
+     {
+--- a/SmartLMS.Infrastructure/Services/Lms/EngagementServices.cs
++++ b/SmartLMS.Infrastructure/Services/Lms/EngagementServices.cs
+@@ -240,6 +240,15 @@
+     private async Task<ParentStudentLink> ActiveLinkAsync(Guid studentId, CancellationToken ct) =>
+         await db.ParentStudentLinks.FirstOrDefaultAsync(l => l.ParentUserId == Uid && l.StudentUserId == studentId && l.Status == ParentStudentLinkStatus.Active, ct) ?? throw new NotFoundException("Student not found.");
+ 
++    /// <summary>Pending link requests for academy staff (same Mgr roles as SetLink). Tenant-scoped by the global filter; returns display names only.</summary>
++    public async Task<object> PendingLinksAsync(CancellationToken ct) =>
++        await (from l in db.ParentStudentLinks
++               join pu in db.Users on l.ParentUserId equals pu.Id
++               join su in db.Users on l.StudentUserId equals su.Id
++               where l.Status == ParentStudentLinkStatus.Pending
++               orderby l.CreatedAtUtc
++               select new { linkId = l.Id, parentName = pu.FullName, studentName = su.FullName, l.CreatedAtUtc, status = l.Status.ToString() }).ToListAsync(ct);
++
+     public async Task<object> ChildrenAsync(CancellationToken ct) =>
+         await (from l in db.ParentStudentLinks join u in db.Users on l.StudentUserId equals u.Id where l.ParentUserId == Uid && l.Status == ParentStudentLinkStatus.Active select new { studentId = u.Id, u.FullName }).ToListAsync(ct);
+ 
+--- a/SmartLMS.Infrastructure/Services/Lms/CommunityService.cs
++++ b/SmartLMS.Infrastructure/Services/Lms/CommunityService.cs
+@@ -96,6 +96,13 @@
+ 
+     // ---- learning paths --------------------------------------------------------------------------------------------------
+     public async Task<object> PathsAsync(CancellationToken ct) => await db.LearningPaths.Where(p => p.Status == LearningPathStatus.Published).OrderBy(p => p.Title).Select(p => new { p.Id, p.Title, p.Slug, p.Description }).ToListAsync(ct);
++    /// <summary>Staff list including drafts. Admin sees all tenant paths; an instructor only paths they created (same ownership rule as UpdatePathAsync).</summary>
++    public async Task<object> ManagePathsAsync(CancellationToken ct)
++    {
++        var q = db.LearningPaths.AsQueryable();
++        if (!IsAdmin) q = q.Where(p => p.CreatedBy == Uid);
++        return await q.OrderBy(p => p.Title).Select(p => new { p.Id, p.Title, p.Slug, p.Description, Status = p.Status.ToString(), p.IssuesCertificate }).ToListAsync(ct);
++    }
+     public async Task<object> PathAsync(Guid id, CancellationToken ct)
+     {
+         var p = await db.LearningPaths.FirstOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("Path not found.");
+@@ -112,9 +119,11 @@
+             var c = await db.Courses.FirstOrDefaultAsync(x => x.Id == cid, ct);
+             if (c is null || !await new CourseAccess(db, me).IsAuthorAsync(c, ct)) throw new NotFoundException("Course not found.");
+         }
+-        db.LearningPathCourses.RemoveRange(await db.LearningPathCourses.Where(x => x.LearningPathId == p.Id).ToListAsync(ct));
++        var existing = await db.LearningPathCourses.Where(x => x.LearningPathId == p.Id).ToListAsync(ct);
++        var mandatory = existing.ToDictionary(x => x.CourseId, x => x.IsMandatory); // the DTO carries no per-course flag; keep the previous one on re-linked courses
++        db.LearningPathCourses.RemoveRange(existing);
+         await db.SaveChangesAsync(ct);
+-        var i = 0; foreach (var cid in ids) db.LearningPathCourses.Add(new LearningPathCourse { TenantId = p.TenantId, LearningPathId = p.Id, CourseId = cid, SortOrder = i++, CreatedAtUtc = Now });
++        var i = 0; foreach (var cid in ids) db.LearningPathCourses.Add(new LearningPathCourse { TenantId = p.TenantId, LearningPathId = p.Id, CourseId = cid, SortOrder = i++, IsMandatory = mandatory.GetValueOrDefault(cid), CreatedAtUtc = Now });
+     }
+     public async Task<Guid> CreatePathAsync(PathRequest r, CancellationToken ct)
+     {
+--- a/SmartLMS.API/Controllers/CommerceController.cs
++++ b/SmartLMS.API/Controllers/CommerceController.cs
+@@ -35,6 +35,7 @@
+     [HttpPost("bundles"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> CreateBundle(BundleRequest r, CancellationToken ct) => Success((object)new { id = await c.CreateBundleAsync(r, ct) });
+     [HttpGet("subscription-plans"), AllowAnonymous] public async Task<ActionResult<ApiResponse<object>>> Plans(CancellationToken ct) => Success(await c.PlansAsync(ct));
+     [HttpPost("subscription-plans"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> CreatePlan(PlanRequest r, CancellationToken ct) => Success((object)new { id = await c.CreatePlanAsync(r, ct) });
++    [HttpGet("subscriptions/mine"), Authorize(Roles = St)] public async Task<ActionResult<ApiResponse<object>>> MySubscriptions(CancellationToken ct) => Success(await c.MySubscriptionsAsync(ct));
+     [HttpPost("subscriptions"), Authorize(Roles = St)] public async Task<ActionResult<ApiResponse<object>>> Subscribe(SubscribeRequest r, CancellationToken ct) => Success(await c.SubscribeAsync(r, ct));
+     [HttpPost("subscriptions/{id:guid}/cancel"), Authorize(Roles = St)] public async Task<ActionResult<ApiResponse<object?>>> Cancel(Guid id, CancellationToken ct) { await c.CancelSubscriptionAsync(id, ct); return Done("Cancelled."); }
+     [HttpPost("lessons/{id:guid}/unlock"), Authorize(Roles = St)] public async Task<ActionResult<ApiResponse<object>>> Unlock(Guid id, CancellationToken ct) => Success(await c.UnlockLessonAsync(id, ct));
+@@ -94,6 +95,7 @@
+     // Extra routes (not in the contract): subscription allocation controls and the review statement, TenantAdmin only.
+     [HttpGet("instructor-revenue/subscription-controls"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> GetControls(CancellationToken ct) => Success(await rv.GetSubscriptionControlsAsync(ct));
+     [HttpPut("instructor-revenue/subscription-controls"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> SetControls(RevenueService.SubscriptionControlsRequest r, CancellationToken ct) => Success(await rv.SetSubscriptionControlsAsync(r, ct));
++    [HttpGet("courses/{courseId:guid}/learning-weight"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> GetWeight(Guid courseId, CancellationToken ct) => Success(await rv.GetLearningWeightAsync(courseId, ct));
+     [HttpPut("courses/{courseId:guid}/learning-weight"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> SetWeight(Guid courseId, RevenueService.LearningWeightRequest r, CancellationToken ct) => Success(await rv.SetLearningWeightAsync(courseId, r, ct));
+     [HttpPost("orders/{orderId:guid}/refunds"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> Refund(Guid orderId, RevenueService.RefundRequest r, CancellationToken ct) => Success(await rv.RecordRefundAsync(orderId, r, ct));
+     [HttpGet("instructor-revenue/held"), Authorize(Roles = Ta)] public async Task<ActionResult<ApiResponse<object>>> Held([FromQuery] DateTime fromUtc, [FromQuery] DateTime toUtc, CancellationToken ct) => Success(await rv.HeldAsync(fromUtc.ToUniversalTime(), toUtc.ToUniversalTime(), ct));
+--- a/SmartLMS.API/Controllers/ContentController.cs
++++ b/SmartLMS.API/Controllers/ContentController.cs
+@@ -14,6 +14,7 @@
+ 
+     [HttpGet("courses/{id:guid}/staff"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object>>> Staff(Guid id, CancellationToken ct) => Success(await s.ListStaffAsync(id, ct));
+     [HttpPut("courses/{id:guid}/staff"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object?>>> SetStaff(Guid id, StaffRequest r, CancellationToken ct) { await s.SetStaffAsync(id, r, ct); return Done("Updated."); }
++    [HttpGet("courses/{id:guid}/prerequisites"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object>>> PrereqList(Guid id, CancellationToken ct) => Success(await s.ListPrerequisitesAsync(id, ct));
+     [HttpPut("courses/{id:guid}/prerequisites"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object?>>> Prereq(Guid id, PrerequisitesRequest r, CancellationToken ct) { await s.SetPrerequisitesAsync(id, r, ct); return Done("Updated."); }
+     [HttpPut("courses/{courseId:guid}/sections/order"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object?>>> OrderSections(Guid courseId, OrderRequest r, CancellationToken ct) { await s.ReorderSectionsAsync(courseId, r, ct); return Done("Updated."); }
+     [HttpPut("sections/{sectionId:guid}/lessons/order"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object?>>> OrderLessons(Guid sectionId, OrderRequest r, CancellationToken ct) { await s.ReorderLessonsAsync(sectionId, r, ct); return Done("Updated."); }
+--- a/SmartLMS.API/Controllers/EngagementController.cs
++++ b/SmartLMS.API/Controllers/EngagementController.cs
+@@ -15,6 +15,8 @@
+     public ActionResult<ApiResponse<object>> LinkCode() => Success(parents.CreateCode());
+     [HttpPost("parent/links"), Authorize(Roles = RoleNames.Parent)]
+     public async Task<ActionResult<ApiResponse<object>>> RequestLink(LinkRequest r, CancellationToken ct) => Success(await parents.RequestLinkAsync(r, ct));
++    [HttpGet("parent/links/pending"), Authorize(Roles = Mgr)]
++    public async Task<ActionResult<ApiResponse<object>>> PendingLinks(CancellationToken ct) => Success(await parents.PendingLinksAsync(ct));
+     [HttpPut("parent/links/{id:guid}"), Authorize(Roles = Mgr)]
+     public async Task<ActionResult<ApiResponse<object?>>> SetLink(Guid id, ApproveLinkRequest r, CancellationToken ct) { await parents.SetLinkAsync(id, r.Approve, ct); return Done(r.Approve ? "Approved." : "Revoked."); }
+     [HttpGet("parent/children"), Authorize(Roles = RoleNames.Parent)]
+--- a/SmartLMS.API/Controllers/AssessmentsController.cs
++++ b/SmartLMS.API/Controllers/AssessmentsController.cs
+@@ -47,5 +47,6 @@
+     [HttpPut("questions/{id:guid}"), Authorize(Roles = Authors)] public async Task<ActionResult<ApiResponse<object?>>> UpdateQuestion(Guid id, QuestionRequest r, CancellationToken ct) { await svc.UpdateQuestionAsync(id, r, ct); return Done("Updated."); }
+     [HttpDelete("questions/{id:guid}"), Authorize(Roles = Authors)] public async Task<ActionResult<ApiResponse<object?>>> DeleteQuestion(Guid id, CancellationToken ct) { await svc.DeleteQuestionAsync(id, ct); return Done("Deleted."); }
+     [HttpPost("question-banks/{id:guid}/import"), Authorize(Roles = Authors)] public async Task<ActionResult<ApiResponse<object>>> Import(Guid id, AssessmentService.ImportRequest r, CancellationToken ct) => Success(await svc.ImportAsync(id, r, ct));
++    [HttpGet("exams/{id:guid}"), Authorize(Roles = Authors)] public async Task<ActionResult<ApiResponse<object>>> GetExam(Guid id, CancellationToken ct) => Success(await svc.GetExamAsync(id, ct));
+     [HttpPut("exams/{id:guid}"), Authorize(Roles = Authors)] public async Task<ActionResult<ApiResponse<object?>>> UpdateExam(Guid id, ExamRequest r, CancellationToken ct) { await svc.UpdateExamAsync(id, r, ct); return Done("Updated."); }
+ }
+--- a/SmartLMS.API/Controllers/CommunityController.cs
++++ b/SmartLMS.API/Controllers/CommunityController.cs
+@@ -23,6 +23,7 @@
+     [HttpDelete("bookmarks/{id:guid}"), Authorize(Roles = St)] public async Task<ActionResult<ApiResponse<object?>>> DelBookmark(Guid id, CancellationToken ct) { await s.DeleteBookmarkAsync(id, ct); return Done("Deleted."); }
+     [HttpPost("study-sessions"), Authorize(Roles = St)] public async Task<ActionResult<ApiResponse<object?>>> Study(StudySessionRequest r, CancellationToken ct) { await s.RecordStudyAsync(r, ct); return Done("Recorded."); }
+ 
++    [HttpGet("learning-paths/manage"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object>>> ManagePaths(CancellationToken ct) => Success(await s.ManagePathsAsync(ct));
+     [HttpGet("learning-paths"), AllowAnonymous] public async Task<ActionResult<ApiResponse<object>>> Paths(CancellationToken ct) => Success(await s.PathsAsync(ct));
+     [HttpGet("learning-paths/{id:guid}"), AllowAnonymous] public async Task<ActionResult<ApiResponse<object>>> GetPath(Guid id, CancellationToken ct) => Success(await s.PathAsync(id, ct));
+     [HttpPost("learning-paths"), Authorize(Roles = Mgr)] public async Task<ActionResult<ApiResponse<object>>> CreatePath(PathRequest r, CancellationToken ct) => Success((object)new { id = await s.CreatePathAsync(r, ct) });

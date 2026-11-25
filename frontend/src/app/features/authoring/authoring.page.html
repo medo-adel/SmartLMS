@@ -1,0 +1,166 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'au.title' | t }}</h1>
+  @if (failed()) { <p class="err">{{ 'common.error' | t }}</p> }
+  @else if (courses() === null) { <ion-spinner></ion-spinner> }
+  @else {
+    <section class="pn">
+      <select class="fld" name="course" [(ngModel)]="course" (change)="pickCourse()"><option value="">{{ 'build.pickCourse' | t }}</option>@for (c of courses(); track c.id) { <option [value]="c.id">{{ c.title }}</option> }</select>
+      @if (msg()) { <p [class.ok]="msg().startsWith('au.s') || msg() === 'au.published'" [class.err]="msg().startsWith('au.err')">{{ msg() | t }}</p> }
+    </section>
+    @if (course) {
+      <section class="pn">
+        <h2>{{ 'au.banks' | t }}</h2>
+        <form class="row2" (ngSubmit)="createBank()"><input class="fld" name="bn" [(ngModel)]="bankName" [placeholder]="'build.name' | t" /><input class="fld" name="bt" [(ngModel)]="bankTopic" [placeholder]="'au.topic' | t" /><ion-button type="submit" size="small">{{ 'build.create' | t }}</ion-button></form>
+        <select class="fld" name="bank" [(ngModel)]="bank" (change)="pickBank()"><option value="">{{ 'au.pickBank' | t }}</option>@for (b of banks(); track b.id) { <option [value]="b.id">{{ b.name }} ({{ b.questionCount }})</option> }</select>
+      </section>
+      @if (bank) {
+        <section class="pn">
+          <h2>{{ 'au.newQuestion' | t }}</h2>
+          <form class="stack" (ngSubmit)="saveQuestion()">
+            <div class="row2">
+              <select class="fld" name="qt" [(ngModel)]="q.type">@for (t of types; track t) { <option [value]="t">{{ t }}</option> }</select>
+              <select class="fld" name="qd" [(ngModel)]="q.difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select>
+              <label>{{ 'au.points' | t }}<input class="fld n" type="number" min="0.5" step="0.5" name="qp" [(ngModel)]="q.points" /></label>
+            </div>
+            <textarea class="fld" name="qx" rows="2" [(ngModel)]="q.text" [placeholder]="'au.questionText' | t"></textarea>
+            @if (q.type === 'TrueFalse') {
+              <div class="tabs2"><button type="button" [class.on]="q.tf" (click)="q.tf = true">{{ 'au.true' | t }}</button><button type="button" [class.on]="!q.tf" (click)="q.tf = false">{{ 'au.false' | t }}</button></div>
+            }
+            @if (q.type === 'McqSingle' || q.type === 'McqMulti' || q.type === 'FillBlank' || q.type === 'Matching') {
+              <p class="mut">{{ 'au.hint.' + q.type | t }}</p>
+              @for (o of q.options; track $index) {
+                <div class="row2">
+                  <input class="fld" [name]="'ot' + $index" [attr.name]="'ot' + $index" [(ngModel)]="o.text" [placeholder]="(q.type === 'Matching' ? 'au.left' : 'au.option') | t" />
+                  @if (q.type === 'Matching') { <input class="fld" [name]="'om' + $index" [attr.name]="'om' + $index" [(ngModel)]="o.matchKey" [placeholder]="'au.right' | t" /> }
+                  @else { <label class="chk"><input type="checkbox" [name]="'oc' + $index" [attr.name]="'oc' + $index" [(ngModel)]="o.isCorrect" (ngModelChange)="markCorrect($index)" /> {{ 'au.correct' | t }}</label> }
+                  <ion-button size="small" fill="clear" color="danger" type="button" (click)="dropOpt($index)">×</ion-button>
+                </div>
+              }
+              <ion-button size="small" fill="outline" type="button" (click)="addOpt()">{{ 'au.addOption' | t }}</ion-button>
+            }
+            <input class="fld" name="qtop" [(ngModel)]="q.topic" [placeholder]="'au.topic' | t" />
+            <input class="fld" name="qex" [(ngModel)]="q.explanation" [placeholder]="'au.explanation' | t" />
+            <ion-button type="submit">{{ 'au.saveQuestion' | t }}</ion-button>
+          </form>
+        </section>
+        <section class="pn">
+          <h2>{{ 'au.questions' | t }}</h2>
+          @for (x of questions(); track x.id) {
+            <div class="rv"><span><b>{{ x.text }}</b> <span class="tag">{{ x.questionType }}</span> <span class="tag">{{ x.difficulty }}</span>
+              @if (x.options.length) { <br /><small class="mut">@for (o of x.options; track o.id) { <span [class.ok]="o.isCorrect">{{ o.text }}{{ o.matchKey ? ' → ' + o.matchKey : '' }} · </span> }</small> }</span>
+              <ion-button size="small" fill="clear" color="danger" (click)="removeQuestion(x.id)">{{ 'build.delete' | t }}</ion-button></div>
+          } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+        </section>
+        <section class="pn">
+          <h2>{{ 'au.import' | t }}</h2>
+          <p class="mut">{{ 'au.importHint' | t }}</p>
+          <form class="stack" (ngSubmit)="importQuestions()">
+            <select class="fld" name="ifmt" [(ngModel)]="imp.format"><option value="json">JSON</option><option value="csv">CSV</option></select>
+            <textarea class="fld" name="ict" rows="6" [(ngModel)]="imp.content" [placeholder]="'au.importContent' | t" dir="ltr"></textarea>
+            <ion-button type="submit" size="small" fill="outline">{{ 'au.importRun' | t }}</ion-button>
+          </form>
+          @if (impCount() !== null) { <p class="ok">{{ 'au.imported' | t }}: {{ impCount() }}</p> }
+        </section>
+        <section class="pn">
+          <h2>{{ 'au.newExam' | t }}</h2>
+          <p class="mut">{{ 'au.examHint' | t }}</p>
+          <form class="stack" (ngSubmit)="createExam()">
+            <input class="fld" name="et" [(ngModel)]="ex.title" [placeholder]="'build.name' | t" />
+            <div class="row2">
+              <select class="fld" name="ek" [(ngModel)]="ex.kind"><option>Quiz</option><option>Exam</option></select>
+              <label>{{ 'au.minutes' | t }}<input class="fld n" type="number" min="1" name="em" [(ngModel)]="ex.minutes" /></label>
+              <label>{{ 'au.attempts' | t }}<input class="fld n" type="number" min="1" max="20" name="ea" [(ngModel)]="ex.attempts" /></label>
+              <label>{{ 'au.pass' | t }}<input class="fld n" type="number" min="0" max="100" name="ep" [(ngModel)]="ex.pass" /></label>
+              <label>{{ 'au.pick' | t }}<input class="fld n" type="number" min="1" name="ec" [(ngModel)]="ex.pickCount" /></label>
+            </div>
+            <label class="chk"><input type="checkbox" name="etab" [(ngModel)]="ex.tabs" /> {{ 'au.tabs' | t }}</label>
+            <ion-button type="submit">{{ 'au.createExam' | t }}</ion-button>
+          </form>
+        </section>
+      }
+      <section class="pn">
+        <h2>{{ 'au.exams' | t }}</h2>
+        @for (e of exams(); track e.id) {
+          <div class="rv"><span><b>{{ e.title }}</b> <span class="tag">{{ e.kind }}</span> · {{ e.passingScorePercent }}% · {{ e.maxAttempts }}x <span class="tag">{{ e.isPublished ? ('au.live' | t) : ('au.draft' | t) }}</span></span>
+            <ion-button size="small" fill="outline" (click)="startEditExam(e.id)">{{ 'build.edit' | t }}</ion-button>
+            @if (!e.isPublished) { <ion-button size="small" (click)="publish(e.id)">{{ 'au.publish' | t }}</ion-button> }</div>
+        } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+      </section>
+      @if (examDetail(); as ed) {
+        <section class="pn">
+          <h2>{{ 'au.editExam' | t }}: {{ ed.title }} <span class="tag">{{ ed.kind }}</span></h2>
+          @if (ed.locked) { <p class="err">{{ 'au.locked' | t }}</p> }
+          <form class="stack" (ngSubmit)="saveExam()">
+            <input class="fld" name="eet" [(ngModel)]="editEx.title" [placeholder]="'build.name' | t" />
+            <textarea class="fld" name="eei" rows="2" [(ngModel)]="editEx.instructions" [placeholder]="'au.instructions' | t"></textarea>
+            <div class="row2">
+              <label>{{ 'au.minutes' | t }}<input class="fld n" type="number" min="1" name="eem" [(ngModel)]="editEx.minutes" /></label>
+              <label>{{ 'au.attempts' | t }}<input class="fld n" type="number" min="1" max="20" name="eea" [(ngModel)]="editEx.attempts" /></label>
+              <label>{{ 'au.pass' | t }}<input class="fld n" type="number" min="0" max="100" name="eep" [(ngModel)]="editEx.pass" /></label>
+            </div>
+            <div class="row2">
+              <label>{{ 'au.from' | t }}<input class="fld" type="datetime-local" name="eef" [(ngModel)]="editEx.from" /></label>
+              <label>{{ 'au.until' | t }}<input class="fld" type="datetime-local" name="eeu" [(ngModel)]="editEx.until" /></label>
+            </div>
+            <label class="chk"><input type="checkbox" name="eetab" [(ngModel)]="editEx.tabs" /> {{ 'au.tabs' | t }}</label>
+            @if (editEx.tabs) { <label>{{ 'au.maxTabs' | t }}<input class="fld n" type="number" min="1" max="20" name="eemt" [(ngModel)]="editEx.maxTabs" /></label> }
+            <div class="row2">
+              <ion-button type="submit" size="small">{{ 'build.save' | t }}</ion-button>
+              <ion-button size="small" fill="clear" type="button" (click)="examDetail.set(null)">{{ 'build.cancel' | t }}</ion-button>
+            </div>
+          </form>
+        </section>
+      }
+      <section class="pn">
+        <h2>{{ 'au.grading' | t }}</h2>
+        <p class="mut">{{ 'au.gradingHint' | t }}</p>
+        <select class="fld" name="gx" [ngModel]="attemptsExam()" (ngModelChange)="loadAttempts($event)"><option value="">{{ 'au.pickExam' | t }}</option>@for (e of exams(); track e.id) { <option [value]="e.id">{{ e.title }}</option> }</select>
+        @if (attempts(); as att) {
+          @for (r of att; track r.id) {
+            <div class="rv"><span><b>{{ attemptLabel(r) }}</b> · #{{ r.attemptNumber }} <span class="tag">{{ r.status }}</span>
+              @if (r.score !== null) { · {{ r.score }}/{{ r.maxScore }} }
+              @if (r.passed !== null) { <span class="tag">{{ r.passed ? ('au.passed' | t) : ('au.failed' | t) }}</span> }</span>
+              <ion-button size="small" fill="outline" (click)="openAttempt(r.id)">{{ 'au.review' | t }}</ion-button></div>
+          } @empty { <p class="mut">{{ 'common.empty' | t }}</p> }
+        }
+        @if (grading(); as g) {
+          <section class="pn">
+            <h3>{{ 'au.attempt' | t }} <span class="tag">{{ g.status }}</span> @if (g.awaitingManualGrading > 0) { <span class="tag">{{ 'au.awaiting' | t }}: {{ g.awaitingManualGrading }}</span> }</h3>
+            @for (a of g.answers ?? []; track a.answerId; let i = $index) {
+              <div class="rv stack">
+                <span><b>{{ 'au.answer' | t }} {{ i + 1 }}</b>
+                  @if (a.pointsAwarded !== null) { <span class="tag">{{ a.pointsAwarded }} {{ 'au.points' | t }}</span> } @else { <span class="tag">{{ 'au.ungraded' | t }}</span> }</span>
+                <pre class="mut" dir="ltr">{{ answerText(a) }}</pre>
+                <div class="row2">
+                  <label>{{ 'au.points' | t }}<input class="fld n" type="number" min="0" step="0.5" [name]="'gp' + a.answerId" [attr.name]="'gp' + a.answerId" [(ngModel)]="gradeInputs[a.answerId].points" /></label>
+                  <input class="fld" [name]="'gf' + a.answerId" [attr.name]="'gf' + a.answerId" [(ngModel)]="gradeInputs[a.answerId].feedback" [placeholder]="'au.feedback' | t" />
+                  <ion-button size="small" (click)="saveGrade(a)">{{ 'au.saveGrade' | t }}</ion-button>
+                </div>
+              </div>
+            }
+          </section>
+        }
+      </section>
+      <section class="pn">
+        <h2>{{ 'au.points' | t }} ({{ 'au.videoQuiz' | t }})</h2>
+        <p class="mut">{{ 'au.pointHint' | t }}</p>
+        <div class="stack">
+          <select class="fld" name="pl" [(ngModel)]="pt.lesson" (change)="pickLesson()"><option value="">{{ 'build.pickLesson' | t }}</option>@for (l of lessons; track l.id) { <option [value]="l.id">{{ l.title }}</option> }</select>
+          @if (pt.lesson) {
+            @for (p of points(); track p.id) { <div class="rv"><span><b>{{ p.timestampSeconds }}s</b> · {{ p.question.text }} <span class="tag">{{ p.isRequired ? ('au.required' | t) : ('au.skippable' | t) }}</span></span><ion-button size="small" fill="clear" color="danger" (click)="removePoint(p.id)">{{ 'build.delete' | t }}</ion-button></div> }
+            <div class="row2">
+              <select class="fld" name="pq" [(ngModel)]="pt.question"><option value="">{{ 'au.pickQuestion' | t }}</option>@for (x of questions(); track x.id) { <option [value]="x.id">{{ x.text }}</option> }</select>
+              <label>{{ 'au.atSecond' | t }}<input class="fld n" type="number" min="0" name="pa" [(ngModel)]="pt.at" /></label>
+              <label class="chk"><input type="checkbox" name="pr" [(ngModel)]="pt.required" /> {{ 'au.required' | t }}</label>
+              @if (!pt.required) { <label>{{ 'au.skipAfter' | t }}<input class="fld n" type="number" min="1" max="20" name="ps" [(ngModel)]="pt.skip" /></label> }
+              <ion-button size="small" (click)="addPoint()">{{ 'au.addPoint' | t }}</ion-button>
+            </div>
+            <p class="mut">{{ 'au.pointBank' | t }}</p>
+          }
+        </div>
+      </section>
+    }
+  }
+</div>
+</ion-content>

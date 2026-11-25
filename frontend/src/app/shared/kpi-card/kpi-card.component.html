@@ -1,0 +1,4 @@
+<div class="kpi" [class.flat]="flat()" [class.attn]="tone() !== 'primary'">
+  <span class="chip" [class]="tone()"><ion-icon [name]="icon()" aria-hidden="true"></ion-icon></span>
+  <div class="txt"><div class="value" [class.long]="('' + value()).length > 9">{{ value() }}</div><div class="label">{{ label() }}</div></div>
+</div>
