@@ -9,6 +9,7 @@ import { OfflineService } from '../../core/services/offline.service';
 import { NetworkService } from '../../core/services/network.service';
 import { ProgressSyncService } from '../../core/services/progress-sync.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { CartState } from '../../core/services/cart-state.service';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 /**
@@ -25,6 +26,7 @@ export class ShellComponent {
   readonly tenant = inject(TenantService);
   private readonly router = inject(Router);
   readonly offline = inject(OfflineService);
+  readonly cartState = inject(CartState);
   readonly net = inject(NetworkService);
   readonly sync = inject(ProgressSyncService);
   private readonly all = [
@@ -65,6 +67,8 @@ export class ShellComponent {
     addIcons({ 'chatbubbles-outline': chatbubblesOutline, 'clipboard-outline': clipboardOutline, 'create-outline': createOutline, 'ellipsis-horizontal-outline': ellipsisHorizontalOutline, 'download-outline': downloadOutline, 'cloud-offline-outline': cloudOfflineOutline, 'pricetags-outline': pricetagsOutline, 'business-outline': businessOutline, 'people-outline': peopleOutline, 'checkmark-done-outline': checkmarkDoneOutline, 'settings-outline': settingsOutline, 'card-outline': cardOutline, 'help-circle-outline': helpCircleOutline, 'receipt-outline': receiptOutline, 'home-outline': homeOutline, 'notifications-outline': notificationsOutline, 'person-outline': personOutline, 'log-out-outline': logOutOutline, 'book-outline': bookOutline, 'git-branch-outline': gitBranchOutline, 'sparkles-outline': sparklesOutline, 'wallet-outline': walletOutline, 'cart-outline': cartOutline, 'construct-outline': constructOutline, 'trophy-outline': trophyOutline, 'cash-outline': cashOutline, 'shield-checkmark-outline': shieldCheckmarkOutline });
     // replay progress saved offline whenever the device is online and someone is signed in
     effect(() => { if (this.auth.user()) { void this.sync.refreshPending(); if (this.net.online()) void this.sync.flush(); } });
+    // cart badge: load the count once per sign-in; cart add/remove flows keep it fresh
+    effect(() => { if (this.auth.user() && this.auth.hasRole('Student')) void this.cartState.refresh(); });
   }
   async logout(): Promise<void> { await this.offline.clearUser(); await this.auth.logout(); await this.router.navigateByUrl('/login'); }
 }

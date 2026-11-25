@@ -2,12 +2,14 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
+import { CartState } from '../../core/services/cart-state.service';
 import { CourseDetail, ExamListItem } from '../../core/models/learning';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 @Component({ selector: 'app-course-detail', imports: [RouterLink, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './course-detail.page.html', styleUrl: './course-detail.page.scss' })
 export class CourseDetailPage implements OnInit {
   private readonly api = inject(LearningService);
+  private readonly cartState = inject(CartState);
   private readonly route = inject(ActivatedRoute);
   readonly course = signal<CourseDetail | null>(null);
   readonly exams = signal<ExamListItem[]>([]);
@@ -31,7 +33,7 @@ export class CourseDetailPage implements OnInit {
     try { await this.api.enroll(this.id); this.message.set('course.enrolled'); await this.load(); } catch { /* error toast comes from the interceptor */ }
   }
   async addToCart(): Promise<void> {
-    try { await this.api.addToCart('Course', this.id); this.message.set('nav.cart'); } catch { /* toast */ }
+    try { await this.api.addToCart('Course', this.id); this.message.set('nav.cart'); void this.cartState.refresh(); } catch { /* toast */ }
   }
   minutes(s: number | null): string { return s ? `${Math.max(1, Math.round(s / 60))} min` : ''; }
 }

@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IonContent, IonButton } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
+import { CartState } from '../../core/services/cart-state.service';
 import { CartView, CheckoutOutcome, CouponPreview } from '../../core/models/learning';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
@@ -24,6 +25,7 @@ export function outcomeState(o: CheckoutOutcome): CheckoutState {
 @Component({ selector: 'app-cart', imports: [FormsModule, IonContent, IonButton, TranslatePipe], templateUrl: './cart.page.html', styleUrl: './cart.page.scss' })
 export class CartPage implements OnInit {
   private readonly api = inject(LearningService);
+  private readonly cartState = inject(CartState);
   readonly cart = signal<CartView | null>(null);
   readonly preview = signal<CouponPreview | null>(null);
   readonly failed = signal(false);
@@ -46,7 +48,7 @@ export class CartPage implements OnInit {
   get url(): string | null { return safeCheckoutUrl(this.outcome()?.checkoutUrl); }
   async load(): Promise<void> {
     this.failed.set(false);
-    try { this.cart.set(await this.api.cart()); } catch { this.failed.set(true); }
+    try { const c = await this.api.cart(); this.cart.set(c); this.cartState.apply(c); } catch { this.failed.set(true); }
   }
   async remove(id: string): Promise<void> { try { await this.api.removeFromCart(id); this.preview.set(null); await this.load(); } catch { /* toast */ } }
   async check(): Promise<void> { if (!this.coupon.trim()) return; try { this.preview.set(await this.api.previewCoupon(this.coupon.trim())); } catch { this.preview.set(null); } }

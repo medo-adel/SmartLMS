@@ -12,3 +12,30 @@ audio { inline-size: 100%; display: block; padding: 1rem; box-sizing: border-box
 .sp { inline-size: auto; }
 .txt { white-space: pre-wrap; }
 .sl { max-inline-size: 100%; border-radius: 12px; margin-block-end: .6rem; }
+/* curriculum (course map) panel */
+.layout.with-cur .cur { align-self: start; }
+.cur.closed { display: none; }
+.cur-head h2 { margin: 0; font-size: 1.05rem; }
+.bar { block-size: .4rem; background: var(--ion-color-step-150, #e5e7eb); border-radius: 999px; overflow: hidden; margin-block: .4rem .8rem; }
+.bar span { display: block; block-size: 100%; background: var(--ion-color-primary, #0f766e); border-radius: 999px; }
+.cur-sec { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; padding: .5rem .25rem .25rem; border-block-start: 1px solid var(--ion-color-step-150, #e5e7eb); margin-block-start: .4rem; }
+.cur-les { border-radius: 8px; }
+.cur-les.on { background: var(--ion-color-step-100, #f3f4f6); }
+.cur-link { display: flex; align-items: center; gap: .5rem; padding: .45rem .5rem; color: inherit; text-decoration: none; }
+.cur-les.on .cur-link { font-weight: 700; }
+.cur-check { inline-size: 1.15rem; block-size: 1.15rem; flex: none; border: 1.5px solid var(--ion-color-step-400, #9ca3af); border-radius: 50%; display: inline-grid; place-items: center; font-size: .7rem; color: #fff; }
+.cur-check.done { background: var(--ion-color-primary, #0f766e); border-color: var(--ion-color-primary, #0f766e); }
+.cur-ti { flex: 1; }
+.cur-res { padding-inline-start: 2.1rem; padding-block-end: .3rem; display: grid; gap: .15rem; }
+.cur-file { background: none; border: 0; padding: .15rem 0; text-align: start; font: inherit; font-size: .85rem; color: var(--ion-color-primary, #0f766e); cursor: pointer; }
+.upnext { display: flex; align-items: center; gap: .8rem; margin-block-start: .8rem; }
+@media (max-width: 991.98px) { .layout.with-cur .main { order: 1; } .layout.with-cur .cur { order: 2; } }
+@media (min-width: 992px) {
+  .layout.with-cur { grid-template-columns: minmax(0, 1fr) 21rem; }
+  .layout.with-cur .main { order: 1; }
+  .layout.with-cur .cur { order: 2; }
+  .layout.with-cur.with-drawer { grid-template-columns: minmax(0, 1fr) 21rem 24rem; }
+  :host-context([dir=rtl]) .layout.with-cur { grid-template-columns: 21rem minmax(0, 1fr); }
+  :host-context([dir=rtl]) .layout.with-cur .cur { order: -1; }
+  :host-context([dir=rtl]) .layout.with-cur.with-drawer { grid-template-columns: 21rem minmax(0, 1fr) 24rem; }
+}

@@ -8,14 +8,37 @@
   @else {
     <div class="head row2"><h1>{{ lesson()!.title }}</h1><span class="tag">{{ lesson()!.lessonType }}</span></div>
     @if (offlineMode()) { <p class="mut off">{{ 'dl.playingOffline' | t }}</p> }
-    <div class="layout" [class.with-drawer]="drawer()">
+    <div class="layout with-cur" [class.with-drawer]="drawer()">
+      <aside class="cur pn" [class.closed]="!curriculumOpen()" [attr.aria-label]="'player.content' | t">
+        <div class="row2 cur-head"><h2>{{ 'player.content' | t }}</h2>@if (progress(); as pr) { <small class="mut">{{ pr.progressPercent }}%</small> }</div>
+        @if (progress(); as pr) { <div class="bar" role="presentation"><span [style.width.%]="pr.progressPercent"></span></div> }
+        @for (s of course()!.sections; track s.id) {
+          <div class="cur-sec"><strong>{{ s.title }}</strong><small class="mut">{{ s.lessons.length }} {{ 'player.lectures' | t }}</small></div>
+          @for (l of s.lessons; track l.id) {
+            <div class="cur-les" [class.on]="l.id === lessonId">
+              <a class="cur-link" [routerLink]="['/app/learn', courseId, l.id]">
+                <span class="cur-check" [class.done]="lessonDone(l.id)">@if (lessonDone(l.id)) { ✓ }</span>
+                <span class="cur-ti">{{ l.title }} <small class="mut">{{ l.lessonType }}</small></span>
+                @if (dur(l.durationSeconds)) { <small class="mut">{{ dur(l.durationSeconds) }}</small> }
+              </a>
+              @if (resMap()[l.id]?.length) {
+                <div class="cur-res">
+                  @for (r of resMap()[l.id]; track r.id) {
+                    <button type="button" class="cur-file" (click)="downloadResource(l.id, r, $event)">⬇ {{ r.fileName || r.title }} <small class="mut">({{ resSize(r.sizeBytes) }})</small></button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      </aside>
       <div class="main">
         @if (mediaUrl(); as src) {
           <div class="stage">
             @if (lesson()!.lessonType === 'Video') {
-              <video #media [src]="src" controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline (timeupdate)="onTime()" (ended)="complete()"></video>
+              <video #media [src]="src" controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline (timeupdate)="onTime()" (ended)="onEnded()"></video>
             } @else if (lesson()!.lessonType === 'Audio') {
-              <audio #media [src]="src" controls controlsList="nodownload" (ended)="complete()"></audio>
+              <audio #media [src]="src" controls controlsList="nodownload" (ended)="onEnded()"></audio>
             } @else { <iframe [src]="safeUrl()" title="document"></iframe> }
             <div class="wm" [style.left.%]="wm().x" [style.top.%]="wm().y" aria-hidden="true">{{ wm().text }}</div>
             @if (hidden()) { <div class="privacy"><span>{{ 'player.privacy' | t }}</span></div> }
@@ -59,8 +82,17 @@
         <div class="row2">
           <ion-button (click)="complete()">{{ 'player.complete' | t }}</ion-button>
           @if (next(); as n) { <ion-button fill="outline" [routerLink]="['/app/learn', courseId, n.id]">{{ 'player.next' | t }}: {{ n.title }}</ion-button> }
+          <ion-button fill="outline" (click)="curriculumOpen.set(!curriculumOpen())">{{ 'player.content' | t }}</ion-button>
           <ion-button fill="outline" (click)="drawer.set(!drawer())">{{ 'player.ask' | t }}</ion-button>
         </div>
+        @if (showUpNext()) {
+          <section class="pn upnext">
+            @if (next(); as n) {
+              <span class="mut">{{ 'player.upNext' | t }}</span>
+              <ion-button [routerLink]="['/app/learn', courseId, n.id]">{{ n.title }}</ion-button>
+            } @else { <span class="mut">{{ 'player.courseDone' | t }}</span> }
+          </section>
+        }
       </div>
       @if (drawer()) { <app-ai-drawer [courseId]="courseId" [lessonId]="lessonId" (closed)="drawer.set(false)" (seek)="seek($event)" /> }
     </div>
