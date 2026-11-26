@@ -2386,6 +2386,25 @@ Flags: `TA`. Tracks what the AI service has embedded so ingest runs only when co
 
 Indexes: unique (LessonId).
 
+### LessonTranscripts
+
+Flags: `TA`. Timed Whisper cues for player captions and transcript seek. Written by the AI ingest job for video/audio lessons; replaced on re-ingest.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| LessonId | uniqueidentifier | no | FK (TenantId, LessonId) -> Lessons(TenantId, Id) tenant-scoped |
+| CuesJson | nvarchar(max) | no |  |
+| CueCount | int | no |  |
+| GeneratedAtUtc | datetime2(7) | no |  |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (LessonId).
+
 ### AiUsageLogs
 
 Flags: `T`. No prompt text stored. Used for rate limiting and cost review.

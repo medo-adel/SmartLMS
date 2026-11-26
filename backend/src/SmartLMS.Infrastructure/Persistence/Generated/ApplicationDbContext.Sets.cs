@@ -114,6 +114,7 @@ public partial class ApplicationDbContext
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<LessonIndexState> LessonIndexStates => Set<LessonIndexState>();
+    public DbSet<LessonTranscript> LessonTranscripts => Set<LessonTranscript>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
     public DbSet<DropoutRiskScore> DropoutRiskScores => Set<DropoutRiskScore>();
     public DbSet<AnalyticsSnapshot> AnalyticsSnapshots => Set<AnalyticsSnapshot>();

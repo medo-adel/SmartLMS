@@ -344,6 +344,8 @@ T("WebhookDeliveries", G, [
 ], flags="TA", idx=[("Status", "NextAttemptAtUtc")])
 T("LessonIndexStates", G, ["LessonId g >Lessons", "Status e:NotIndexed|Pending|Processing|Indexed|Failed =NotIndexed", "ContentHash s:64?", "ChunkCount i?", "IndexedAtUtc d?", "LastError s:1000?"], flags="TA", uniq=[("LessonId",)],
   note="Tracks what the AI service has embedded so ingest runs only when content changed.")
+T("LessonTranscripts", G, ["LessonId g >Lessons", "CuesJson t", "CueCount i", "GeneratedAtUtc d"], flags="TA", uniq=[("LessonId",)],
+  note="Timed Whisper cues for player captions and transcript seek. Written by the AI ingest job for video/audio lessons; replaced on re-ingest.")
 T("AiUsageLogs", G, ["UserId g? >AspNetUsers", "Endpoint s:80", "CourseId g? >Courses", "Provider s:30?", "LatencyMs i?", "StatusCode i", "CreatedAtUtc d"], flags="T", idx=[("UserId", "CreatedAtUtc")],
   note="No prompt text stored. Used for rate limiting and cost review.")
 T("DropoutRiskScores", G, ["UserId g >AspNetUsers", "CourseId g >Courses", "Score f", "Level e:Low|Medium|High", "FeaturesJson j", "ComputedAtUtc d"], flags="T", idx=[("CourseId", "UserId", "ComputedAtUtc")])

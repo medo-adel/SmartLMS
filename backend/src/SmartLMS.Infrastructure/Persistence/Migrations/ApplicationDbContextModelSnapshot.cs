@@ -3671,6 +3671,50 @@ namespace SmartLMS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartLMS.Domain.Entities.LessonTranscript", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CueCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CuesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("GeneratedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("LessonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LessonId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_LessonTranscripts_LessonId");
+
+                    b.HasIndex("TenantId", "LessonId");
+
+                    b.ToTable("LessonTranscripts", (string)null);
+                });
+
             modelBuilder.Entity("SmartLMS.Domain.Entities.LiveSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8052,6 +8096,22 @@ namespace SmartLMS.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("SmartLMS.Domain.Entities.LessonSlide", b =>
+                {
+                    b.HasOne("SmartLMS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SmartLMS.Domain.Entities.Lesson", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "LessonId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartLMS.Domain.Entities.LessonTranscript", b =>
                 {
                     b.HasOne("SmartLMS.Domain.Entities.Tenant", null)
                         .WithMany()

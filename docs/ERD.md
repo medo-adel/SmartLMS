@@ -1084,6 +1084,10 @@ erDiagram
         uniqueidentifier Id PK
         uniqueidentifier LessonId FK
     }
+    LessonTranscripts {
+        uniqueidentifier Id PK
+        uniqueidentifier LessonId FK
+    }
     AiUsageLogs {
         uniqueidentifier Id PK
         uniqueidentifier UserId FK
@@ -1119,6 +1123,7 @@ erDiagram
     Courses |o--o{ AnalyticsSnapshots : "CourseId (tenant-scoped)"
     Courses ||--o{ DropoutRiskScores : "CourseId (tenant-scoped)"
     Lessons ||--o{ LessonIndexStates : "LessonId (tenant-scoped)"
+    Lessons ||--o{ LessonTranscripts : "LessonId (tenant-scoped)"
     UserTenantMemberships |o--o{ AiUsageLogs : "UserId (tenant-scoped)"
     UserTenantMemberships ||--o{ DropoutRiskScores : "UserId (tenant-scoped)"
     WebhookEndpoints ||--o{ WebhookDeliveries : "WebhookEndpointId (tenant-scoped)"
@@ -1128,6 +1133,7 @@ erDiagram
 - **ApiKeys**: Full key shown once at creation; only the hash is stored.
 - **WebhookEndpoints**: SecretProtected uses ASP.NET Data Protection. Deliveries are signed with HMAC-SHA256.
 - **LessonIndexStates**: Tracks what the AI service has embedded so ingest runs only when content changed.
+- **LessonTranscripts**: Timed Whisper cues for player captions and transcript seek. Written by the AI ingest job for video/audio lessons; replaced on re-ingest.
 - **AiUsageLogs**: No prompt text stored. Used for rate limiting and cost review.
 - **AnalyticsSnapshots**: Pre-computed dashboards, drop-off heatmaps, leaderboards and revenue rollups written by Hangfire jobs.
 

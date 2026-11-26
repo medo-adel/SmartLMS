@@ -3,7 +3,8 @@ namespace SmartLMS.Application.Interfaces;
 // Typed mirror of ai-service/app/schemas.py. The wire format is snake_case JSON.
 public sealed record AiScope(string TenantId, string CourseId);
 public sealed record AiCitation(string LessonId, int? Page, double? StartSeconds, double? EndSeconds, string Snippet);
-public sealed record AiIngestResult(string LessonId, int ChunksIndexed, int TranscriptSegments);
+public sealed record AiTranscriptCue(double Start, double End, string Text);
+public sealed record AiIngestResult(string LessonId, int ChunksIndexed, int TranscriptSegments, IReadOnlyList<AiTranscriptCue>? Cues);
 public sealed record AiTutorResult(string Answer, List<AiCitation> Citations, bool Grounded);
 public sealed record AiSearchHit(string LessonId, double StartSeconds, double EndSeconds, string Snippet, double Score);
 public sealed record AiSearchResult(List<AiSearchHit> Hits);

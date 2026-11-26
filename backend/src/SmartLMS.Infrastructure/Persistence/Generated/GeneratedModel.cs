@@ -1942,6 +1942,20 @@ public static class GeneratedModel
         });
     }
 
+    private static void MapLessonTranscript(ModelBuilder mb, bool sqlServer)
+    {
+        mb.Entity<LessonTranscript>(b =>
+        {
+        b.ToTable("LessonTranscripts", t =>
+        {
+        });
+        b.Property(e => e.Id).ValueGeneratedNever();
+        b.HasIndex("LessonId").IsUnique().HasDatabaseName("UX_LessonTranscripts_LessonId");
+        b.HasOne<Tenant>().WithMany().HasForeignKey("TenantId").OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Lesson>().WithMany().HasForeignKey("TenantId", "LessonId").HasPrincipalKey("TenantId", "Id").OnDelete(DeleteBehavior.NoAction);
+        });
+    }
+
     private static void MapAiUsageLog(ModelBuilder mb, bool sqlServer)
     {
         mb.Entity<AiUsageLog>(b =>
@@ -2102,6 +2116,7 @@ public static class GeneratedModel
         MapWebhookEndpoint(mb, sqlServer);
         MapWebhookDelivery(mb, sqlServer);
         MapLessonIndexState(mb, sqlServer);
+        MapLessonTranscript(mb, sqlServer);
         MapAiUsageLog(mb, sqlServer);
         MapDropoutRiskScore(mb, sqlServer);
         MapAnalyticsSnapshot(mb, sqlServer);

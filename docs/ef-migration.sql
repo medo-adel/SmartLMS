@@ -5853,3 +5853,54 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126041640_LessonTranscripts'
+)
+BEGIN
+    CREATE TABLE [LessonTranscripts] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [LessonId] uniqueidentifier NOT NULL,
+        [CuesJson] nvarchar(max) NOT NULL,
+        [CueCount] int NOT NULL,
+        [GeneratedAtUtc] datetime2 NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [CreatedBy] uniqueidentifier NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [UpdatedBy] uniqueidentifier NULL,
+        CONSTRAINT [PK_LessonTranscripts] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_LessonTranscripts_Lessons_TenantId_LessonId] FOREIGN KEY ([TenantId], [LessonId]) REFERENCES [Lessons] ([TenantId], [Id]),
+        CONSTRAINT [FK_LessonTranscripts_Tenants_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [Tenants] ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126041640_LessonTranscripts'
+)
+BEGIN
+    CREATE INDEX [IX_LessonTranscripts_TenantId_LessonId] ON [LessonTranscripts] ([TenantId], [LessonId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126041640_LessonTranscripts'
+)
+BEGIN
+    CREATE UNIQUE INDEX [UX_LessonTranscripts_LessonId] ON [LessonTranscripts] ([LessonId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126041640_LessonTranscripts'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261126041640_LessonTranscripts', N'10.0.15');
+END;
+
+COMMIT;
+GO
+

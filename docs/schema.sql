@@ -1971,6 +1971,20 @@ CREATE TABLE [dbo].[LessonIndexStates] (
     CONSTRAINT [CK_LessonIndexStates_Status] CHECK ([Status] IN (N'NotIndexed',N'Pending',N'Processing',N'Indexed',N'Failed'))
 );
 GO
+CREATE TABLE [dbo].[LessonTranscripts] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [LessonId] uniqueidentifier NOT NULL,
+    [CuesJson] nvarchar(max) NOT NULL,
+    [CueCount] int NOT NULL,
+    [GeneratedAtUtc] datetime2(7) NOT NULL,
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_LessonTranscripts] PRIMARY KEY ([Id])
+);
+GO
 CREATE TABLE [dbo].[AiUsageLogs] (
     [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
     [TenantId] uniqueidentifier NOT NULL,
@@ -2383,6 +2397,8 @@ ALTER TABLE [dbo].[WebhookDeliveries] ADD CONSTRAINT [FK_WebhookDeliveries_Webho
 ALTER TABLE [dbo].[WebhookDeliveries] ADD CONSTRAINT [FK_WebhookDeliveries_BackgroundJobId] FOREIGN KEY ([TenantId], [BackgroundJobId]) REFERENCES [dbo].[BackgroundJobs] ([TenantId], [Id]);
 ALTER TABLE [dbo].[LessonIndexStates] ADD CONSTRAINT [FK_LessonIndexStates_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[LessonIndexStates] ADD CONSTRAINT [FK_LessonIndexStates_LessonId] FOREIGN KEY ([TenantId], [LessonId]) REFERENCES [dbo].[Lessons] ([TenantId], [Id]);
+ALTER TABLE [dbo].[LessonTranscripts] ADD CONSTRAINT [FK_LessonTranscripts_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[LessonTranscripts] ADD CONSTRAINT [FK_LessonTranscripts_LessonId] FOREIGN KEY ([TenantId], [LessonId]) REFERENCES [dbo].[Lessons] ([TenantId], [Id]);
 ALTER TABLE [dbo].[AiUsageLogs] ADD CONSTRAINT [FK_AiUsageLogs_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[AiUsageLogs] ADD CONSTRAINT [FK_AiUsageLogs_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
 ALTER TABLE [dbo].[AiUsageLogs] ADD CONSTRAINT [FK_AiUsageLogs_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
@@ -2744,6 +2760,8 @@ CREATE INDEX [IX_WebhookDeliveries_WebhookEndpointId_TenantId] ON [dbo].[Webhook
 CREATE INDEX [IX_WebhookDeliveries_BackgroundJobId_TenantId] ON [dbo].[WebhookDeliveries] ([BackgroundJobId], [TenantId]);
 CREATE UNIQUE INDEX [UX_LessonIndexStates_LessonId] ON [dbo].[LessonIndexStates] ([LessonId]);
 CREATE INDEX [IX_LessonIndexStates_TenantId] ON [dbo].[LessonIndexStates] ([TenantId]);
+CREATE UNIQUE INDEX [UX_LessonTranscripts_LessonId] ON [dbo].[LessonTranscripts] ([LessonId]);
+CREATE INDEX [IX_LessonTranscripts_TenantId] ON [dbo].[LessonTranscripts] ([TenantId]);
 CREATE INDEX [IX_AiUsageLogs_UserId_CreatedAtUtc] ON [dbo].[AiUsageLogs] ([UserId], [CreatedAtUtc]);
 CREATE INDEX [IX_AiUsageLogs_TenantId] ON [dbo].[AiUsageLogs] ([TenantId]);
 CREATE INDEX [IX_AiUsageLogs_CourseId_TenantId] ON [dbo].[AiUsageLogs] ([CourseId], [TenantId]);

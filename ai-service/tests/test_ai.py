@@ -130,6 +130,9 @@ def test_video_ingest_and_semantic_search_with_timestamps(env):
     (root / "v.mp4").write_bytes(b"x")
     r = c.post("/ai/ingest", headers=H, json={"tenant_id": "T1", "course_id": "C1", "lesson_id": "V1", "source_type": "video", "source_uri": "v.mp4"})
     assert r.json()["transcript_segments"] == 2
+    cues = r.json()["cues"]
+    assert len(cues) == 2 and cues[0] == {"start": 0.0, "end": 5.0, "text": "photosynthesis turns light into sugar"}
+    assert cues[1]["start"] >= cues[0]["end"]  # timed, ordered, non-overlapping
     ingest(c, lesson="L1")                                          # a text lesson must not show up in video search
     hits = c.post("/ai/video/semantic-search", headers=H, json={"tenant_id": "T1", "course_id": "C1", "query": "chlorophyll red light"}).json()["hits"]
     assert hits and all(h["lesson_id"] == "V1" for h in hits) and hits[0]["start_seconds"] == 0 and hits[0]["end_seconds"] == 11
