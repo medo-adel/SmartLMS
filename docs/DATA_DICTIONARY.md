@@ -1736,6 +1736,23 @@ Flags: `TA`. CHECK: exactly one target column matches ItemType.
 | UpdatedAtUtc | datetime2(7) | yes |  |
 | UpdatedBy | uniqueidentifier | yes |  |
 
+### WishlistItems
+
+Flags: `TA`. Student wishlist: courses saved for later, one row per student-course pair.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| UserId | uniqueidentifier | no | FK (TenantId, UserId) -> UserTenantMemberships(TenantId, UserId) tenant-scoped |
+| CourseId | uniqueidentifier | no | FK (TenantId, CourseId) -> Courses(TenantId, Id) tenant-scoped |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (TenantId, UserId, CourseId).
+
 ### Coupons
 
 Flags: `TAS`

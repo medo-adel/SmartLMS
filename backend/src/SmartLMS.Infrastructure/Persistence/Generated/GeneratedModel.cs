@@ -1348,6 +1348,21 @@ public static class GeneratedModel
         });
     }
 
+    private static void MapWishlistItem(ModelBuilder mb, bool sqlServer)
+    {
+        mb.Entity<WishlistItem>(b =>
+        {
+        b.ToTable("WishlistItems", t =>
+        {
+        });
+        b.Property(e => e.Id).ValueGeneratedNever();
+        b.HasIndex("TenantId", "UserId", "CourseId").IsUnique().HasDatabaseName("UX_WishlistItems_TenantId_UserId_CourseId");
+        b.HasOne<Tenant>().WithMany().HasForeignKey("TenantId").OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<UserTenantMembership>().WithMany().HasForeignKey("TenantId", "UserId").HasPrincipalKey("TenantId", "UserId").OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Course>().WithMany().HasForeignKey("TenantId", "CourseId").HasPrincipalKey("TenantId", "Id").OnDelete(DeleteBehavior.NoAction);
+        });
+    }
+
     private static void MapCoupon(ModelBuilder mb, bool sqlServer)
     {
         mb.Entity<Coupon>(b =>
@@ -2019,6 +2034,7 @@ public static class GeneratedModel
         MapSubscriptionPlanCourse(mb, sqlServer);
         MapUserSubscription(mb, sqlServer);
         MapCartItem(mb, sqlServer);
+        MapWishlistItem(mb, sqlServer);
         MapCoupon(mb, sqlServer);
         MapOrder(mb, sqlServer);
         MapOrderItem(mb, sqlServer);

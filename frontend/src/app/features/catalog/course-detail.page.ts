@@ -18,6 +18,8 @@ export class CourseDetailPage implements OnInit {
   readonly progress = signal<CourseProgress | null>(null);
   readonly failed = signal(false);
   readonly message = signal('');
+  /** True when the course is in the student's wishlist (server is the source of truth). */
+  readonly wishlisted = signal(false);
 
   ngOnInit(): void { void this.load(); }
   private get id(): string { return this.route.snapshot.paramMap.get('id') ?? ''; }
@@ -31,6 +33,8 @@ export class CourseDetailPage implements OnInit {
         this.exams.set(await this.api.exams(this.id).catch(() => []));
         this.progress.set(await this.api.courseProgress(this.id).catch(() => null)); // 404/403 -> no bar, never invented numbers
       }
+      const wl = await this.api.wishlist().catch(() => null); // 403 for non-students -> hide the heart state
+      this.wishlisted.set(!!wl && wl.items.some((i) => i.courseId === this.id));
     } catch { this.failed.set(true); }
   }
   get isFree(): boolean { const c = this.course(); return !c || c.pricingModel === 'Free' || !c.price; }
@@ -39,6 +43,12 @@ export class CourseDetailPage implements OnInit {
   }
   async addToCart(): Promise<void> {
     try { await this.api.addToCart('Course', this.id); this.message.set('nav.cart'); void this.cartState.refresh(); } catch { /* toast */ }
+  }
+  async toggleWishlist(): Promise<void> {
+    try {
+      if (this.wishlisted()) { await this.api.removeFromWishlist(this.id); this.wishlisted.set(false); this.message.set('wishlist.removed'); }
+      else { await this.api.addToWishlist(this.id); this.wishlisted.set(true); this.message.set('wishlist.added'); }
+    } catch { /* interceptor toast */ }
   }
   minutes(s: number | null): string { return s ? `${Math.max(1, Math.round(s / 60))} min` : ''; }
   /** Lesson completion state and how far through the media the student is (0-1), from the persisted position. */

@@ -1,0 +1,24 @@
+<ion-content>
+<div class="pg">
+  <h1>{{ 'wishlist.title' | t }}</h1>
+  @if (message()) { <p class="ok" role="status">{{ message() | t }}</p> }
+  @if (failed()) { <p class="err">{{ 'common.error' | t }} <ion-button size="small" (click)="load()">{{ 'common.retry' | t }}</ion-button></p> }
+  @else if (items() === null) { <div class="pn sk" style="min-height:12rem" aria-busy="true"></div> }
+  @else if (items()!.length === 0) { <div class="empty"><p>{{ 'wishlist.empty' | t }}</p><a routerLink="/app/courses" class="lnk">{{ 'wishlist.browse' | t }}</a></div> }
+  @else {
+    <section class="pn">
+      @for (i of items()!; track i.id) {
+        <div class="it" data-testid="wishlist-item">
+          <a class="t" [routerLink]="['/app/courses', i.courseId]">{{ i.title }}</a>
+          @if (i.shortDescription) { <span class="mut">{{ i.shortDescription }}</span> }
+          <span class="row2">
+            <b>{{ i.pricingModel === 'Free' ? ('cat.free' | t) : (i.price + ' ' + i.currency) }}</b>
+            <ion-button size="small" (click)="moveToCart(i)">{{ 'wishlist.moveToCart' | t }}</ion-button>
+            <ion-button size="small" fill="clear" color="danger" (click)="remove(i.courseId)">{{ 'wishlist.remove' | t }}</ion-button>
+          </span>
+        </div>
+      }
+    </section>
+  }
+</div>
+</ion-content>

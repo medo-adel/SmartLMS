@@ -5658,3 +5658,53 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025241_WishlistItems'
+)
+BEGIN
+    CREATE TABLE [WishlistItems] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [UserId] uniqueidentifier NOT NULL,
+        [CourseId] uniqueidentifier NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [CreatedBy] uniqueidentifier NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [UpdatedBy] uniqueidentifier NULL,
+        CONSTRAINT [PK_WishlistItems] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_WishlistItems_Courses_TenantId_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [Courses] ([TenantId], [Id]),
+        CONSTRAINT [FK_WishlistItems_Tenants_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [Tenants] ([Id]),
+        CONSTRAINT [FK_WishlistItems_UserTenantMemberships_TenantId_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [UserTenantMemberships] ([TenantId], [UserId])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025241_WishlistItems'
+)
+BEGIN
+    CREATE INDEX [IX_WishlistItems_TenantId_CourseId] ON [WishlistItems] ([TenantId], [CourseId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025241_WishlistItems'
+)
+BEGIN
+    CREATE UNIQUE INDEX [UX_WishlistItems_TenantId_UserId_CourseId] ON [WishlistItems] ([TenantId], [UserId], [CourseId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025241_WishlistItems'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261126025241_WishlistItems', N'10.0.15');
+END;
+
+COMMIT;
+GO
+

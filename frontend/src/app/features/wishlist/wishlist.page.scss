@@ -1,0 +1,13 @@
+.pg { padding: 1rem; max-width: 44rem; margin: 0 auto; }
+.pn { background: var(--ion-card-background, #fff); border-radius: 12px; padding: 1rem; box-shadow: 0 1px 3px rgb(0 0 0 / 8%); }
+.sk { animation: pulse 1.2s ease-in-out infinite; }
+.it { display: flex; flex-direction: column; gap: .25rem; padding: .75rem 0; border-bottom: 1px solid var(--ion-color-step-150, #e5e7eb); }
+.it:last-child { border-bottom: 0; }
+.it .t { font-weight: 600; color: inherit; text-decoration: none; }
+.row2 { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.mut { color: var(--ion-color-medium, #6b7280); font-size: .875rem; }
+.ok { color: var(--ion-color-success, #16a34a); }
+.err { color: var(--ion-color-danger, #dc2626); }
+.lnk { color: var(--ion-color-primary, #0f766e); }
+.empty { text-align: center; padding: 2rem 0; }
+@keyframes pulse { 50% { opacity: .5; } }

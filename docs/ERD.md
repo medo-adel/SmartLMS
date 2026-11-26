@@ -788,103 +788,15 @@ erDiagram
 
 - **CartItems**: CHECK: exactly one target column matches ItemType.
 
-## Commerce: orders and payments
-
-```mermaid
-erDiagram
-    Orders {
-        uniqueidentifier Id PK
-        uniqueidentifier UserId FK
-        uniqueidentifier CouponId FK
-    }
-    OrderItems {
-        uniqueidentifier Id PK
-        uniqueidentifier OrderId FK
-        uniqueidentifier CourseId FK
-        uniqueidentifier LessonId FK
-        uniqueidentifier BundleId FK
-        uniqueidentifier PlanId FK
-        uniqueidentifier LearningPathId FK
-    }
-    CouponRedemptions {
-        uniqueidentifier Id PK
-        uniqueidentifier CouponId FK
-        uniqueidentifier UserId FK
-        uniqueidentifier OrderId FK
-    }
-    Payments {
-        uniqueidentifier Id PK
-        uniqueidentifier OrderId FK
-        nvarchar IdempotencyKey UK
-    }
-    ManualPaymentSubmissions {
-        uniqueidentifier Id PK
-        uniqueidentifier UserId FK
-        uniqueidentifier OrderId FK
-        uniqueidentifier ReceiptFileId FK
-        uniqueidentifier ReviewedBy FK
-        uniqueidentifier WalletTransactionId FK
-    }
-    Invoices {
-        uniqueidentifier Id PK
-        uniqueidentifier OrderId FK
-        uniqueidentifier PdfFileId FK
-    }
-    Bundles {
-        uniqueidentifier Id PK
-    }
-    Coupons {
-        uniqueidentifier Id PK
-    }
-    Courses {
-        uniqueidentifier Id PK
-    }
-    FileAssets {
-        uniqueidentifier Id PK
-    }
-    LearningPaths {
-        uniqueidentifier Id PK
-    }
-    Lessons {
-        uniqueidentifier Id PK
-    }
-    SubscriptionPlans {
-        uniqueidentifier Id PK
-    }
-    UserTenantMemberships {
-        uniqueidentifier Id PK
-    }
-    WalletTransactions {
-        uniqueidentifier Id PK
-    }
-    Bundles |o--o{ OrderItems : "BundleId (tenant-scoped)"
-    Coupons |o--o{ Orders : "CouponId (tenant-scoped)"
-    Coupons ||--o{ CouponRedemptions : "CouponId (tenant-scoped)"
-    Courses |o--o{ OrderItems : "CourseId (tenant-scoped)"
-    FileAssets |o--o{ Invoices : "PdfFileId (tenant-scoped)"
-    FileAssets ||--o{ ManualPaymentSubmissions : "ReceiptFileId (tenant-scoped)"
-    LearningPaths |o--o{ OrderItems : "LearningPathId (tenant-scoped)"
-    Lessons |o--o{ OrderItems : "LessonId (tenant-scoped)"
-    Orders |o--o{ ManualPaymentSubmissions : "OrderId (tenant-scoped)"
-    Orders ||--o{ CouponRedemptions : "OrderId (tenant-scoped)"
-    Orders ||--o{ Invoices : "OrderId (tenant-scoped)"
-    Orders ||--o{ OrderItems : "OrderId (tenant-scoped)"
-    Orders ||--o{ Payments : "OrderId (tenant-scoped)"
-    SubscriptionPlans |o--o{ OrderItems : "PlanId (tenant-scoped)"
-    UserTenantMemberships |o--o{ ManualPaymentSubmissions : "ReviewedBy (tenant-scoped)"
-    UserTenantMemberships ||--o{ CouponRedemptions : "UserId (tenant-scoped)"
-    UserTenantMemberships ||--o{ ManualPaymentSubmissions : "UserId (tenant-scoped)"
-    UserTenantMemberships ||--o{ Orders : "UserId (tenant-scoped)"
-    WalletTransactions |o--o{ ManualPaymentSubmissions : "WalletTransactionId (tenant-scoped)"
-```
-
-- **Payments**: Raw gateway payloads are not stored (they can carry card data). Store only reference and status.
-- **ManualPaymentSubmissions**: Admin review queue. Approval writes the order/wallet change and an audit row in one transaction.
-
 ## Commerce: vouchers, wallet and affiliates
 
 ```mermaid
 erDiagram
+    WishlistItems {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier CourseId FK
+    }
     VoucherBatches {
         uniqueidentifier Id PK
         uniqueidentifier CourseId FK
@@ -994,6 +906,7 @@ erDiagram
     Courses ||--o{ InstructorRevenueShares : "CourseId (tenant-scoped)"
     Courses ||--o{ OrderItemAllocations : "CourseId (tenant-scoped)"
     Courses ||--o{ OrderItemShares : "CourseId (tenant-scoped)"
+    Courses ||--o{ WishlistItems : "CourseId (tenant-scoped)"
     FileAssets |o--o{ VoucherBatches : "ExportFileId (tenant-scoped)"
     InstructorDebits ||--o{ InstructorDebitApplications : "InstructorDebitId (tenant-scoped)"
     InstructorPayouts |o--o{ OrderItemShares : "SettledPayoutId (tenant-scoped)"
@@ -1020,11 +933,13 @@ erDiagram
     UserTenantMemberships ||--o{ Referrals : "AffiliateUserId (tenant-scoped)"
     UserTenantMemberships ||--o{ Referrals : "ReferredUserId (tenant-scoped)"
     UserTenantMemberships ||--o{ Wallets : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ WishlistItems : "UserId (tenant-scoped)"
     VoucherBatches ||--o{ Vouchers : "VoucherBatchId (tenant-scoped)"
     WalletTransactions |o--o{ AffiliateCommissions : "WalletTransactionId (tenant-scoped)"
     Wallets ||--o{ WalletTransactions : "WalletId (tenant-scoped)"
 ```
 
+- **WishlistItems**: Student wishlist: courses saved for later, one row per student-course pair.
 - **Vouchers**: Only the SHA-256 of the code is stored. Plain codes exist once, in the CSV produced when the batch is generated.
 - **WalletTransactions**: Append-only ledger. Amount is signed. Balance changes only through this table, inside a transaction with the wallet row's RowVersion check.
 - **CourseLearningWeights**: TenantAdmin-approved learning time of ALL non-video content of a course together (split over its non-video lessons), used only for subscription revenue allocation.
@@ -1035,6 +950,99 @@ erDiagram
 - **OrderRefunds**: Accounting record of a refund decided and executed outside the system. It moves no money; it only reverses instructor earnings proportionally.
 - **InstructorDebits**: Earnings already inside a calculated payout when their sale was refunded. Carried against the instructor's next payouts; never withdrawn automatically.
 - **InstructorDebitApplications**: How much of a debit a payout absorbed. Cancelling the payout gives the amount back to the debit.
+
+## Commerce: orders and payments
+
+```mermaid
+erDiagram
+    Orders {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier CouponId FK
+    }
+    OrderItems {
+        uniqueidentifier Id PK
+        uniqueidentifier OrderId FK
+        uniqueidentifier CourseId FK
+        uniqueidentifier LessonId FK
+        uniqueidentifier BundleId FK
+        uniqueidentifier PlanId FK
+        uniqueidentifier LearningPathId FK
+    }
+    CouponRedemptions {
+        uniqueidentifier Id PK
+        uniqueidentifier CouponId FK
+        uniqueidentifier UserId FK
+        uniqueidentifier OrderId FK
+    }
+    Payments {
+        uniqueidentifier Id PK
+        uniqueidentifier OrderId FK
+        nvarchar IdempotencyKey UK
+    }
+    ManualPaymentSubmissions {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier OrderId FK
+        uniqueidentifier ReceiptFileId FK
+        uniqueidentifier ReviewedBy FK
+        uniqueidentifier WalletTransactionId FK
+    }
+    Invoices {
+        uniqueidentifier Id PK
+        uniqueidentifier OrderId FK
+        uniqueidentifier PdfFileId FK
+    }
+    Bundles {
+        uniqueidentifier Id PK
+    }
+    Coupons {
+        uniqueidentifier Id PK
+    }
+    Courses {
+        uniqueidentifier Id PK
+    }
+    FileAssets {
+        uniqueidentifier Id PK
+    }
+    LearningPaths {
+        uniqueidentifier Id PK
+    }
+    Lessons {
+        uniqueidentifier Id PK
+    }
+    SubscriptionPlans {
+        uniqueidentifier Id PK
+    }
+    UserTenantMemberships {
+        uniqueidentifier Id PK
+    }
+    WalletTransactions {
+        uniqueidentifier Id PK
+    }
+    Bundles |o--o{ OrderItems : "BundleId (tenant-scoped)"
+    Coupons |o--o{ Orders : "CouponId (tenant-scoped)"
+    Coupons ||--o{ CouponRedemptions : "CouponId (tenant-scoped)"
+    Courses |o--o{ OrderItems : "CourseId (tenant-scoped)"
+    FileAssets |o--o{ Invoices : "PdfFileId (tenant-scoped)"
+    FileAssets ||--o{ ManualPaymentSubmissions : "ReceiptFileId (tenant-scoped)"
+    LearningPaths |o--o{ OrderItems : "LearningPathId (tenant-scoped)"
+    Lessons |o--o{ OrderItems : "LessonId (tenant-scoped)"
+    Orders |o--o{ ManualPaymentSubmissions : "OrderId (tenant-scoped)"
+    Orders ||--o{ CouponRedemptions : "OrderId (tenant-scoped)"
+    Orders ||--o{ Invoices : "OrderId (tenant-scoped)"
+    Orders ||--o{ OrderItems : "OrderId (tenant-scoped)"
+    Orders ||--o{ Payments : "OrderId (tenant-scoped)"
+    SubscriptionPlans |o--o{ OrderItems : "PlanId (tenant-scoped)"
+    UserTenantMemberships |o--o{ ManualPaymentSubmissions : "ReviewedBy (tenant-scoped)"
+    UserTenantMemberships ||--o{ CouponRedemptions : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ ManualPaymentSubmissions : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ Orders : "UserId (tenant-scoped)"
+    WalletTransactions |o--o{ ManualPaymentSubmissions : "WalletTransactionId (tenant-scoped)"
+```
+
+- **Payments**: Raw gateway payloads are not stored (they can carry card data). Store only reference and status.
+- **ManualPaymentSubmissions**: Admin review queue. Approval writes the order/wallet change and an audit row in one transaction.
 
 ## Enterprise & Analytics
 

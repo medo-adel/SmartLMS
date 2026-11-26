@@ -11,6 +11,7 @@ export interface PathListItem { id: string; title: string; slug: string; descrip
 export interface PathDetail { id: string; title: string; description: string | null; status: string; issuesCertificate: boolean; courses: { id: string; title: string; sortOrder: number; isMandatory: boolean }[]; }
 export interface PathRequest { title: string; description: string | null; status: string | null; issuesCertificate: boolean; courseIds: string[] | null; }
 export interface CartView { items: { id: string; itemType: string; itemId: string; description: string; price: number; currency: string; available: boolean }[]; subtotal: number; currency: string; }
+export interface WishlistItem { id: string; courseId: string; title: string; slug: string; shortDescription: string | null; thumbnailFileId: string | null; pricingModel: string; price: number; currency: string; createdAtUtc: string; }
 export interface CouponPreview { code: string; discount: number; subtotal: number; total: number; currency: string; }
 export interface WalletBalance { balance: number; currency: string; }
 export interface WalletTx { id: string; type: string; amount: number; balanceAfter: number; description: string | null; createdAtUtc: string; }

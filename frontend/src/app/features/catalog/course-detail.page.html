@@ -55,6 +55,7 @@
         }
         @else if (isFree) { <ion-button (click)="enroll()">{{ 'course.enroll' | t }}</ion-button> }
         @else { <ion-button (click)="addToCart()">{{ 'course.addCart' | t }}</ion-button> <ion-button fill="outline" routerLink="/app/cart">{{ 'nav.cart' | t }}</ion-button> }
+        <ion-button fill="clear" class="heart" [class.on]="wishlisted()" [attr.aria-pressed]="wishlisted()" [attr.aria-label]="(wishlisted() ? 'wishlist.saved' : 'wishlist.save') | t" [title]="(wishlisted() ? 'wishlist.saved' : 'wishlist.save') | t" (click)="toggleWishlist()">{{ wishlisted() ? '♥' : '♡' }}</ion-button>
       </div>
       @if (message()) { <p class="ok">{{ message() | t }}</p> }
     </aside>

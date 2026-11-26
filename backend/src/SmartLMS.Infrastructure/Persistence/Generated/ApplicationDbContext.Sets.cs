@@ -83,6 +83,7 @@ public partial class ApplicationDbContext
     public DbSet<SubscriptionPlanCourse> SubscriptionPlanCourses => Set<SubscriptionPlanCourse>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();

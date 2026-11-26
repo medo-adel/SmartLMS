@@ -265,6 +265,9 @@ T("CartItems", G, [
     "UserId g >AspNetUsers", "ItemType e:Course|Lesson|Bundle|Plan|Path", "CourseId g? >Courses", "LessonId g? >Lessons", "BundleId g? >Bundles",
     "PlanId g? >SubscriptionPlans", "LearningPathId g? >LearningPaths",
 ], flags="TA", note="CHECK: exactly one target column matches ItemType.")
+T("WishlistItems", G, [
+    "UserId g >AspNetUsers", "CourseId g >Courses",
+], flags="TA", uniq=[("TenantId", "UserId", "CourseId")], note="Student wishlist: courses saved for later, one row per student-course pair.")
 T("Coupons", G, [
     "Code s:50", "DiscountType e:Percentage|Fixed", "Value m", "MaxRedemptions i?", "MaxPerUser i =1", "MinOrderAmount m?", "ExpiresAtUtc d?", "CourseId g? >Courses", "IsActive b =1",
 ], uniq=[("TenantId", "Code")])

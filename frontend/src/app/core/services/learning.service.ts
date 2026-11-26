@@ -7,8 +7,7 @@ import { ApiResponse } from '../models/api-response';
 import {
   AiMindMap, AiQuizDraft, AiSearchHit, AiStudyPlan, AiSummary, AiTutorResult, AiVoice, AnswerValue, AttemptResult, AttemptView, CartView, CheckoutOutcome, OrderRow, CouponPreview, CourseDetail, CourseListItem,
   CourseProgress, Enrollment, ExamListItem, LessonNote, LessonBookmark, LessonChapter, LessonSlide, LessonResource, Bundle, Plan, AffiliateMe, QuestionBank, QuestionDto, QuestionInput, ExamInput, QuizPointDto, ReviewItem, VoucherBatch, InteractiveQuiz, Lesson, ManualPayment, MyCourse, Paged, PathDetail, PathListItem, PathRequest, WalletBalance, WalletTx,
-  CouponDto, CouponInput, ExamDetail, ExamAttemptRow, GradingView, CourseStaffRow, OrderDetail,
-} from '../models/learning';
+  CouponDto, CouponInput, ExamDetail, ExamAttemptRow, GradingView, CourseStaffRow, OrderDetail, WishlistItem } from '../models/learning';
 
 /** Phase 7 calls. Everything goes to the .NET API; the AI service is only reached through /ai endpoints. */
 @Injectable({ providedIn: 'root' })
@@ -68,6 +67,9 @@ export class LearningService {
   cart() { return this.get<CartView>('/cart'); }
   addToCart(itemType: string, itemId: string) { return this.post<unknown>('/cart/items', { itemType, itemId }); }
   removeFromCart(id: string) { return this.unwrap(firstValueFrom(this.http.delete<ApiResponse<unknown>>(`${this.base}/cart/items/${this.id(id)}`))); }
+  wishlist() { return this.get<{ items: WishlistItem[] }>('/wishlist'); }
+  addToWishlist(courseId: string) { return this.post<{ id: string }>(`/wishlist/${this.id(courseId)}`, {}); }
+  removeFromWishlist(courseId: string) { return this.unwrap(firstValueFrom(this.http.delete<ApiResponse<unknown>>(`${this.base}/wishlist/${this.id(courseId)}`))); }
   previewCoupon(code: string) { return this.post<CouponPreview>('/cart/coupon', { code }); }
   checkout(paymentMethod: string, couponCode: string | null, voucherCode: string | null, gateway: string | null = null, referralCode: string | null = null) { return this.post<CheckoutOutcome>('/orders/checkout', { paymentMethod, couponCode, voucherCode, gateway, referralCode }); }
   wallet() { return this.get<WalletBalance>('/wallet'); }

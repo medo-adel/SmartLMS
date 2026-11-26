@@ -6278,6 +6278,43 @@ namespace SmartLMS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartLMS.Domain.Entities.WishlistItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CourseId");
+
+                    b.HasIndex("TenantId", "UserId", "CourseId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_WishlistItems_TenantId_UserId_CourseId");
+
+                    b.ToTable("WishlistItems", (string)null);
+                });
+
             modelBuilder.Entity("SmartLMS.Domain.Entities.XpTransaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8868,6 +8905,29 @@ namespace SmartLMS.Infrastructure.Persistence.Migrations
                     b.HasOne("SmartLMS.Domain.Entities.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartLMS.Domain.Entities.WishlistItem", b =>
+                {
+                    b.HasOne("SmartLMS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SmartLMS.Domain.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CourseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SmartLMS.Domain.Entities.UserTenantMembership", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "UserId")
+                        .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });

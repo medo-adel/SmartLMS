@@ -145,6 +145,40 @@ public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, Wa
         db.CartItems.Remove(c); await db.SaveChangesAsync(ct);
     }
 
+    // ---- wishlist ------------------------------------------------------------------------------------------------------
+    public async Task<object> WishlistAsync(CancellationToken ct)
+    {
+        var items = await db.WishlistItems.Where(w => w.UserId == Uid).OrderByDescending(w => w.CreatedAtUtc).ToListAsync(ct);
+        var ids = items.Select(i => i.CourseId).ToList();
+        var courses = await db.Courses.Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, ct);
+        var rows = new List<object>();
+        foreach (var i in items)
+        {
+            if (!courses.TryGetValue(i.CourseId, out var c)) continue;
+            rows.Add(new { id = i.Id, courseId = c.Id, c.Title, c.Slug, c.ShortDescription, c.ThumbnailFileId, pricingModel = c.PricingModel.ToString(), c.Price, c.Currency, createdAtUtc = i.CreatedAtUtc });
+        }
+        return new { items = rows };
+    }
+
+    public async Task<Guid> AddToWishlistAsync(Guid courseId, CancellationToken ct)
+    {
+        var exists = await db.Courses.AnyAsync(c => c.Id == courseId && c.Status == CourseStatus.Published, ct);
+        if (!exists) throw new NotFoundException("Course not found.");
+        var existing = await db.WishlistItems.FirstOrDefaultAsync(w => w.UserId == Uid && w.CourseId == courseId, ct);
+        if (existing is not null) return existing.Id;
+        var item = new WishlistItem { TenantId = Tid, UserId = Uid, CourseId = courseId, CreatedAtUtc = Now };
+        db.WishlistItems.Add(item);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException) { db.Entry(item).State = EntityState.Detached; var again = await db.WishlistItems.FirstOrDefaultAsync(w => w.UserId == Uid && w.CourseId == courseId, ct); if (again is not null) return again.Id; throw; }
+        return item.Id;
+    }
+
+    public async Task RemoveFromWishlistAsync(Guid courseId, CancellationToken ct)
+    {
+        var w = await db.WishlistItems.FirstOrDefaultAsync(x => x.CourseId == courseId && x.UserId == Uid, ct) ?? throw new NotFoundException("Wishlist item not found.");
+        db.WishlistItems.Remove(w); await db.SaveChangesAsync(ct);
+    }
+
     private async Task<List<Line>> CartLinesAsync(CancellationToken ct)
     {
         var items = await db.CartItems.Where(c => c.UserId == Uid).OrderBy(c => c.CreatedAtUtc).ToListAsync(ct);

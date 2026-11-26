@@ -865,4 +865,31 @@ public sealed class CommerceTests : IClassFixture<ApiFactory>
         Assert.Equal(480m, Inst(s, ahmed.Id).GetProperty("bundleAndPath").GetDecimal());
         Assert.Equal(320m, Inst(s, mona.Id).GetProperty("bundleAndPath").GetDecimal());
     }
+
+    [Fact]
+    public async Task Wishlist_add_list_remove_is_idempotent_and_student_only()
+    {
+        var t = await NewTenant(); var inst = await Instructor(t); var st = await Student(t); var (c, l) = await PaidCourse(t, inst, 100m);
+        // add, then re-add: same id, one row
+        var a1 = await Post($"/wishlist/{c}", null, st, t); Assert.True(a1.Success, a1.Body.ToString());
+        var a2 = await Post($"/wishlist/{c}", null, st, t); Assert.Equal(Id(a1), Id(a2));
+        var w = await Get("/wishlist", st, t); Assert.True(w.Success, w.Body.ToString());
+        var items = w.Data.GetProperty("items"); Assert.Single(items.EnumerateArray());
+        var row = items[0]; Assert.Equal(c, row.GetProperty("courseId").GetString()); Assert.Equal(100m, row.GetProperty("price").GetDecimal()); Assert.False(string.IsNullOrEmpty(row.GetProperty("title").GetString()));
+        // a second student has an empty, independent wishlist
+        var st2 = await Student(t); Assert.Empty((await Get("/wishlist", st2, t)).Data.GetProperty("items").EnumerateArray());
+        // remove works, list empties, second remove 404
+        Assert.Equal(200, (await Del($"/wishlist/{c}", st, t)).Status);
+        Assert.Empty((await Get("/wishlist", st, t)).Data.GetProperty("items").EnumerateArray());
+        Assert.Equal(404, (await Del($"/wishlist/{c}", st, t)).Status);
+        // unpublished and cross-tenant courses cannot be wishlisted
+        var draft = Id(await Post("/courses", new { title = "Draft " + U() }, inst, t));
+        Assert.Equal(404, (await Post($"/wishlist/{draft}", null, st, t)).Status);
+        var t2 = await NewTenant(); var st3 = await Student(t2);
+        Assert.Equal(404, (await Post($"/wishlist/{c}", null, st3, t2)).Status);
+        // role guard: non-students are rejected
+        Assert.Equal(403, (await Post($"/wishlist/{c}", null, inst, t)).Status);
+        Assert.Equal(403, (await Get("/wishlist", t.Admin, t)).Status);
+        Assert.Equal(403, (await Del($"/wishlist/{c}", inst, t)).Status);
+    }
 }

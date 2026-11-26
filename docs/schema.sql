@@ -1440,6 +1440,18 @@ CREATE TABLE [dbo].[CartItems] (
     CONSTRAINT [CK_CartItems_Rule1] CHECK ((CASE WHEN [CourseId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [LessonId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [BundleId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [PlanId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [LearningPathId] IS NULL THEN 0 ELSE 1 END) = 1)
 );
 GO
+CREATE TABLE [dbo].[WishlistItems] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [CourseId] uniqueidentifier NOT NULL,
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_WishlistItems] PRIMARY KEY ([Id])
+);
+GO
 CREATE TABLE [dbo].[Coupons] (
     [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
     [TenantId] uniqueidentifier NOT NULL,
@@ -2241,6 +2253,9 @@ ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_LessonId] FOREIGN KEY
 ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_BundleId] FOREIGN KEY ([TenantId], [BundleId]) REFERENCES [dbo].[Bundles] ([TenantId], [Id]);
 ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_PlanId] FOREIGN KEY ([TenantId], [PlanId]) REFERENCES [dbo].[SubscriptionPlans] ([TenantId], [Id]);
 ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_LearningPathId] FOREIGN KEY ([TenantId], [LearningPathId]) REFERENCES [dbo].[LearningPaths] ([TenantId], [Id]);
+ALTER TABLE [dbo].[WishlistItems] ADD CONSTRAINT [FK_WishlistItems_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[WishlistItems] ADD CONSTRAINT [FK_WishlistItems_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
+ALTER TABLE [dbo].[WishlistItems] ADD CONSTRAINT [FK_WishlistItems_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
 ALTER TABLE [dbo].[Coupons] ADD CONSTRAINT [FK_Coupons_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[Coupons] ADD CONSTRAINT [FK_Coupons_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
 ALTER TABLE [dbo].[Orders] ADD CONSTRAINT [FK_Orders_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
@@ -2585,6 +2600,9 @@ CREATE INDEX [IX_CartItems_LessonId_TenantId] ON [dbo].[CartItems] ([LessonId], 
 CREATE INDEX [IX_CartItems_BundleId_TenantId] ON [dbo].[CartItems] ([BundleId], [TenantId]);
 CREATE INDEX [IX_CartItems_PlanId_TenantId] ON [dbo].[CartItems] ([PlanId], [TenantId]);
 CREATE INDEX [IX_CartItems_LearningPathId_TenantId] ON [dbo].[CartItems] ([LearningPathId], [TenantId]);
+CREATE UNIQUE INDEX [UX_WishlistItems_TenantId_UserId_CourseId] ON [dbo].[WishlistItems] ([TenantId], [UserId], [CourseId]);
+CREATE INDEX [IX_WishlistItems_UserId_TenantId] ON [dbo].[WishlistItems] ([UserId], [TenantId]);
+CREATE INDEX [IX_WishlistItems_CourseId_TenantId] ON [dbo].[WishlistItems] ([CourseId], [TenantId]);
 CREATE UNIQUE INDEX [UX_Coupons_TenantId_Code] ON [dbo].[Coupons] ([TenantId], [Code]) WHERE [IsDeleted] = 0;
 CREATE INDEX [IX_Coupons_CourseId_TenantId] ON [dbo].[Coupons] ([CourseId], [TenantId]);
 CREATE INDEX [IX_Orders_UserId_Status] ON [dbo].[Orders] ([UserId], [Status]);
