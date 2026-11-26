@@ -16,7 +16,7 @@ namespace SmartLMS.Infrastructure.Services;
 
 public sealed class AuthService(
     ApplicationDbContext db, UserManager<ApplicationUser> users, UserProvisioner provisioner, ITokenService tokens, IDeviceService devices,
-    IOtpSender otpSender, ICurrentTenant tenant, ICurrentUser currentUser, IOptions<JwtOptions> jwt, IOptions<OtpOptions> otp, TimeProvider clock) : IAuthService
+    IOtpSender otpSender, ICurrentTenant tenant, ICurrentUser currentUser, IOptions<JwtOptions> jwt, IOptions<OtpOptions> otp, TimeProvider clock, TransactionalMailer mail) : IAuthService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -196,6 +196,8 @@ public sealed class AuthService(
     {
         if (!await VerifyOtpAsync(new OtpVerifyRequest(request.Email, nameof(OtpCodePurpose.EmailVerification), request.Code), ct))
             throw new ValidationAppException("The code is invalid or expired.");
+        var user = await provisioner.FindByEmailAsync(request.Email, ct);
+        if (user is not null) await mail.WelcomeAsync(user.Id, ct); // best-effort, never throws
     }
 
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct)

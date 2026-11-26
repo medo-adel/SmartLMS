@@ -72,6 +72,7 @@ public static class DependencyInjection
         services.AddScoped<SmartLMS.Infrastructure.Services.Lms.JobService>();
         services.AddSingleton<SmartLMS.Application.Interfaces.IRealtime, SmartLMS.Infrastructure.Services.Lms.NullRealtime>();   // replaced by the SignalR implementation in the API host
         services.AddScoped<SmartLMS.Infrastructure.Services.Lms.CommunityService>();
+        services.AddScoped<SmartLMS.Infrastructure.Services.TransactionalMailer>();
         services.AddScoped<SmartLMS.Infrastructure.Services.Lms.MaintenanceJobs>();
         services.AddScoped<SmartLMS.Infrastructure.Services.Lms.ContentService>();
         services.AddScoped<SmartLMS.Infrastructure.Services.Lms.Notifier>();

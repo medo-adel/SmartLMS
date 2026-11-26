@@ -23,7 +23,7 @@ public sealed record TopUpGatewayRequest(decimal Amount, string Gateway);
 /// Cart, coupons, bundles, plans, orders, checkout and order fulfilment. Prices always come from the database at checkout, never from the client.
 /// An order becomes Paid through one conditional UPDATE, so a repeated webhook, double click or approval cannot grant access or pay commission twice.
 /// </summary>
-public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, WalletLedger ledger, GatewayRegistry gateways, Notifier notifier, WebhookService hooks)
+public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, WalletLedger ledger, GatewayRegistry gateways, Notifier notifier, WebhookService hooks, TransactionalMailer mail)
 {
     private static DateTime Now => DateTime.UtcNow;
     private Guid Uid => me.UserId ?? throw new UnauthorizedAppException();
@@ -448,6 +448,7 @@ public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, Wa
         if (!won) return false;
         var o2 = await db.Orders.AsNoTracking().FirstAsync(o => o.Id == orderId, ct);
         await notifier.SendAsync(o2.TenantId, [o2.UserId], "OrderPaid", "Payment received", $"Your order of {o2.Total:0.00} {o2.Currency} is complete.", ct);
+        await mail.OrderReceiptAsync(o2.UserId, o2.Id, ct); // best-effort, never throws
         await hooks.EmitAsync(o2.TenantId, "order.paid", new { orderId = o2.Id, userId = o2.UserId, total = o2.Total, currency = o2.Currency }, ct);
         return true;
     }
@@ -461,6 +462,7 @@ public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, Wa
         {
             db.Enrollments.Add(new Enrollment { TenantId = tid, UserId = uid, CourseId = courseId, Source = source, Status = EnrollmentStatus.Active, EnrolledAtUtc = Now, ExpiresAtUtc = expires, OrderItemId = orderItemId });
             await db.SaveChangesAsync(ct);
+            await mail.EnrollmentAsync(uid, courseId, ct); // best-effort, never throws
         }
         else if (e.Status == EnrollmentStatus.Expired || (e.Status == EnrollmentStatus.Active && e.ExpiresAtUtc is { } x && x <= Now))
         {

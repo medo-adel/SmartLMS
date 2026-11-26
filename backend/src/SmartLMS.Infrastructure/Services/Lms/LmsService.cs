@@ -22,7 +22,7 @@ public sealed record ProgressRequest(int LastPositionSeconds, int WatchedSeconds
 /// Lesson access: Students need an active enrollment, or the lesson must be a free preview of a published course. Drip rules and
 /// lesson prerequisites are enforced on the server. Co-instructors / teaching assistants are NOT built yet (CourseStaff has no endpoint).
 /// </summary>
-public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, GamificationService xp, CertificateService certs)
+public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, GamificationService xp, CertificateService certs, TransactionalMailer mail)
 {
     private static DateTime Now => DateTime.UtcNow;
     private Guid Uid => me.UserId ?? throw new UnauthorizedAppException();
@@ -271,6 +271,7 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
             db.Entry(e).State = EntityState.Detached;
             return (await db.Enrollments.FirstAsync(x => x.CourseId == courseId && x.UserId == Uid, ct)).Id;
         }
+        await mail.EnrollmentAsync(Uid, courseId, ct); // best-effort, never throws
         return e.Id;
     }
 
@@ -412,6 +413,7 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
             {
                 await xp.AwardAsync(enr.TenantId, enr.UserId, GamificationService.CourseXp, "CourseCompleted", "Course", enr.CourseId, ct);
                 await certs.EnsureIssuedAsync(enr.TenantId, enr.UserId, enr.CourseId, ct);
+                await mail.CourseCompletedAsync(enr.UserId, enr.CourseId, ct); // best-effort, never throws
             }
         }
         return new { courseId = enr.CourseId, completedLessons = done, totalLessons = total, progressPercent = pct, status = status.ToString() };

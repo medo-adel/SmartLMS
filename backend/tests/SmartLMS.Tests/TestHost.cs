@@ -24,6 +24,15 @@ public sealed class CapturingOtpSender : IOtpSender
     public string Last(string destination, string purpose) { lock (Codes) return Codes[$"{destination.ToLowerInvariant()}|{purpose}"]; }
 }
 
+public sealed class CapturingEmailTransport : IEmailTransport
+{
+    public bool IsEnabled => true;
+    public string DeliveryMode => "captured";
+    public readonly List<(string To, string Subject, string Body)> Sent = new();
+    public Task SendAsync(EmailMessage message, CancellationToken ct) { lock (Sent) Sent.Add((message.To, message.Subject, message.Body)); return Task.CompletedTask; }
+    public List<(string To, string Subject, string Body)> For(string to) { lock (Sent) return Sent.Where(m => m.To == to).ToList(); }
+}
+
 /// <summary>Boots the real API on in-memory SQLite. SQLite approximates SQL Server; it is not a substitute for a run against SQL Server.</summary>
 public class ApiFactory : WebApplicationFactory<Program>
 {
@@ -33,6 +42,7 @@ public class ApiFactory : WebApplicationFactory<Program>
     private readonly string _dbFile = Path.Combine(Path.GetTempPath(), $"smartlms-test-{Guid.NewGuid():N}.db");
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), $"smartlms-storage-{Guid.NewGuid():N}");
     public CapturingOtpSender Otp { get; } = new();
+    public CapturingEmailTransport Mail { get; } = new();
 
     public ApiFactory()
     {
@@ -77,6 +87,8 @@ public class ApiFactory : WebApplicationFactory<Program>
             s.AddHttpClient("paymob").ConfigurePrimaryHttpMessageHandler(() => new FakePaymobHandler());
             s.RemoveAll<IOtpSender>();
             s.AddSingleton<IOtpSender>(Otp);
+            s.RemoveAll<IEmailTransport>();
+            s.AddSingleton<IEmailTransport>(Mail);
         });
     }
 
