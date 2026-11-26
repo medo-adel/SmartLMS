@@ -41,7 +41,8 @@ T("AspNetRoleClaims", G, ["RoleId g >AspNetRoles", "ClaimType t?", "ClaimValue t
 T("AspNetUserTokens", G, ["UserId g >AspNetUsers", "LoginProvider s:128", "Name s:128", "Value t?"], flags="", note="ASP.NET Core Identity token store (authenticator keys, recovery codes). Composite primary key.")
 T("AspNetUserClaims", G, ["UserId g >AspNetUsers", "ClaimType t?", "ClaimValue t?"], flags="")
 T("AspNetUserLogins", G, ["LoginProvider s:128", "ProviderKey s:128", "ProviderDisplayName t?", "UserId g >AspNetUsers"], flags="",
-  uniq=[("LoginProvider", "ProviderKey")], note="Social login hooks (Google, Facebook, Apple).")
+  uniq=[("LoginProvider", "ProviderKey", "UserId")], idx=[("LoginProvider", "ProviderKey")],
+  note="Social login hooks (Google, Facebook, Apple). One row per user per external identity: the same provider account MAY be linked to per-tenant accounts of the same person in different academies, so uniqueness is per (provider, key, user), not global.")
 T("UserTenantMemberships", G, [
     "UserId g >>AspNetUsers", "Kind e:Home|SupportAccess =Home", "GrantedBy g? >>AspNetUsers", "ExpiresAtUtc d?", "RevokedAtUtc d?",
 ], flags="TA", note="Tenant membership of a global identity. EVERY user-to-tenant-data reference points here as (TenantId, UserId), so a row can only reference a user who is a member of the same tenant. Each tenant user has one Home row; a SuperAdmin acts inside a tenant only through an explicit, audited SupportAccess row.")

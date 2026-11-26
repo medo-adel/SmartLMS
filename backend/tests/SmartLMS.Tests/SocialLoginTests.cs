@@ -50,10 +50,27 @@ public sealed class SocialLoginTests : IClassFixture<ApiFactory>
         Assert.True(r3.Success, r3.Body.ToString());
         // and the password path still works for the same account
         Assert.True((await _c.Post("/auth/login", new { email = mail, password = PW, device = Device("g2") }, tenant: slug2)).Success);
-        // a Google account already linked to another tenant's account cannot be claimed here
+        // the SAME Google account is allowed in the other academy: accounts are per-tenant rows, so it links
+        // to that tenant's account (same id as r3), distinct from the account in the first academy
         var r4 = await _c.Post("/auth/social/google", new { idToken = "valid-google-token", device = Device("g2") }, tenant: slug2);
-        Assert.Equal(409, r4.Status);
-        Assert.Equal("EXTERNAL_IDENTITY_IN_USE", r4.Body.GetProperty("code").GetString());
+        Assert.True(r4.Success, r4.Body.ToString());
+        Assert.Equal(r3.Data.GetProperty("user").GetProperty("id").GetString(), r4.Data.GetProperty("user").GetProperty("id").GetString());
+        Assert.NotEqual(uid, r4.Data.GetProperty("user").GetProperty("id").GetString());
+
+        // privileged accounts never get a social login linked by email match
+        var adminMail = $"admin@{slug2}.test";
+        _f.Google.Tokens["admin-google-token"] = new SmartLMS.Application.Interfaces.ExternalIdentity("google", "g-sub-9", adminMail, "Admin", true);
+        var r5 = await _c.Post("/auth/social/google", new { idToken = "admin-google-token", device = Device("g2") }, tenant: slug2);
+        Assert.Equal(403, r5.Status);
+        Assert.Equal("SOCIAL_LINK_NOT_ALLOWED", r5.Body.GetProperty("code").GetString());
+
+        // an existing password account whose email was never verified gets linked AND confirmed by provider proof
+        var slug3 = await NewTenant();
+        _f.Google.Tokens["nov-google-token"] = new SmartLMS.Application.Interfaces.ExternalIdentity("google", "g-sub-10", "nov@mail.test", "No Verify Yet", true);
+        await _c.Post("/auth/register", new { fullName = "No Verify Yet", email = "nov@mail.test", password = PW }, tenant: slug3);
+        var r6 = await _c.Post("/auth/social/google", new { idToken = "nov-google-token", device = Device("g3") }, tenant: slug3);
+        Assert.True(r6.Success, r6.Body.ToString());
+        Assert.True(r6.Data.GetProperty("user").GetProperty("emailConfirmed").GetBoolean());
 
         // bad tokens and unverified provider emails are refused; unknown providers are 501
         Assert.Equal(401, (await _c.Post("/auth/social/google", new { idToken = "garbage", device = Device("g3") }, tenant: slug)).Status);

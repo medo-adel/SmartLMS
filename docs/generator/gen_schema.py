@@ -9,7 +9,7 @@ import spec_schema as S
 OUT = Path(__file__).resolve().parent.parent
 TABLES = {t["name"]: t for t in S.TABLES}
 
-COMPOSITE_PK = {"AspNetUserRoles": ["UserId", "RoleId"], "AspNetUserLogins": ["LoginProvider", "ProviderKey"], "AspNetUserTokens": ["UserId", "LoginProvider", "Name"]}
+COMPOSITE_PK = {"AspNetUserRoles": ["UserId", "RoleId"], "AspNetUserLogins": ["LoginProvider", "ProviderKey", "UserId"], "AspNetUserTokens": ["UserId", "LoginProvider", "Name"]}
 INT_IDENTITY_PK = {"AspNetUserClaims", "AspNetRoleClaims"}
 
 CHECKS = {

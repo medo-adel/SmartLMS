@@ -152,7 +152,7 @@ Flags: `-`
 
 ### AspNetUserLogins
 
-Flags: `-`. Social login hooks (Google, Facebook, Apple).
+Flags: `-`. Social login hooks (Google, Facebook, Apple). One row per user per external identity: the same provider account MAY be linked to per-tenant accounts of the same person in different academies, so uniqueness is per (provider, key, user), not global.
 
 | Column | Type | Null | Key / rule |
 |---|---|---|---|
@@ -161,7 +161,7 @@ Flags: `-`. Social login hooks (Google, Facebook, Apple).
 | ProviderDisplayName | nvarchar(max) | yes |  |
 | UserId | uniqueidentifier | no | FK (UserId) -> AspNetUsers(Id) |
 
-Indexes: unique (LoginProvider, ProviderKey).
+Indexes: unique (LoginProvider, ProviderKey, UserId); index (LoginProvider, ProviderKey).
 
 ### UserTenantMemberships
 

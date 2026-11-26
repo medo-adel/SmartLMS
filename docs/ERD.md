@@ -86,7 +86,7 @@ erDiagram
 - **AspNetUsers**: ASP.NET Core Identity user (Guid key). TenantId is NULL only for SuperAdmin. UserName is stored as '<tenantSlug>:<email>' so the same email can exist in two tenants.
 - **AspNetRoles**: Global roles: SuperAdmin, TenantAdmin, Instructor, TeachingAssistant, Student, Parent.
 - **AspNetUserTokens**: ASP.NET Core Identity token store (authenticator keys, recovery codes). Composite primary key.
-- **AspNetUserLogins**: Social login hooks (Google, Facebook, Apple).
+- **AspNetUserLogins**: Social login hooks (Google, Facebook, Apple). One row per user per external identity: the same provider account MAY be linked to per-tenant accounts of the same person in different academies, so uniqueness is per (provider, key, user), not global.
 - **UserTenantMemberships**: Tenant membership of a global identity. EVERY user-to-tenant-data reference points here as (TenantId, UserId), so a row can only reference a user who is a member of the same tenant. Each tenant user has one Home row; a SuperAdmin acts inside a tenant only through an explicit, audited SupportAccess row.
 - **RefreshTokens**: Rotating refresh tokens. Only the SHA-256 hash is stored. Reuse of a revoked token revokes the whole chain.
 - **OtpCodes**: Short-lived OTPs. Hash only; max attempts enforced in code.

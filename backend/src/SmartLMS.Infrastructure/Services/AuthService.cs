@@ -44,39 +44,52 @@ public sealed class AuthService(
         var verifier = verifiers.FirstOrDefault(v => string.Equals(v.Provider, provider, StringComparison.OrdinalIgnoreCase))
             ?? throw new AppException(501, "NOT_IMPLEMENTED", $"Social login ({provider}) is not configured in this build.");
         if (!verifier.IsConfigured) throw new AppException(501, "NOT_IMPLEMENTED", $"Social login ({provider}) is not configured in this build.");
+        var confirmEmail = false;
         var ext = await verifier.VerifyAsync(request.IdToken, ct);
         if (!ext.EmailVerified) throw new ForbiddenAppException("EMAIL_NOT_VERIFIED", "The provider account has no verified email.");
 
-        // External logins are globally unique per (provider, providerKey): one Google account maps to one LMS
-        // account across every tenant. Sign in by the linked identity first, then fall back to email matching.
-        var user = await users.FindByLoginAsync(ext.Provider, ext.ProviderKey);
+        // Accounts are per-tenant rows, so one provider identity can be linked to one account per academy.
+        // Resolve the external login INSIDE the current tenant (the AspNetUserLogins PK includes UserId, and
+        // UserManager.FindByLoginAsync would throw on cross-tenant duplicates, so query the join directly).
+        var linkedUserId = await db.Set<IdentityUserLogin<Guid>>().IgnoreQueryFilters()
+            .Where(l => l.LoginProvider == ext.Provider && l.ProviderKey == ext.ProviderKey)
+            .Join(db.Users.IgnoreQueryFilters().Where(u => u.TenantId == tenant.TenantId), l => l.UserId, u => u.Id, (l, u) => u.Id)
+            .FirstOrDefaultAsync(ct);
+        ApplicationUser? user = linkedUserId == default ? null : await users.FindByIdAsync(linkedUserId.ToString());
         if (user is null)
         {
-            var linkedElsewhere = await db.Set<IdentityUserLogin<Guid>>().IgnoreQueryFilters()
-                .AnyAsync(l => l.LoginProvider == ext.Provider && l.ProviderKey == ext.ProviderKey, ct);
-            if (linkedElsewhere)
-                throw new ConflictAppException("EXTERNAL_IDENTITY_IN_USE", "This provider account is linked to an account in another academy.");
             user = await provisioner.FindByEmailAsync(ext.Email, ct);
             if (user is null)
             {
                 user = await provisioner.CreateAsync(ext.Email, ext.FullName, "Ext!" + Guid.NewGuid().ToString("N"), [RoleNames.Student], null, null, emailConfirmed: true, ct);
-                await users.AddLoginAsync(user, new UserLoginInfo(ext.Provider, ext.ProviderKey, ext.Provider));
+                LinkLogin(user, ext);
             }
             else
             {
-                await users.AddLoginAsync(user, new UserLoginInfo(ext.Provider, ext.ProviderKey, ext.Provider));
+                // Email auto-link: the provider already proved ownership of this exact email (email_verified gate above).
+                var rolesToCheck = await users.GetRolesAsync(user);
+                if (rolesToCheck.Any(r => r is RoleNames.TenantAdmin or RoleNames.SuperAdmin))
+                    throw new ForbiddenAppException("SOCIAL_LINK_NOT_ALLOWED", "Privileged accounts sign in with email and password.");
+                confirmEmail = !user.EmailConfirmed; // provider proof counts as verification
+                LinkLogin(user, ext);
             }
         }
         if (user.IsDeleted) throw new UnauthorizedAppException("INVALID_CREDENTIALS", "Invalid email or password.");
         if (!user.IsActive) throw new ForbiddenAppException("ACCOUNT_DISABLED", "This account is deactivated.");
         db.Entry(user).State = EntityState.Detached;
+        if (confirmEmail) user.EmailConfirmed = true; // detached: DTO only, the row is updated below
         var roles = (await users.GetRolesAsync(user)).ToList();
         var device = await devices.BindAsync(user.Id, user.TenantId, enforceCap: roles.Contains(RoleNames.Student), request.Device, ct);
         var loginAt = Now;
-        await db.Users.IgnoreQueryFilters().Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAtUtc, loginAt), ct);
+        // user is detached above, so the provider-proven email confirmation goes through the same direct update.
+        await db.Users.IgnoreQueryFilters().Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAtUtc, loginAt).SetProperty(u => u.EmailConfirmed, u2 => u2.EmailConfirmed || confirmEmail), ct);
         db.AuditLogs.Add(new AuditLog { TenantId = user.TenantId, UserId = user.Id, Action = AuditLogAction.Login, EntityName = "User", EntityId = user.Id.ToString(), IpAddress = currentUser.IpAddress, CorrelationId = currentUser.CorrelationId, OccurredAtUtc = Now });
         return await IssueAsync(user, roles, device, ct);
     }
+
+    /// <summary>Adds the external login row directly: UserManager.AddLoginAsync's global FindByLoginAsync cannot handle per-tenant duplicates.</summary>
+    private void LinkLogin(ApplicationUser user, ExternalIdentity ext) =>
+        db.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid> { UserId = user.Id, LoginProvider = ext.Provider, ProviderKey = ext.ProviderKey, ProviderDisplayName = ext.Provider });
 
     public async Task<TokenResponse> LoginAsync(LoginRequest request, CancellationToken ct)
     {

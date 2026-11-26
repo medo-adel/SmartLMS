@@ -35,7 +35,8 @@ async function boot(providers, socialHandler) {
     if (rq.method() === 'OPTIONS') return rq.respond({ status: 204, headers: h });
     if (pp === '/auth/external-providers') return rq.respond({ status: 200, headers: h, body: JSON.stringify(ok({ providers })) });
     if (pp === '/auth/social/google' && rq.method() === 'POST') { calls.push(rq.postData() ?? ''); return socialHandler(rq, h); }
-    const fx = { 'GET /tenants/current/branding': ok({ name: 'Test Academy', slug: 'demo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#f59e0b', accentColor: '#7c3aed', defaultLanguage: 'ar', featureFlags: [] }), 'GET /auth/mail-delivery': ok({ mode: 'local-outbox' }), 'GET /me/devices': ok([]), 'GET /notifications': ok([]) };
+    const fx = { 'GET /tenants/current/branding': ok({ name: 'Test Academy', slug: 'demo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#f59e0b', accentColor: '#7c3aed', defaultLanguage: 'ar', featureFlags: [] }), 'GET /auth/mail-delivery': ok({ mode: 'local-outbox' }), 'GET /me/devices': ok([]), 'GET /notifications': ok([]),
+      'GET /dashboards/student': ok({ enrollments: [{ courseId: 'c-1', title: 'أساسيات الجبر', status: 'Active', progressPercent: 40, expiresAtUtc: null }], upcomingDeadlines: [], xp: 120, streak: 3, longestStreak: 9, skillRadar: [{ skill: 'جبر', averagePercent: 72, attempts: 4 }] }) };
     return rq.respond({ status: 200, headers: h, body: JSON.stringify(fx[rq.method() + ' ' + pp] ?? fx['GET ' + pp] ?? ok({})) });
   })().catch((e) => { problems.push('fixture: ' + e.message); rq.abort(); }); });
   await p.evaluateOnNewDocument((stub, tenant) => {
@@ -58,6 +59,8 @@ async function boot(providers, socialHandler) {
   await p.evaluate(() => document.querySelector('#gsi-stub-btn').click()); await sleep(1500);
   check('login: click POSTs the credential + device to /auth/social/google', calls.length === 1 && calls[0].includes('"idToken":"valid-google-token"') && calls[0].includes('"device"'));
   check('login: success stores session and lands on the dashboard', await p.evaluate(() => location.pathname.startsWith('/app') && !!localStorage.getItem('CapacitorStorage.session')?.includes('u-g')));
+  await sleep(1500);
+  check('login: dashboard settled (real content, no skeletons)', await p.evaluate(() => !document.querySelector('app-dash-skeleton') && (document.body.textContent ?? '').includes('أساسيات الجبر')));
   check('login: no page errors', problems.length === 0);
   await p.screenshot({ path: path.join(out, 'login-google-after-ar.png') });
   await ctx.close();
@@ -66,10 +69,10 @@ async function boot(providers, socialHandler) {
 // 2) provider sign-in rejected by the API: error surfaces inline, no navigation
 {
   const { p, ctx } = await boot([{ provider: 'google', clientId: 'test-google-client-id' }], (rq, h) =>
-    rq.respond({ status: 409, headers: h, body: JSON.stringify({ success: false, data: null, message: 'This provider account is linked to an account in another academy.', code: 'EXTERNAL_IDENTITY_IN_USE', errors: [] }) }));
+    rq.respond({ status: 403, headers: h, body: JSON.stringify({ success: false, data: null, message: 'Privileged accounts sign in with email and password.', code: 'SOCIAL_LINK_NOT_ALLOWED', errors: [] }) }));
   await p.goto('http://127.0.0.1:4313/login', { waitUntil: 'networkidle0' }); await sleep(1800);
   await p.evaluate(() => document.querySelector('#gsi-stub-btn').click()); await sleep(1200);
-  check('login: API rejection surfaces the server message and stays on /login', await p.evaluate(() => location.pathname === '/login' && (document.querySelector('.error')?.textContent ?? '').includes('another academy')));
+  check('login: API rejection surfaces the server message and stays on /login', await p.evaluate(() => location.pathname === '/login' && (document.querySelector('.error')?.textContent ?? '').includes('email and password')));
   await ctx.close();
 }
 

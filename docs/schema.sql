@@ -129,7 +129,7 @@ CREATE TABLE [dbo].[AspNetUserLogins] (
     [ProviderKey] nvarchar(128) NOT NULL,
     [ProviderDisplayName] nvarchar(max) NULL,
     [UserId] uniqueidentifier NOT NULL,
-    CONSTRAINT [PK_AspNetUserLogins] PRIMARY KEY ([LoginProvider], [ProviderKey])
+    CONSTRAINT [PK_AspNetUserLogins] PRIMARY KEY ([LoginProvider], [ProviderKey], [UserId])
 );
 GO
 CREATE TABLE [dbo].[UserTenantMemberships] (
@@ -2403,7 +2403,8 @@ CREATE UNIQUE INDEX [UX_AspNetUserRoles_UserId_RoleId] ON [dbo].[AspNetUserRoles
 CREATE INDEX [IX_AspNetUserRoles_RoleId] ON [dbo].[AspNetUserRoles] ([RoleId]);
 CREATE INDEX [IX_AspNetRoleClaims_RoleId] ON [dbo].[AspNetRoleClaims] ([RoleId]);
 CREATE INDEX [IX_AspNetUserClaims_UserId] ON [dbo].[AspNetUserClaims] ([UserId]);
-CREATE UNIQUE INDEX [UX_AspNetUserLogins_LoginProvider_ProviderKey] ON [dbo].[AspNetUserLogins] ([LoginProvider], [ProviderKey]);
+CREATE UNIQUE INDEX [UX_AspNetUserLogins_LoginProvider_ProviderKey_UserId] ON [dbo].[AspNetUserLogins] ([LoginProvider], [ProviderKey], [UserId]);
+CREATE INDEX [IX_AspNetUserLogins_LoginProvider_ProviderKey] ON [dbo].[AspNetUserLogins] ([LoginProvider], [ProviderKey]);
 CREATE INDEX [IX_AspNetUserLogins_UserId] ON [dbo].[AspNetUserLogins] ([UserId]);
 CREATE INDEX [IX_UserTenantMemberships_TenantId] ON [dbo].[UserTenantMemberships] ([TenantId]);
 CREATE INDEX [IX_UserTenantMemberships_UserId] ON [dbo].[UserTenantMemberships] ([UserId]);
