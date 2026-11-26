@@ -154,6 +154,7 @@ if (hangfireOn)
 {
     // The dashboard is deliberately not mapped: it would show every tenant's jobs. Jobs are registered after the database exists.
     app.Services.GetRequiredService<Hangfire.IRecurringJobManager>().AddOrUpdate<SmartLMS.Infrastructure.Services.Lms.MaintenanceJobs>(SmartLMS.Infrastructure.Services.Lms.MaintenanceJobs.ExpireEnrollmentsId, j => j.ExpireEnrollmentsAsync(), "*/15 * * * *");
+    app.Services.GetRequiredService<Hangfire.IRecurringJobManager>().AddOrUpdate<SmartLMS.Infrastructure.Services.Lms.MaintenanceJobs>(SmartLMS.Infrastructure.Services.Lms.MaintenanceJobs.LiveRemindersId, j => j.SendLiveRemindersAsync(), "*/15 * * * *");
     app.Services.GetRequiredService<Hangfire.IRecurringJobManager>().AddOrUpdate<SmartLMS.Infrastructure.Services.Commerce.BackgroundJobRunner>("webhook-retries", j => j.RetryWebhooksAsync(), "*/5 * * * *");
 }
 

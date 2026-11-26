@@ -1483,6 +1483,7 @@ Flags: `TAS`
 | StartsAtUtc | datetime2(7) | no |  |
 | EndsAtUtc | datetime2(7) | yes |  |
 | Status | nvarchar(40) | no | one of: Scheduled, Live, Ended, Cancelled; default Scheduled |
+| ReminderSentAtUtc | datetime2(7) | yes |  |
 | CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
 | CreatedBy | uniqueidentifier | yes |  |
 | UpdatedAtUtc | datetime2(7) | yes |  |

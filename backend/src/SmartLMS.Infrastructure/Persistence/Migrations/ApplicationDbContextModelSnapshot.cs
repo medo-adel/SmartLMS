@@ -3710,6 +3710,9 @@ namespace SmartLMS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
+                    b.Property<DateTime?>("ReminderSentAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("StartsAtUtc")
                         .HasColumnType("datetime2");
 

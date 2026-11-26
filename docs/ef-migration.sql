@@ -5803,3 +5803,24 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126031013_LiveSessionReminder'
+)
+BEGIN
+    ALTER TABLE [LiveSessions] ADD [ReminderSentAtUtc] datetime2 NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126031013_LiveSessionReminder'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261126031013_LiveSessionReminder', N'10.0.15');
+END;
+
+COMMIT;
+GO
+

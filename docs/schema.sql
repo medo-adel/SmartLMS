@@ -1231,6 +1231,7 @@ CREATE TABLE [dbo].[LiveSessions] (
     [StartsAtUtc] datetime2(7) NOT NULL,
     [EndsAtUtc] datetime2(7) NULL,
     [Status] nvarchar(40) NOT NULL DEFAULT N'Scheduled',
+    [ReminderSentAtUtc] datetime2(7) NULL,
     [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     [CreatedBy] uniqueidentifier NULL,
     [UpdatedAtUtc] datetime2(7) NULL,

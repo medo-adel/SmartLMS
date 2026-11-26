@@ -158,6 +158,7 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
         c.Status = approve ? CourseStatus.Published : CourseStatus.Rejected;
         if (approve) c.PublishedAtUtc = Now;
         await db.SaveChangesAsync(ct);
+        await mail.ApprovalResultAsync(c.OwnerInstructorId, c.Id, approve, comment, ct); // best-effort, never throws
     }
 
     // ---- sections and lessons ------------------------------------------------------------------------------------------

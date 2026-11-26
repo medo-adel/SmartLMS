@@ -123,14 +123,47 @@ public sealed class TransactionalMailer(ApplicationDbContext db, IEmailTransport
             $"أهلاً {u.FullName},\n\nخلصت كل دروس \"{title}\". شهادتك جاهزة في التطبيق.", ct);
     }
 
+    /// <summary>Course approval decision to the owning instructor.</summary>
+    public async Task ApprovalResultAsync(Guid userId, Guid courseId, bool approved, string? comment, CancellationToken ct)
+    {
+        var u = await User(userId, ct); if (u is null) return;
+        var title = await db.Courses.AsNoTracking().Where(c => c.Id == courseId).Select(c => c.Title).FirstOrDefaultAsync(ct);
+        if (title is null) return;
+        var noteEn = string.IsNullOrWhiteSpace(comment) ? "" : $"\n\nReviewer note: {comment}";
+        var noteAr = string.IsNullOrWhiteSpace(comment) ? "" : $"\n\nملاحظة المراجع: {comment}";
+        await Send(u,
+            approved ? $"Course approved: {title}" : $"Course needs changes: {title}",
+            approved ? $"تم اعتماد كورسك: {title}" : $"كورسك يحتاج تعديلات: {title}",
+            approved ? $"Hi {u.FullName},\n\n'{title}' passed review and is now published for students.{noteEn}" : $"Hi {u.FullName},\n\n'{title}' was reviewed and needs changes before it can be published.{noteEn}",
+            approved ? $"أهلاً {u.FullName},\n\n'{title}' اجتاز المراجعة وبقى منشور للطلاب.{noteAr}" : $"أهلاً {u.FullName},\n\n'{title}' اتمراجع ويحتاج تعديلات قبل النشر.{noteAr}", ct);
+    }
+
+    /// <summary>Live-session reminder for background jobs: no tenant or user context exists, so the job passes the recipient fields it loaded itself.</summary>
+    public async Task LiveSessionReminderAsync(string toEmail, string fullName, string? preferredLanguage, string sessionTitle, string courseTitle, DateTime startsAtUtc, CancellationToken ct)
+    {
+        var when = startsAtUtc.ToString("u");
+        await SendRaw(toEmail, preferredLanguage,
+            $"Starting soon: {sessionTitle}",
+            $"يبدأ قريباً: {sessionTitle}",
+            $"Hi {fullName},\n\nThe live session '{sessionTitle}' ({courseTitle}) starts at {when}. Open the app to join.",
+            $"أهلاً {fullName},\n\nالبث المباشر '{sessionTitle}' ({courseTitle}) يبدأ {when}. افتح التطبيق للانضمام.", ct);
+    }
+
+    /// <summary>Sends when the transport is enabled; never throws. The language follows the recipient's preference.</summary>
+    public async Task SendRaw(string toEmail, string? preferredLanguage, string enSubject, string arSubject, string enBody, string arBody, CancellationToken ct)
+    {
+        if (!transport.IsEnabled) return;
+        var ar = preferredLanguage?.StartsWith("ar", StringComparison.OrdinalIgnoreCase) == true;
+        try { await transport.SendAsync(new EmailMessage(toEmail, ar ? arSubject : enSubject, ar ? arBody : enBody), ct); }
+        catch (Exception ex) { logger.LogWarning(ex, "Transactional email to {Email} failed; the triggering action is unaffected.", toEmail); }
+    }
+
     private async Task<ApplicationUser?> User(Guid userId, CancellationToken ct) =>
         await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId && u.Email != null, ct);
 
     private async Task Send(ApplicationUser u, string enSubject, string arSubject, string enBody, string arBody, CancellationToken ct)
     {
-        if (!transport.IsEnabled || u.Email is null) return;
-        var ar = u.PreferredLanguage?.StartsWith("ar", StringComparison.OrdinalIgnoreCase) == true;
-        try { await transport.SendAsync(new EmailMessage(u.Email, ar ? arSubject : enSubject, ar ? arBody : enBody), ct); }
-        catch (Exception ex) { logger.LogWarning(ex, "Transactional email to {Email} failed; the triggering action is unaffected.", u.Email); }
+        if (u.Email is null) return;
+        await SendRaw(u.Email, u.PreferredLanguage, enSubject, arSubject, enBody, arBody, ct);
     }
 }

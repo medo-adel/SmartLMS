@@ -111,4 +111,44 @@ public sealed class TransactionalMailTests : IClassFixture<ApiFactory>
         Assert.Equal(200, (await Post($"/courses/{free}/enroll", null, ar, t)).Status);
         Assert.Contains(_f.Mail.For(ar.Email), m => m.Subject.Contains("تم تسجيلك"));
     }
+
+    [Fact]
+    public async Task Approval_result_and_live_session_reminder_emails_are_sent()
+    {
+        var t = await NewTenant(); var inst = await Instructor(t); var st = await Student(t);
+        // approval result: approved once, rejected once (two courses)
+        var c1 = Id(await Post("/courses", new { title = "Verdict " + U() }, inst, t));
+        var s1 = Id(await Post($"/courses/{c1}/sections", new { title = "S1" }, inst, t));
+        await Post($"/sections/{s1}/lessons", new { title = "L1", lessonType = "Article", contentMarkdown = "body" }, inst, t);
+        Assert.Equal(200, (await Post($"/courses/{c1}/submit-for-approval", null, inst, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c1}/approve", null, t.Admin, t)).Status);
+        Assert.Contains(_f.Mail.For(inst.Email), m => m.Subject.Contains("approved") && m.Subject.Contains("Verdict"));
+        var c2 = Id(await Post("/courses", new { title = "Drafty " + U() }, inst, t));
+        var s2 = Id(await Post($"/courses/{c2}/sections", new { title = "S1" }, inst, t));
+        await Post($"/sections/{s2}/lessons", new { title = "L1", lessonType = "Article", contentMarkdown = "body" }, inst, t);
+        Assert.Equal(200, (await Post($"/courses/{c2}/submit-for-approval", null, inst, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c2}/reject", new { comment = "Add a summary lesson" }, t.Admin, t)).Status);
+        Assert.Contains(_f.Mail.For(inst.Email), m => m.Subject.Contains("needs changes") && m.Body.Contains("Add a summary lesson"));
+        // live-session reminder: session starting in 30 min, enrolled student gets exactly one reminder across two job runs
+        Assert.Equal(200, (await Post($"/courses/{c1}/enroll", null, st, t)).Status);
+        var sess = await Post($"/courses/{c1}/live-sessions", new { title = "Q&A Live", provider = "Jitsi", joinUrl = "https://meet.example.test/room", startsAtUtc = DateTime.UtcNow.AddMinutes(30) }, inst, t);
+        Assert.True(sess.Success, sess.Body.ToString());
+        await using (var scope = _f.Services.CreateAsyncScope())
+        {
+            var jobs = scope.ServiceProvider.GetRequiredService<SmartLMS.Infrastructure.Services.Lms.MaintenanceJobs>();
+            Assert.Equal(1, await jobs.SendLiveRemindersAsync());
+            Assert.Equal(0, await jobs.SendLiveRemindersAsync()); // idempotent
+        }
+        var reminders = _f.Mail.For(st.Email).Where(m => m.Subject.Contains("Starting soon") && m.Subject.Contains("Q&A Live")).ToList();
+        Assert.Single(reminders); Assert.Contains("Open the app to join", reminders[0].Body);
+        // a session two hours out is not reminded yet
+        var later = await Post($"/courses/{c1}/live-sessions", new { title = "Later", provider = "Jitsi", joinUrl = "https://meet.example.test/room2", startsAtUtc = DateTime.UtcNow.AddHours(2) }, inst, t);
+        Assert.True(later.Success, later.Body.ToString());
+        await using (var scope = _f.Services.CreateAsyncScope())
+        {
+            var jobs = scope.ServiceProvider.GetRequiredService<SmartLMS.Infrastructure.Services.Lms.MaintenanceJobs>();
+            Assert.Equal(0, await jobs.SendLiveRemindersAsync());
+        }
+        Assert.Empty(_f.Mail.For(st.Email).Where(m => m.Subject.Contains("Later")));
+    }
 }

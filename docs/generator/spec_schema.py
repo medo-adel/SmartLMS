@@ -233,7 +233,7 @@ T("Notifications", G, [
 T("PushTokens", G, ["UserId g >AspNetUsers", "DeviceId g? >UserDevices", "FcmToken s:500", "Platform e:Android|Ios|Web", "LastSeenAtUtc d"], flags="TA", uniq=[("UserId", "FcmToken")])
 T("LiveSessions", G, [
     "CourseId g >Courses", "HostId g >AspNetUsers", "Title s:250", "Provider e:Zoom|GoogleMeet|Jitsi|Other", "JoinUrl s:1000", "StartsAtUtc d", "EndsAtUtc d?",
-    "Status e:Scheduled|Live|Ended|Cancelled =Scheduled",
+    "Status e:Scheduled|Live|Ended|Cancelled =Scheduled", "ReminderSentAtUtc d?",
 ])
 T("LiveSessionAttendance", G, ["LiveSessionId g >LiveSessions", "UserId g >AspNetUsers", "JoinedAtUtc d", "LeftAtUtc d?", "DurationSeconds i?", "Source e:JoinLink|Provider|Manual =JoinLink"],
   flags="TA", uniq=[("LiveSessionId", "UserId")], note="JoinLink attendance means the student opened our join link, not that they stayed engaged.")
