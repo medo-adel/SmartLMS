@@ -16,7 +16,7 @@ namespace SmartLMS.Infrastructure.Services;
 
 public sealed class AuthService(
     ApplicationDbContext db, UserManager<ApplicationUser> users, UserProvisioner provisioner, ITokenService tokens, IDeviceService devices,
-    IOtpSender otpSender, ICurrentTenant tenant, ICurrentUser currentUser, IOptions<JwtOptions> jwt, IOptions<OtpOptions> otp, TimeProvider clock, TransactionalMailer mail) : IAuthService
+    IOtpSender otpSender, ICurrentTenant tenant, ICurrentUser currentUser, IOptions<JwtOptions> jwt, IOptions<OtpOptions> otp, TimeProvider clock, TransactionalMailer mail, IEnumerable<IExternalSignInVerifier> verifiers) : IAuthService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -32,6 +32,50 @@ public sealed class AuthService(
         var user = await provisioner.CreateAsync(request.Email, request.FullName, request.Password, [role], request.PhoneNumber, request.PreferredLanguage, emailConfirmed: false, ct);
         await IssueOtpAsync(user, user.Email!, OtpCodePurpose.EmailVerification, ct);
         return await provisioner.ToDtoAsync(user);
+    }
+
+    /// <summary>
+    /// Google sign-in: verifies the provider's ID token, then links the external identity to the tenant account
+    /// with the same email or creates a Student account (email already verified by the provider, so EmailConfirmed).
+    /// </summary>
+    public async Task<TokenResponse> SocialLoginAsync(string provider, SocialLoginRequest request, CancellationToken ct)
+    {
+        if (tenant.TenantId is null) throw new ValidationAppException("A tenant is required (X-Tenant-Id).");
+        var verifier = verifiers.FirstOrDefault(v => string.Equals(v.Provider, provider, StringComparison.OrdinalIgnoreCase))
+            ?? throw new AppException(501, "NOT_IMPLEMENTED", $"Social login ({provider}) is not configured in this build.");
+        if (!verifier.IsConfigured) throw new AppException(501, "NOT_IMPLEMENTED", $"Social login ({provider}) is not configured in this build.");
+        var ext = await verifier.VerifyAsync(request.IdToken, ct);
+        if (!ext.EmailVerified) throw new ForbiddenAppException("EMAIL_NOT_VERIFIED", "The provider account has no verified email.");
+
+        // External logins are globally unique per (provider, providerKey): one Google account maps to one LMS
+        // account across every tenant. Sign in by the linked identity first, then fall back to email matching.
+        var user = await users.FindByLoginAsync(ext.Provider, ext.ProviderKey);
+        if (user is null)
+        {
+            var linkedElsewhere = await db.Set<IdentityUserLogin<Guid>>().IgnoreQueryFilters()
+                .AnyAsync(l => l.LoginProvider == ext.Provider && l.ProviderKey == ext.ProviderKey, ct);
+            if (linkedElsewhere)
+                throw new ConflictAppException("EXTERNAL_IDENTITY_IN_USE", "This provider account is linked to an account in another academy.");
+            user = await provisioner.FindByEmailAsync(ext.Email, ct);
+            if (user is null)
+            {
+                user = await provisioner.CreateAsync(ext.Email, ext.FullName, "Ext!" + Guid.NewGuid().ToString("N"), [RoleNames.Student], null, null, emailConfirmed: true, ct);
+                await users.AddLoginAsync(user, new UserLoginInfo(ext.Provider, ext.ProviderKey, ext.Provider));
+            }
+            else
+            {
+                await users.AddLoginAsync(user, new UserLoginInfo(ext.Provider, ext.ProviderKey, ext.Provider));
+            }
+        }
+        if (user.IsDeleted) throw new UnauthorizedAppException("INVALID_CREDENTIALS", "Invalid email or password.");
+        if (!user.IsActive) throw new ForbiddenAppException("ACCOUNT_DISABLED", "This account is deactivated.");
+        db.Entry(user).State = EntityState.Detached;
+        var roles = (await users.GetRolesAsync(user)).ToList();
+        var device = await devices.BindAsync(user.Id, user.TenantId, enforceCap: roles.Contains(RoleNames.Student), request.Device, ct);
+        var loginAt = Now;
+        await db.Users.IgnoreQueryFilters().Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAtUtc, loginAt), ct);
+        db.AuditLogs.Add(new AuditLog { TenantId = user.TenantId, UserId = user.Id, Action = AuditLogAction.Login, EntityName = "User", EntityId = user.Id.ToString(), IpAddress = currentUser.IpAddress, CorrelationId = currentUser.CorrelationId, OccurredAtUtc = Now });
+        return await IssueAsync(user, roles, device, ct);
     }
 
     public async Task<TokenResponse> LoginAsync(LoginRequest request, CancellationToken ct)

@@ -11,7 +11,7 @@ export const EN: Record<string, string> = {
   'dash.student.continue': 'Continue learning', 'dash.student.open': 'Open course', 'dash.student.complete': 'complete', 'dash.admin.snapshot': 'Academy snapshot', 'dash.admin.attention': 'Needs your attention', 'dash.admin.clear': 'All clear',
   'login.tagline': 'Learn, teach and manage your academy in one place.',
   'login.title': 'Sign in', 'login.subtitle': 'Use the account for your academy.', 'login.email': 'Email', 'login.password': 'Password',
-  'login.submit': 'Sign in', 'login.academy': 'Academy', 'login.academyHint': 'Academy code (slug)', 'login.change': 'Change academy',
+  'login.submit': 'Sign in', 'login.or': 'or', 'login.academy': 'Academy', 'login.academyHint': 'Academy code (slug)', 'login.change': 'Change academy',
   'login.biometric': 'Unlock with fingerprint or face', 'login.invalid': 'Enter a valid email and a password.',
   'lock.title': 'Locked', 'lock.text': 'Confirm it is you to continue.', 'lock.unlock': 'Unlock', 'lock.usePassword': 'Sign in with password instead',
   'lock.failed': 'Could not confirm. Try again or sign in with your password.',

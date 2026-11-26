@@ -69,7 +69,12 @@ public sealed class AuthController(IAuthService auth, IEmailTransport mail) : Ap
     }
 
     [HttpPost("social/{provider}"), AllowAnonymous]
-    public ActionResult Social(string provider) => NotConfigured($"Social login ({provider})");
+    public async Task<ActionResult<ApiResponse<TokenResponse>>> Social(string provider, SocialLoginRequest request, CancellationToken ct) => Success(await auth.SocialLoginAsync(provider, request, ct));
+
+    /// <summary>Which social providers are configured (client ids the login page needs). Never exposes server secrets.</summary>
+    [HttpGet("external-providers"), AllowAnonymous]
+    public ActionResult<ApiResponse<object>> ExternalProviders([FromServices] IEnumerable<IExternalSignInVerifier> verifiers) =>
+        Success((object)new { providers = verifiers.Where(v => v.IsConfigured).Select(v => new { provider = v.Provider, clientId = v.ClientId }) });
 
     [HttpPost("biometric/enable"), Authorize]
     public async Task<ActionResult<ApiResponse<object?>>> Biometric(CancellationToken ct)

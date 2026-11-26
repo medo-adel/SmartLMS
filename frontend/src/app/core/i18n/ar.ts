@@ -33,7 +33,7 @@ export const AR: Record<string, string> = {
   "dash.admin.attention": "محتاج انتباهك",
   "dash.admin.clear": "كله تمام",
   "login.tagline": "تعلّم وعلّم وأدر أكاديميتك من مكان واحد.",
-  "login.title": "تسجيل الدخول",
+  "login.title": "تسجيل الدخول", "login.or": "أو",
   "login.subtitle": "استخدم حسابك في الأكاديمية.",
   "login.email": "البريد الإلكتروني",
   "login.password": "كلمة المرور",

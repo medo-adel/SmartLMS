@@ -69,6 +69,20 @@ export class AuthService {
       try { await this.loginWith(body, true); } catch { throw err; }
     }
   }
+  /** Social providers the backend has configured (client ids are public, safe to expose). */
+  async externalProviders(): Promise<{ provider: string; clientId: string | null }[]> {
+    const res = await firstValueFrom(this.http.get<ApiResponse<{ providers: { provider: string; clientId: string | null }[] }>>(`${environment.apiBaseUrl}/auth/external-providers`));
+    return res.data?.providers ?? [];
+  }
+  /** Sign in with a provider ID token (Google GSI credential). Requires an academy, same as password login. */
+  async socialLogin(provider: string, idToken: string): Promise<void> {
+    const d = await this.device.init();
+    const body = { idToken, device: { fingerprint: d.fingerprint, deviceType: d.deviceType, platform: d.platform, deviceName: d.deviceName } };
+    const res = await firstValueFrom(this.http.post<ApiResponse<TokenResponse>>(`${environment.apiBaseUrl}/auth/social/${provider}`, body));
+    if (!res.success || !res.data) throw new Error(res.message ?? 'login failed');
+    await this.setSession(res.data);
+    await this.tenant.loadBranding();
+  }
   private async loginWith(body: unknown, skipTenant: boolean): Promise<void> {
     const options = skipTenant ? { context: new HttpContext().set(SKIP_TENANT, true) } : {};
     const res = await firstValueFrom(this.http.post<ApiResponse<TokenResponse>>(`${environment.apiBaseUrl}/auth/login`, body, options));

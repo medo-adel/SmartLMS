@@ -4,6 +4,7 @@ public sealed record DeviceInfo(string Fingerprint, string DeviceType, string? P
 
 public sealed record RegisterRequest(string FullName, string Email, string Password, string? PhoneNumber = null, string? Role = null, string? PreferredLanguage = null);
 public sealed record LoginRequest(string Email, string Password, DeviceInfo Device);
+public sealed record SocialLoginRequest(string IdToken, DeviceInfo Device);
 public sealed record RefreshRequest(string RefreshToken, string DeviceFingerprint);
 public sealed record LogoutRequest(string RefreshToken);
 public sealed record VerifyEmailRequest(string Email, string Code);

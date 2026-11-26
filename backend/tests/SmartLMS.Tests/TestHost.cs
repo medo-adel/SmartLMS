@@ -33,6 +33,23 @@ public sealed class CapturingEmailTransport : IEmailTransport
     public List<(string To, string Subject, string Body)> For(string to) { lock (Sent) return Sent.Where(m => m.To == to).ToList(); }
 }
 
+/// <summary>Hermetic Google sign-in: maps known fake id tokens to identities; anything else is an invalid token.</summary>
+public sealed class FakeExternalSignInVerifier : IExternalSignInVerifier
+{
+    public string Provider => "google";
+    public bool IsConfigured => true;
+    public string? ClientId => "test-google-client-id";
+    public readonly Dictionary<string, ExternalIdentity> Tokens = new()
+    {
+        ["valid-google-token"] = new ExternalIdentity("google", "g-sub-1", "social@mail.test", "Social User", true),
+        ["unverified-google-token"] = new ExternalIdentity("google", "g-sub-2", "unverified@mail.test", "No Verify", false),
+        // Same person, a different Google account: exercises the link-by-email path for an existing password account.
+        ["second-google-token"] = new ExternalIdentity("google", "g-sub-3", "social@mail.test", "Social User", true),
+    };
+    public Task<ExternalIdentity> VerifyAsync(string idToken, CancellationToken ct) =>
+        Task.FromResult(Tokens.TryGetValue(idToken, out var id) ? id : throw new SmartLMS.Domain.Exceptions.UnauthorizedAppException("INVALID_SOCIAL_TOKEN", "The Google sign-in token is not valid."));
+}
+
 /// <summary>Boots the real API on in-memory SQLite. SQLite approximates SQL Server; it is not a substitute for a run against SQL Server.</summary>
 public class ApiFactory : WebApplicationFactory<Program>
 {
@@ -43,6 +60,7 @@ public class ApiFactory : WebApplicationFactory<Program>
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), $"smartlms-storage-{Guid.NewGuid():N}");
     public CapturingOtpSender Otp { get; } = new();
     public CapturingEmailTransport Mail { get; } = new();
+    public FakeExternalSignInVerifier Google { get; } = new();
 
     public ApiFactory()
     {
@@ -89,6 +107,8 @@ public class ApiFactory : WebApplicationFactory<Program>
             s.AddSingleton<IOtpSender>(Otp);
             s.RemoveAll<IEmailTransport>();
             s.AddSingleton<IEmailTransport>(Mail);
+            s.RemoveAll<IExternalSignInVerifier>();
+            s.AddSingleton<IExternalSignInVerifier>(Google);
         });
     }
 

@@ -8,6 +8,7 @@ public interface IAuthService
 {
     Task<UserDto> RegisterAsync(RegisterRequest request, CancellationToken ct);
     Task<TokenResponse> LoginAsync(LoginRequest request, CancellationToken ct);
+    Task<TokenResponse> SocialLoginAsync(string provider, SocialLoginRequest request, CancellationToken ct);
     Task<TokenResponse> RefreshAsync(RefreshRequest request, CancellationToken ct);
     Task LogoutAsync(LogoutRequest request, CancellationToken ct);
     Task VerifyEmailAsync(VerifyEmailRequest request, CancellationToken ct);
@@ -88,4 +89,18 @@ public interface ILogoService
 public interface IOtpSender
 {
     Task SendAsync(string destination, string purpose, string code, CancellationToken ct);
+}
+
+/// <summary>A verified external identity from a social sign-in provider (Google).</summary>
+public sealed record ExternalIdentity(string Provider, string ProviderKey, string Email, string FullName, bool EmailVerified);
+
+/// <summary>Verifies an external provider's ID token (Google issues a signed JWT for its button / native SDKs).</summary>
+public interface IExternalSignInVerifier
+{
+    string Provider { get; }
+    /// <summary>True when the provider has a server-side client id configured.</summary>
+    bool IsConfigured { get; }
+    /// <summary>The client id the frontend needs to render the provider's button. Null when not configured.</summary>
+    string? ClientId { get; }
+    Task<ExternalIdentity> VerifyAsync(string idToken, CancellationToken ct);
 }
