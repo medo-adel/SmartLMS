@@ -90,6 +90,12 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Payments:Gateways:Fawry:CheckoutUrlTemplate", "https://pay.example.test/checkout/{reference}?a={amount}&c={currency}");
         builder.UseSetting("RateLimiting:VoucherPermitsPerMinute", "100000");
         builder.UseSetting("Certificates:VerificationBaseUrl", "https://lms.example.test");
+        builder.UseSetting("Push:Web:Enabled", "true");   // full web-push config: push-config is exercised enabled; the disabled shape is unit-tested via PushWebConfig.From
+        builder.UseSetting("Push:Web:VapidPublicKey", "test-vapid-public");
+        builder.UseSetting("Push:Web:Firebase:ApiKey", "test-api-key");
+        builder.UseSetting("Push:Web:Firebase:ProjectId", "test-project");
+        builder.UseSetting("Push:Web:Firebase:MessagingSenderId", "1234567890");
+        builder.UseSetting("Push:Web:Firebase:AppId", "1:123:web:abc");
         builder.UseSetting("Seed:SuperAdminEmail", SaEmail);
         builder.UseSetting("Seed:SuperAdminPassword", Password);
         builder.ConfigureServices(s =>

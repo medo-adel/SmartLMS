@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SmartLMS.Application.Interfaces;
 using SmartLMS.Domain.Entities;
 using SmartLMS.Domain.Enums;
@@ -19,6 +20,25 @@ public sealed record PostRequest(string Body, Guid? ParentPostId);
 public sealed record AnnouncementRequest(Guid? CourseId, string Title, string Body);
 public sealed record ChatSendRequest(string Body);
 public sealed record PushTokenRequest(string FcmToken, string Platform);
+public sealed record PushTokenDeleteRequest(string FcmToken);
+public sealed record PushFirebaseConfig(string ApiKey, string? AuthDomain, string ProjectId, string MessagingSenderId, string AppId);
+public sealed record PushWebConfig(bool Enabled, string? VapidPublicKey, PushFirebaseConfig? Firebase)
+{
+    /// Web push is offered only when every Firebase web-client value AND the VAPID public key are configured;
+    /// anything missing means the app silently skips web registration (native is unaffected). These are
+    /// client-side values that are public by design (they ship in every web app using Firebase).
+    public static PushWebConfig From(Microsoft.Extensions.Configuration.IConfiguration cfg)
+    {
+        var vapid = cfg["Push:Web:VapidPublicKey"];
+        var apiKey = cfg["Push:Web:Firebase:ApiKey"]; var project = cfg["Push:Web:Firebase:ProjectId"];
+        var sender = cfg["Push:Web:Firebase:MessagingSenderId"]; var appId = cfg["Push:Web:Firebase:AppId"];
+        var on = cfg.GetValue<bool>("Push:Web:Enabled")
+            && !string.IsNullOrWhiteSpace(vapid) && !string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(project)
+            && !string.IsNullOrWhiteSpace(sender) && !string.IsNullOrWhiteSpace(appId);
+        return on ? new(true, vapid, new(apiKey!, Empty(cfg["Push:Web:Firebase:AuthDomain"]), project!, sender!, appId!)) : new(false, null, null);
+        static string? Empty(string? v) => string.IsNullOrWhiteSpace(v) ? null : v;
+    }
+}
 public sealed record LiveSessionRequest(string Title, string Provider, string JoinUrl, DateTime StartsAtUtc, DateTime? EndsAtUtc);
 
 /// <summary>
@@ -26,7 +46,7 @@ public sealed record LiveSessionRequest(string Title, string Provider, string Jo
 /// Course-scoped data is reachable only by the course owner, a TenantAdmin, or a student with a live enrollment. Personal data
 /// (notes, bookmarks, notifications) is always filtered by the caller's own user id. Not built: real-time delivery (SignalR hubs), FCM sending, Zoom/Meet APIs.
 /// </summary>
-public sealed class CommunityService(ApplicationDbContext db, ICurrentUser me, IRealtime rt, Notifier notifier)
+public sealed class CommunityService(ApplicationDbContext db, ICurrentUser me, IRealtime rt, Notifier notifier, Microsoft.Extensions.Configuration.IConfiguration cfg)
 {
     private static DateTime Now => DateTime.UtcNow;
     private Guid Uid => me.UserId ?? throw new UnauthorizedAppException();
@@ -273,6 +293,15 @@ public sealed class CommunityService(ApplicationDbContext db, ICurrentUser me, I
         if (existing is not null) { existing.LastSeenAtUtc = Now; existing.DeviceId = me.DeviceId; }
         else db.PushTokens.Add(new PushToken { TenantId = Tid, UserId = Uid, DeviceId = me.DeviceId, FcmToken = token, Platform = platform, LastSeenAtUtc = Now, CreatedAtUtc = Now });
         try { await db.SaveChangesAsync(ct); } catch (DbUpdateException) { db.ChangeTracker.Clear(); } // a parallel registration of the same token won
+    }
+
+    public PushWebConfig PushConfig() => PushWebConfig.From(cfg);
+
+    /// Logout cleanup: removes the caller's own token row only, so a shared browser keeps the other user's registration.
+    public async Task UnregisterPushTokenAsync(PushTokenDeleteRequest r, CancellationToken ct)
+    {
+        var token = Clean(r.FcmToken, 400, "FcmToken");
+        await db.PushTokens.Where(x => x.UserId == Uid && x.FcmToken == token).ExecuteDeleteAsync(ct);
     }
 
     // ---- chat ------------------------------------------------------------------------------------------------------------

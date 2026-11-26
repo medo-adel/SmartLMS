@@ -57,6 +57,8 @@ public sealed class CommunityController(CommunityService s) : ApiControllerBase
     [HttpGet("notifications"), Authorize] public async Task<ActionResult<ApiResponse<object>>> Notifications(CancellationToken ct) => Success(await s.NotificationsAsync(ct));
     [HttpPost("notifications/{id:guid}/read"), Authorize] public async Task<ActionResult<ApiResponse<object?>>> Read(Guid id, CancellationToken ct) { await s.ReadNotificationAsync(id, ct); return Done("Read."); }
     [HttpPost("notifications/push-token"), Authorize] public async Task<ActionResult<ApiResponse<object?>>> Push(PushTokenRequest r, CancellationToken ct) { await s.RegisterPushTokenAsync(r, ct); return Done("Registered."); }
+    [HttpDelete("notifications/push-token"), Authorize] public async Task<ActionResult<ApiResponse<object?>>> PushDelete(PushTokenDeleteRequest r, CancellationToken ct) { await s.UnregisterPushTokenAsync(r, ct); return Done("Removed."); }
+    [HttpGet("notifications/push-config"), Authorize] public ActionResult<ApiResponse<object>> PushConfig() => Success((object)s.PushConfig());
 
     [HttpGet("chat/rooms"), Authorize] public async Task<ActionResult<ApiResponse<object>>> Rooms(CancellationToken ct) => Success(await s.RoomsAsync(ct));
     [HttpGet("chat/rooms/{id:guid}/messages"), Authorize] public async Task<ActionResult<ApiResponse<object>>> Messages(Guid id, [FromQuery] DateTime? before, CancellationToken ct) => Success(await s.MessagesAsync(id, before, ct));
