@@ -18,7 +18,8 @@ public sealed class FakeAi : IAiServiceClient
     public Func<string, string?>? Fail;   // endpoint -> exception message
     public AiGradeResult Grade = new(true, 99, 10, [new("Clarity", 6, "ok"), new("Depth", 4, "ok")], "fine");
     private T Rec<T>(string e, AiScope s, T r) { Calls.Add(e); Scopes.Add(s); if (Fail?.Invoke(e) is { } m) throw new SmartLMS.Domain.Exceptions.AppException(503, "AI_UNAVAILABLE", m); return r; }
-    public Task<AiIngestResult> IngestAsync(AiScope s, string l, string t, string u, string? x, string? lang, CancellationToken ct) => Task.FromResult(Rec("ingest", s, new AiIngestResult(l, x is null ? 0 : 3, 0)));
+    public List<AiTranscriptCue>? IngestCues;
+    public Task<AiIngestResult> IngestAsync(AiScope s, string l, string t, string u, string? x, string? lang, CancellationToken ct) => Task.FromResult(Rec("ingest", s, new AiIngestResult(l, x is null ? 0 : 3, 0, IngestCues)));
     public Task<AiTutorResult> TutorChatAsync(AiScope s, string q, string? l, CancellationToken ct) => Task.FromResult(Rec("tutor", s, new AiTutorResult("ans", [], true)));
     public Task<AiSearchResult> SemanticSearchAsync(AiScope s, string q, int k, CancellationToken ct) => Task.FromResult(Rec("search", s, new AiSearchResult([])));
     public Task<AiQuizResult> GenerateQuizAsync(AiScope s, string l, int a, int b, int c, string d, CancellationToken ct) => Task.FromResult(Rec("quiz", s, new AiQuizResult([new("q", ["a", "b"], 0, "e")], [], [])));
@@ -99,6 +100,35 @@ public sealed class AiTests : IClassFixture<ApiFactory>
         await using var sc = _w.Services.CreateAsyncScope(); var db = sc.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         Assert.True(await db.BackgroundJobs.IgnoreQueryFilters().AnyAsync(j => j.Type == BackgroundJobType.AiIngest && j.Status == BackgroundJobStatus.Completed));
         Assert.True(await db.AuditLogs.IgnoreQueryFilters().AnyAsync(a => a.EntityName == "AiIngest"));
+    }
+
+    [Fact]
+    public async Task Ingest_stores_timed_cues_and_the_transcript_endpoint_serves_enrolled_students_only()
+    {
+        var t = await NewTenant(); var inst = await Instructor(t); var st = await Student(t); var (c, l) = await Course(t, inst);
+        // no transcript before ingest: clean 404, even for staff
+        Assert.Equal(404, (await Get($"/lessons/{l}/transcript", inst, t)).Status);
+        _ai.IngestCues = [new AiTranscriptCue(0.0, 1.8, "أهلاً بكم"), new AiTranscriptCue(1.8, 4.0, "في درس اليوم")];
+        var r = await Post($"/ai/lessons/{l}/ingest", null, inst, t);
+        Assert.Equal("Completed", r.Data.GetProperty("status").GetString());
+        // the transcript follows the same read guard as the lesson itself: not enrolled => refused
+        Assert.Equal(403, (await Get($"/lessons/{l}/transcript", st, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st, t)).Status);
+        var tr = await Get($"/lessons/{l}/transcript", st, t);
+        Assert.True(tr.Success, tr.Body.ToString());
+        Assert.Equal(2, tr.Data.GetProperty("cueCount").GetInt32());
+        var cues = tr.Data.GetProperty("cues").EnumerateArray().ToList();
+        Assert.Equal("أهلاً بكم", cues[0].GetProperty("text").GetString());
+        Assert.Equal(0.0, cues[0].GetProperty("start").GetDouble());
+        Assert.Equal(1.8, cues[0].GetProperty("end").GetDouble());
+        Assert.Equal(1.8, cues[1].GetProperty("start").GetDouble());
+        // re-ingest replaces the cues wholesale
+        _ai.IngestCues = [new AiTranscriptCue(0.0, 3.0, "نسخة جديدة")];
+        await Post($"/ai/lessons/{l}/ingest", null, inst, t);
+        var tr2 = await Get($"/lessons/{l}/transcript", st, t);
+        Assert.Equal(1, tr2.Data.GetProperty("cueCount").GetInt32());
+        Assert.Equal("نسخة جديدة", tr2.Data.GetProperty("cues")[0].GetProperty("text").GetString());
+        _ai.IngestCues = null;
     }
 
     [Fact]

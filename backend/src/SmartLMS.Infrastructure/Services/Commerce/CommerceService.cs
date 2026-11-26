@@ -23,7 +23,7 @@ public sealed record TopUpGatewayRequest(decimal Amount, string Gateway);
 /// Cart, coupons, bundles, plans, orders, checkout and order fulfilment. Prices always come from the database at checkout, never from the client.
 /// An order becomes Paid through one conditional UPDATE, so a repeated webhook, double click or approval cannot grant access or pay commission twice.
 /// </summary>
-public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, WalletLedger ledger, GatewayRegistry gateways, Notifier notifier, WebhookService hooks)
+public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, WalletLedger ledger, GatewayRegistry gateways, Notifier notifier, WebhookService hooks, TransactionalMailer mail)
 {
     private static DateTime Now => DateTime.UtcNow;
     private Guid Uid => me.UserId ?? throw new UnauthorizedAppException();
@@ -143,6 +143,40 @@ public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, Wa
     {
         var c = await db.CartItems.FirstOrDefaultAsync(x => x.Id == id && x.UserId == Uid, ct) ?? throw new NotFoundException("Cart item not found.");
         db.CartItems.Remove(c); await db.SaveChangesAsync(ct);
+    }
+
+    // ---- wishlist ------------------------------------------------------------------------------------------------------
+    public async Task<object> WishlistAsync(CancellationToken ct)
+    {
+        var items = await db.WishlistItems.Where(w => w.UserId == Uid).OrderByDescending(w => w.CreatedAtUtc).ToListAsync(ct);
+        var ids = items.Select(i => i.CourseId).ToList();
+        var courses = await db.Courses.Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, ct);
+        var rows = new List<object>();
+        foreach (var i in items)
+        {
+            if (!courses.TryGetValue(i.CourseId, out var c)) continue;
+            rows.Add(new { id = i.Id, courseId = c.Id, c.Title, c.Slug, c.ShortDescription, c.ThumbnailFileId, pricingModel = c.PricingModel.ToString(), c.Price, c.Currency, createdAtUtc = i.CreatedAtUtc });
+        }
+        return new { items = rows };
+    }
+
+    public async Task<Guid> AddToWishlistAsync(Guid courseId, CancellationToken ct)
+    {
+        var exists = await db.Courses.AnyAsync(c => c.Id == courseId && c.Status == CourseStatus.Published, ct);
+        if (!exists) throw new NotFoundException("Course not found.");
+        var existing = await db.WishlistItems.FirstOrDefaultAsync(w => w.UserId == Uid && w.CourseId == courseId, ct);
+        if (existing is not null) return existing.Id;
+        var item = new WishlistItem { TenantId = Tid, UserId = Uid, CourseId = courseId, CreatedAtUtc = Now };
+        db.WishlistItems.Add(item);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException) { db.Entry(item).State = EntityState.Detached; var again = await db.WishlistItems.FirstOrDefaultAsync(w => w.UserId == Uid && w.CourseId == courseId, ct); if (again is not null) return again.Id; throw; }
+        return item.Id;
+    }
+
+    public async Task RemoveFromWishlistAsync(Guid courseId, CancellationToken ct)
+    {
+        var w = await db.WishlistItems.FirstOrDefaultAsync(x => x.CourseId == courseId && x.UserId == Uid, ct) ?? throw new NotFoundException("Wishlist item not found.");
+        db.WishlistItems.Remove(w); await db.SaveChangesAsync(ct);
     }
 
     private async Task<List<Line>> CartLinesAsync(CancellationToken ct)
@@ -414,6 +448,7 @@ public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, Wa
         if (!won) return false;
         var o2 = await db.Orders.AsNoTracking().FirstAsync(o => o.Id == orderId, ct);
         await notifier.SendAsync(o2.TenantId, [o2.UserId], "OrderPaid", "Payment received", $"Your order of {o2.Total:0.00} {o2.Currency} is complete.", ct);
+        await mail.OrderReceiptAsync(o2.UserId, o2.Id, ct); // best-effort, never throws
         await hooks.EmitAsync(o2.TenantId, "order.paid", new { orderId = o2.Id, userId = o2.UserId, total = o2.Total, currency = o2.Currency }, ct);
         return true;
     }
@@ -427,6 +462,7 @@ public sealed class CommerceService(ApplicationDbContext db, ICurrentUser me, Wa
         {
             db.Enrollments.Add(new Enrollment { TenantId = tid, UserId = uid, CourseId = courseId, Source = source, Status = EnrollmentStatus.Active, EnrolledAtUtc = Now, ExpiresAtUtc = expires, OrderItemId = orderItemId });
             await db.SaveChangesAsync(ct);
+            await mail.EnrollmentAsync(uid, courseId, ct); // best-effort, never throws
         }
         else if (e.Status == EnrollmentStatus.Expired || (e.Status == EnrollmentStatus.Active && e.ExpiresAtUtc is { } x && x <= Now))
         {

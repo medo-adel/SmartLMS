@@ -16,7 +16,7 @@ namespace SmartLMS.Infrastructure.Services;
 
 public sealed class AuthService(
     ApplicationDbContext db, UserManager<ApplicationUser> users, UserProvisioner provisioner, ITokenService tokens, IDeviceService devices,
-    IOtpSender otpSender, ICurrentTenant tenant, ICurrentUser currentUser, IOptions<JwtOptions> jwt, IOptions<OtpOptions> otp, TimeProvider clock) : IAuthService
+    IOtpSender otpSender, ICurrentTenant tenant, ICurrentUser currentUser, IOptions<JwtOptions> jwt, IOptions<OtpOptions> otp, TimeProvider clock, TransactionalMailer mail, IEnumerable<IExternalSignInVerifier> verifiers) : IAuthService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -33,6 +33,63 @@ public sealed class AuthService(
         await IssueOtpAsync(user, user.Email!, OtpCodePurpose.EmailVerification, ct);
         return await provisioner.ToDtoAsync(user);
     }
+
+    /// <summary>
+    /// Google sign-in: verifies the provider's ID token, then links the external identity to the tenant account
+    /// with the same email or creates a Student account (email already verified by the provider, so EmailConfirmed).
+    /// </summary>
+    public async Task<TokenResponse> SocialLoginAsync(string provider, SocialLoginRequest request, CancellationToken ct)
+    {
+        if (tenant.TenantId is null) throw new ValidationAppException("A tenant is required (X-Tenant-Id).");
+        var verifier = verifiers.FirstOrDefault(v => string.Equals(v.Provider, provider, StringComparison.OrdinalIgnoreCase))
+            ?? throw new AppException(501, "NOT_IMPLEMENTED", $"Social login ({provider}) is not configured in this build.");
+        if (!verifier.IsConfigured) throw new AppException(501, "NOT_IMPLEMENTED", $"Social login ({provider}) is not configured in this build.");
+        var confirmEmail = false;
+        var ext = await verifier.VerifyAsync(request.IdToken, ct);
+        if (!ext.EmailVerified) throw new ForbiddenAppException("EMAIL_NOT_VERIFIED", "The provider account has no verified email.");
+
+        // Accounts are per-tenant rows, so one provider identity can be linked to one account per academy.
+        // Resolve the external login INSIDE the current tenant (the AspNetUserLogins PK includes UserId, and
+        // UserManager.FindByLoginAsync would throw on cross-tenant duplicates, so query the join directly).
+        var linkedUserId = await db.Set<IdentityUserLogin<Guid>>().IgnoreQueryFilters()
+            .Where(l => l.LoginProvider == ext.Provider && l.ProviderKey == ext.ProviderKey)
+            .Join(db.Users.IgnoreQueryFilters().Where(u => u.TenantId == tenant.TenantId), l => l.UserId, u => u.Id, (l, u) => u.Id)
+            .FirstOrDefaultAsync(ct);
+        ApplicationUser? user = linkedUserId == default ? null : await users.FindByIdAsync(linkedUserId.ToString());
+        if (user is null)
+        {
+            user = await provisioner.FindByEmailAsync(ext.Email, ct);
+            if (user is null)
+            {
+                user = await provisioner.CreateAsync(ext.Email, ext.FullName, "Ext!" + Guid.NewGuid().ToString("N"), [RoleNames.Student], null, null, emailConfirmed: true, ct);
+                LinkLogin(user, ext);
+            }
+            else
+            {
+                // Email auto-link: the provider already proved ownership of this exact email (email_verified gate above).
+                var rolesToCheck = await users.GetRolesAsync(user);
+                if (rolesToCheck.Any(r => r is RoleNames.TenantAdmin or RoleNames.SuperAdmin))
+                    throw new ForbiddenAppException("SOCIAL_LINK_NOT_ALLOWED", "Privileged accounts sign in with email and password.");
+                confirmEmail = !user.EmailConfirmed; // provider proof counts as verification
+                LinkLogin(user, ext);
+            }
+        }
+        if (user.IsDeleted) throw new UnauthorizedAppException("INVALID_CREDENTIALS", "Invalid email or password.");
+        if (!user.IsActive) throw new ForbiddenAppException("ACCOUNT_DISABLED", "This account is deactivated.");
+        db.Entry(user).State = EntityState.Detached;
+        if (confirmEmail) user.EmailConfirmed = true; // detached: DTO only, the row is updated below
+        var roles = (await users.GetRolesAsync(user)).ToList();
+        var device = await devices.BindAsync(user.Id, user.TenantId, enforceCap: roles.Contains(RoleNames.Student), request.Device, ct);
+        var loginAt = Now;
+        // user is detached above, so the provider-proven email confirmation goes through the same direct update.
+        await db.Users.IgnoreQueryFilters().Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAtUtc, loginAt).SetProperty(u => u.EmailConfirmed, u2 => u2.EmailConfirmed || confirmEmail), ct);
+        db.AuditLogs.Add(new AuditLog { TenantId = user.TenantId, UserId = user.Id, Action = AuditLogAction.Login, EntityName = "User", EntityId = user.Id.ToString(), IpAddress = currentUser.IpAddress, CorrelationId = currentUser.CorrelationId, OccurredAtUtc = Now });
+        return await IssueAsync(user, roles, device, ct);
+    }
+
+    /// <summary>Adds the external login row directly: UserManager.AddLoginAsync's global FindByLoginAsync cannot handle per-tenant duplicates.</summary>
+    private void LinkLogin(ApplicationUser user, ExternalIdentity ext) =>
+        db.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid> { UserId = user.Id, LoginProvider = ext.Provider, ProviderKey = ext.ProviderKey, ProviderDisplayName = ext.Provider });
 
     public async Task<TokenResponse> LoginAsync(LoginRequest request, CancellationToken ct)
     {
@@ -196,6 +253,8 @@ public sealed class AuthService(
     {
         if (!await VerifyOtpAsync(new OtpVerifyRequest(request.Email, nameof(OtpCodePurpose.EmailVerification), request.Code), ct))
             throw new ValidationAppException("The code is invalid or expired.");
+        var user = await provisioner.FindByEmailAsync(request.Email, ct);
+        if (user is not null) await mail.WelcomeAsync(user.Id, ct); // best-effort, never throws
     }
 
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct)

@@ -27,6 +27,10 @@
           @if (busy()) { <ion-spinner name="crescent" color="light"></ion-spinner><span class="sr-only">{{ 'login.signing' | t }}</span> } @else { {{ 'login.submit' | t }} }
         </ion-button>
       </form>
+      @if (googleClientId()) {
+        <div class="or" role="separator"><span>{{ 'login.or' | t }}</span></div>
+        <div #googleBtn class="gsi" [class.working]="socialBusy()" data-testid="google-signin"></div>
+      }
       <div class="academy">
         @if (editAcademy()) {
           <ion-input name="academy" fill="outline" labelPlacement="stacked" [label]="'login.academyHint' | t" [(ngModel)]="academy" (keyup.enter)="saveAcademy()"></ion-input>

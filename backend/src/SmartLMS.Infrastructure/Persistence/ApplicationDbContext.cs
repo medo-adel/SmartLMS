@@ -43,6 +43,9 @@ public partial class ApplicationDbContext(DbContextOptions<ApplicationDbContext>
             b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.NoAction);
         });
         builder.Entity<ApplicationRole>(b => { b.Property(r => r.Name).HasMaxLength(256).IsRequired(); b.Property(r => r.NormalizedName).HasMaxLength(256).IsRequired(); });
+        // Accounts are per-tenant rows (tenantSlug:email), so the same Google account legitimately links to one
+        // account per academy. Identity's default (LoginProvider, ProviderKey) key forbids that; the schema's PK includes UserId.
+        builder.Entity<IdentityUserLogin<Guid>>().HasKey(l => new { l.LoginProvider, l.ProviderKey, l.UserId });
 
         GeneratedModel.Apply(builder, sqlServer);
         // Identity defaults to ON DELETE CASCADE on its child tables. Users and roles are soft-deleted, never hard-deleted, and schema.sql uses NO ACTION

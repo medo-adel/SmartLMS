@@ -305,7 +305,7 @@ public sealed class ApiTests : IClassFixture<ApiFactory>
         Assert.Equal(201, parent.Status);
         var b = await _c.Get("/tenants/current/branding", tenant: t.Slug);
         Assert.Equal(t.Slug, b.Data.GetProperty("slug").GetString());
-        Assert.Equal(501, (await _c.Post("/auth/social/google", null, tenant: t.Slug)).Status);
+        Assert.Equal(501, (await _c.Post("/auth/social/apple", new { idToken = "x", device = Device("apple") }, tenant: t.Slug)).Status); // apple sign-in is not configured in this build; google is (see SocialLoginTests)
     }
 
     // ---- database-level guarantees --------------------------------------------------------------------------------------

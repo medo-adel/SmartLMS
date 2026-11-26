@@ -86,7 +86,7 @@ erDiagram
 - **AspNetUsers**: ASP.NET Core Identity user (Guid key). TenantId is NULL only for SuperAdmin. UserName is stored as '<tenantSlug>:<email>' so the same email can exist in two tenants.
 - **AspNetRoles**: Global roles: SuperAdmin, TenantAdmin, Instructor, TeachingAssistant, Student, Parent.
 - **AspNetUserTokens**: ASP.NET Core Identity token store (authenticator keys, recovery codes). Composite primary key.
-- **AspNetUserLogins**: Social login hooks (Google, Facebook, Apple).
+- **AspNetUserLogins**: Social login hooks (Google, Facebook, Apple). One row per user per external identity: the same provider account MAY be linked to per-tenant accounts of the same person in different academies, so uniqueness is per (provider, key, user), not global.
 - **UserTenantMemberships**: Tenant membership of a global identity. EVERY user-to-tenant-data reference points here as (TenantId, UserId), so a row can only reference a user who is a member of the same tenant. Each tenant user has one Home row; a SuperAdmin acts inside a tenant only through an explicit, audited SupportAccess row.
 - **RefreshTokens**: Rotating refresh tokens. Only the SHA-256 hash is stored. Reuse of a revoked token revokes the whole chain.
 - **OtpCodes**: Short-lived OTPs. Hash only; max attempts enforced in code.
@@ -573,6 +573,16 @@ erDiagram
         uniqueidentifier ThreadId FK
         uniqueidentifier PostId FK
     }
+    CourseReviews {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier CourseId FK
+    }
+    CourseReviewReports {
+        uniqueidentifier Id PK
+        uniqueidentifier ReviewId FK
+        uniqueidentifier UserId FK
+    }
     ChatRooms {
         uniqueidentifier Id PK
         uniqueidentifier CourseId FK
@@ -625,8 +635,10 @@ erDiagram
     }
     ChatRooms ||--o{ ChatMessages : "ChatRoomId (tenant-scoped)"
     ChatRooms ||--o{ ChatRoomMembers : "ChatRoomId (tenant-scoped)"
+    CourseReviews ||--o{ CourseReviewReports : "ReviewId (tenant-scoped)"
     Courses |o--o{ Announcements : "CourseId (tenant-scoped)"
     Courses |o--o{ ChatRooms : "CourseId (tenant-scoped)"
+    Courses ||--o{ CourseReviews : "CourseId (tenant-scoped)"
     Courses ||--o{ DiscussionThreads : "CourseId (tenant-scoped)"
     Courses ||--o{ LiveSessions : "CourseId (tenant-scoped)"
     DiscussionPosts |o--o{ DiscussionPosts : "ParentPostId (tenant-scoped)"
@@ -639,6 +651,8 @@ erDiagram
     UserTenantMemberships ||--o{ Announcements : "AuthorId (tenant-scoped)"
     UserTenantMemberships ||--o{ ChatMessages : "SenderId (tenant-scoped)"
     UserTenantMemberships ||--o{ ChatRoomMembers : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ CourseReviewReports : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ CourseReviews : "UserId (tenant-scoped)"
     UserTenantMemberships ||--o{ DiscussionPosts : "AuthorId (tenant-scoped)"
     UserTenantMemberships ||--o{ DiscussionThreads : "AuthorId (tenant-scoped)"
     UserTenantMemberships ||--o{ DiscussionVotes : "UserId (tenant-scoped)"
@@ -649,6 +663,8 @@ erDiagram
 ```
 
 - **DiscussionVotes**: CHECK: exactly one of ThreadId / PostId. Unique per user and target.
+- **CourseReviews**: One review per student per course; only enrolled students may post. CHECK: Rating between 1 and 5. Hidden = removed by moderation.
+- **CourseReviewReports**: A user can report a review once; moderation resolves open reports.
 - **LiveSessionAttendance**: JoinLink attendance means the student opened our join link, not that they stayed engaged.
 
 ## Gamification, Parents & Certificates
@@ -788,103 +804,15 @@ erDiagram
 
 - **CartItems**: CHECK: exactly one target column matches ItemType.
 
-## Commerce: orders and payments
-
-```mermaid
-erDiagram
-    Orders {
-        uniqueidentifier Id PK
-        uniqueidentifier UserId FK
-        uniqueidentifier CouponId FK
-    }
-    OrderItems {
-        uniqueidentifier Id PK
-        uniqueidentifier OrderId FK
-        uniqueidentifier CourseId FK
-        uniqueidentifier LessonId FK
-        uniqueidentifier BundleId FK
-        uniqueidentifier PlanId FK
-        uniqueidentifier LearningPathId FK
-    }
-    CouponRedemptions {
-        uniqueidentifier Id PK
-        uniqueidentifier CouponId FK
-        uniqueidentifier UserId FK
-        uniqueidentifier OrderId FK
-    }
-    Payments {
-        uniqueidentifier Id PK
-        uniqueidentifier OrderId FK
-        nvarchar IdempotencyKey UK
-    }
-    ManualPaymentSubmissions {
-        uniqueidentifier Id PK
-        uniqueidentifier UserId FK
-        uniqueidentifier OrderId FK
-        uniqueidentifier ReceiptFileId FK
-        uniqueidentifier ReviewedBy FK
-        uniqueidentifier WalletTransactionId FK
-    }
-    Invoices {
-        uniqueidentifier Id PK
-        uniqueidentifier OrderId FK
-        uniqueidentifier PdfFileId FK
-    }
-    Bundles {
-        uniqueidentifier Id PK
-    }
-    Coupons {
-        uniqueidentifier Id PK
-    }
-    Courses {
-        uniqueidentifier Id PK
-    }
-    FileAssets {
-        uniqueidentifier Id PK
-    }
-    LearningPaths {
-        uniqueidentifier Id PK
-    }
-    Lessons {
-        uniqueidentifier Id PK
-    }
-    SubscriptionPlans {
-        uniqueidentifier Id PK
-    }
-    UserTenantMemberships {
-        uniqueidentifier Id PK
-    }
-    WalletTransactions {
-        uniqueidentifier Id PK
-    }
-    Bundles |o--o{ OrderItems : "BundleId (tenant-scoped)"
-    Coupons |o--o{ Orders : "CouponId (tenant-scoped)"
-    Coupons ||--o{ CouponRedemptions : "CouponId (tenant-scoped)"
-    Courses |o--o{ OrderItems : "CourseId (tenant-scoped)"
-    FileAssets |o--o{ Invoices : "PdfFileId (tenant-scoped)"
-    FileAssets ||--o{ ManualPaymentSubmissions : "ReceiptFileId (tenant-scoped)"
-    LearningPaths |o--o{ OrderItems : "LearningPathId (tenant-scoped)"
-    Lessons |o--o{ OrderItems : "LessonId (tenant-scoped)"
-    Orders |o--o{ ManualPaymentSubmissions : "OrderId (tenant-scoped)"
-    Orders ||--o{ CouponRedemptions : "OrderId (tenant-scoped)"
-    Orders ||--o{ Invoices : "OrderId (tenant-scoped)"
-    Orders ||--o{ OrderItems : "OrderId (tenant-scoped)"
-    Orders ||--o{ Payments : "OrderId (tenant-scoped)"
-    SubscriptionPlans |o--o{ OrderItems : "PlanId (tenant-scoped)"
-    UserTenantMemberships |o--o{ ManualPaymentSubmissions : "ReviewedBy (tenant-scoped)"
-    UserTenantMemberships ||--o{ CouponRedemptions : "UserId (tenant-scoped)"
-    UserTenantMemberships ||--o{ ManualPaymentSubmissions : "UserId (tenant-scoped)"
-    UserTenantMemberships ||--o{ Orders : "UserId (tenant-scoped)"
-    WalletTransactions |o--o{ ManualPaymentSubmissions : "WalletTransactionId (tenant-scoped)"
-```
-
-- **Payments**: Raw gateway payloads are not stored (they can carry card data). Store only reference and status.
-- **ManualPaymentSubmissions**: Admin review queue. Approval writes the order/wallet change and an audit row in one transaction.
-
 ## Commerce: vouchers, wallet and affiliates
 
 ```mermaid
 erDiagram
+    WishlistItems {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier CourseId FK
+    }
     VoucherBatches {
         uniqueidentifier Id PK
         uniqueidentifier CourseId FK
@@ -994,6 +922,7 @@ erDiagram
     Courses ||--o{ InstructorRevenueShares : "CourseId (tenant-scoped)"
     Courses ||--o{ OrderItemAllocations : "CourseId (tenant-scoped)"
     Courses ||--o{ OrderItemShares : "CourseId (tenant-scoped)"
+    Courses ||--o{ WishlistItems : "CourseId (tenant-scoped)"
     FileAssets |o--o{ VoucherBatches : "ExportFileId (tenant-scoped)"
     InstructorDebits ||--o{ InstructorDebitApplications : "InstructorDebitId (tenant-scoped)"
     InstructorPayouts |o--o{ OrderItemShares : "SettledPayoutId (tenant-scoped)"
@@ -1020,11 +949,13 @@ erDiagram
     UserTenantMemberships ||--o{ Referrals : "AffiliateUserId (tenant-scoped)"
     UserTenantMemberships ||--o{ Referrals : "ReferredUserId (tenant-scoped)"
     UserTenantMemberships ||--o{ Wallets : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ WishlistItems : "UserId (tenant-scoped)"
     VoucherBatches ||--o{ Vouchers : "VoucherBatchId (tenant-scoped)"
     WalletTransactions |o--o{ AffiliateCommissions : "WalletTransactionId (tenant-scoped)"
     Wallets ||--o{ WalletTransactions : "WalletId (tenant-scoped)"
 ```
 
+- **WishlistItems**: Student wishlist: courses saved for later, one row per student-course pair.
 - **Vouchers**: Only the SHA-256 of the code is stored. Plain codes exist once, in the CSV produced when the batch is generated.
 - **WalletTransactions**: Append-only ledger. Amount is signed. Balance changes only through this table, inside a transaction with the wallet row's RowVersion check.
 - **CourseLearningWeights**: TenantAdmin-approved learning time of ALL non-video content of a course together (split over its non-video lessons), used only for subscription revenue allocation.
@@ -1035,6 +966,99 @@ erDiagram
 - **OrderRefunds**: Accounting record of a refund decided and executed outside the system. It moves no money; it only reverses instructor earnings proportionally.
 - **InstructorDebits**: Earnings already inside a calculated payout when their sale was refunded. Carried against the instructor's next payouts; never withdrawn automatically.
 - **InstructorDebitApplications**: How much of a debit a payout absorbed. Cancelling the payout gives the amount back to the debit.
+
+## Commerce: orders and payments
+
+```mermaid
+erDiagram
+    Orders {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier CouponId FK
+    }
+    OrderItems {
+        uniqueidentifier Id PK
+        uniqueidentifier OrderId FK
+        uniqueidentifier CourseId FK
+        uniqueidentifier LessonId FK
+        uniqueidentifier BundleId FK
+        uniqueidentifier PlanId FK
+        uniqueidentifier LearningPathId FK
+    }
+    CouponRedemptions {
+        uniqueidentifier Id PK
+        uniqueidentifier CouponId FK
+        uniqueidentifier UserId FK
+        uniqueidentifier OrderId FK
+    }
+    Payments {
+        uniqueidentifier Id PK
+        uniqueidentifier OrderId FK
+        nvarchar IdempotencyKey UK
+    }
+    ManualPaymentSubmissions {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier OrderId FK
+        uniqueidentifier ReceiptFileId FK
+        uniqueidentifier ReviewedBy FK
+        uniqueidentifier WalletTransactionId FK
+    }
+    Invoices {
+        uniqueidentifier Id PK
+        uniqueidentifier OrderId FK
+        uniqueidentifier PdfFileId FK
+    }
+    Bundles {
+        uniqueidentifier Id PK
+    }
+    Coupons {
+        uniqueidentifier Id PK
+    }
+    Courses {
+        uniqueidentifier Id PK
+    }
+    FileAssets {
+        uniqueidentifier Id PK
+    }
+    LearningPaths {
+        uniqueidentifier Id PK
+    }
+    Lessons {
+        uniqueidentifier Id PK
+    }
+    SubscriptionPlans {
+        uniqueidentifier Id PK
+    }
+    UserTenantMemberships {
+        uniqueidentifier Id PK
+    }
+    WalletTransactions {
+        uniqueidentifier Id PK
+    }
+    Bundles |o--o{ OrderItems : "BundleId (tenant-scoped)"
+    Coupons |o--o{ Orders : "CouponId (tenant-scoped)"
+    Coupons ||--o{ CouponRedemptions : "CouponId (tenant-scoped)"
+    Courses |o--o{ OrderItems : "CourseId (tenant-scoped)"
+    FileAssets |o--o{ Invoices : "PdfFileId (tenant-scoped)"
+    FileAssets ||--o{ ManualPaymentSubmissions : "ReceiptFileId (tenant-scoped)"
+    LearningPaths |o--o{ OrderItems : "LearningPathId (tenant-scoped)"
+    Lessons |o--o{ OrderItems : "LessonId (tenant-scoped)"
+    Orders |o--o{ ManualPaymentSubmissions : "OrderId (tenant-scoped)"
+    Orders ||--o{ CouponRedemptions : "OrderId (tenant-scoped)"
+    Orders ||--o{ Invoices : "OrderId (tenant-scoped)"
+    Orders ||--o{ OrderItems : "OrderId (tenant-scoped)"
+    Orders ||--o{ Payments : "OrderId (tenant-scoped)"
+    SubscriptionPlans |o--o{ OrderItems : "PlanId (tenant-scoped)"
+    UserTenantMemberships |o--o{ ManualPaymentSubmissions : "ReviewedBy (tenant-scoped)"
+    UserTenantMemberships ||--o{ CouponRedemptions : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ ManualPaymentSubmissions : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ Orders : "UserId (tenant-scoped)"
+    WalletTransactions |o--o{ ManualPaymentSubmissions : "WalletTransactionId (tenant-scoped)"
+```
+
+- **Payments**: Raw gateway payloads are not stored (they can carry card data). Store only reference and status.
+- **ManualPaymentSubmissions**: Admin review queue. Approval writes the order/wallet change and an audit row in one transaction.
 
 ## Enterprise & Analytics
 
@@ -1057,6 +1081,10 @@ erDiagram
         uniqueidentifier BackgroundJobId FK
     }
     LessonIndexStates {
+        uniqueidentifier Id PK
+        uniqueidentifier LessonId FK
+    }
+    LessonTranscripts {
         uniqueidentifier Id PK
         uniqueidentifier LessonId FK
     }
@@ -1095,6 +1123,7 @@ erDiagram
     Courses |o--o{ AnalyticsSnapshots : "CourseId (tenant-scoped)"
     Courses ||--o{ DropoutRiskScores : "CourseId (tenant-scoped)"
     Lessons ||--o{ LessonIndexStates : "LessonId (tenant-scoped)"
+    Lessons ||--o{ LessonTranscripts : "LessonId (tenant-scoped)"
     UserTenantMemberships |o--o{ AiUsageLogs : "UserId (tenant-scoped)"
     UserTenantMemberships ||--o{ DropoutRiskScores : "UserId (tenant-scoped)"
     WebhookEndpoints ||--o{ WebhookDeliveries : "WebhookEndpointId (tenant-scoped)"
@@ -1104,6 +1133,7 @@ erDiagram
 - **ApiKeys**: Full key shown once at creation; only the hash is stored.
 - **WebhookEndpoints**: SecretProtected uses ASP.NET Data Protection. Deliveries are signed with HMAC-SHA256.
 - **LessonIndexStates**: Tracks what the AI service has embedded so ingest runs only when content changed.
+- **LessonTranscripts**: Timed Whisper cues for player captions and transcript seek. Written by the AI ingest job for video/audio lessons; replaced on re-ingest.
 - **AiUsageLogs**: No prompt text stored. Used for rate limiting and cost review.
 - **AnalyticsSnapshots**: Pre-computed dashboards, drop-off heatmaps, leaderboards and revenue rollups written by Hangfire jobs.
 

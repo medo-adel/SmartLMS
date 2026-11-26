@@ -36,6 +36,7 @@ export class ShellComponent {
     { path: '/app/ai', tab: 'ai', icon: 'sparkles-outline', label: 'nav.ai', roles: ['Student'], mobile: true },
     { path: '/app/wallet', tab: 'wallet', icon: 'wallet-outline', label: 'nav.wallet', roles: ['Student'], mobile: true },
     { path: '/app/cart', tab: 'cart', icon: 'cart-outline', label: 'nav.cart', roles: ['Student'], mobile: false },
+    { path: '/app/wishlist', tab: 'wishlist', icon: 'heart-outline', label: 'nav.wishlist', roles: ['Student'], mobile: false },
     { path: '/app/downloads', tab: 'downloads', icon: 'download-outline', label: 'nav.downloads', roles: ['Student'], mobile: false },
     { path: '/app/homework', tab: 'homework', icon: 'create-outline', label: 'nav.homework', roles: ['Student'], mobile: true },
     { path: '/app/orders', tab: 'orders', icon: 'receipt-outline', label: 'nav.orders', roles: ['Student', 'Instructor'], mobile: false },

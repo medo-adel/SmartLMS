@@ -27,6 +27,9 @@ public sealed class MailFlowFactory : ApiFactory
         {
             s.RemoveAll<IOtpSender>();
             s.AddScoped<IOtpSender, EmailOtpSender>();
+            // The base factory captures transactional mail in memory; this suite needs the real pickup-directory transport.
+            s.RemoveAll<IEmailTransport>();
+            s.AddScoped<IEmailTransport, SmtpEmailTransport>();
         });
     }
 

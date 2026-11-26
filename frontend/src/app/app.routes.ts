@@ -19,6 +19,7 @@ export const routes: Routes = [
       { path: 'learn/:courseId/:lessonId', loadComponent: () => import('./features/player/player.page').then((m) => m.PlayerPage) },
       { path: 'exam/:examId', loadComponent: () => import('./features/exam/exam.page').then((m) => m.ExamPage) },
       { path: 'cart', canActivate: [roleGuard], data: { roles: ['Student'] }, loadComponent: () => import('./features/cart/cart.page').then((m) => m.CartPage) },
+      { path: 'wishlist', canActivate: [roleGuard], data: { roles: ['Student'] }, loadComponent: () => import('./features/wishlist/wishlist.page').then((m) => m.WishlistPage) },
       { path: 'wallet', canActivate: [roleGuard], data: { roles: ['Student'] }, loadComponent: () => import('./features/wallet/wallet.page').then((m) => m.WalletPage) },
       { path: 'ai', canActivate: [roleGuard], data: { roles: ['Student'] }, loadComponent: () => import('./features/ai/ai-studio.page').then((m) => m.AiStudioPage) },
       { path: 'orders', canActivate: [roleGuard], data: { roles: ['Student', 'Instructor'] }, loadComponent: () => import('./features/orders/orders.page').then((m) => m.OrdersPage) },

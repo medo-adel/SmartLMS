@@ -109,7 +109,9 @@ async def ingest(sv: Services, r: S.IngestRequest) -> S.IngestResponse:
     pieces = _pieces(segs, r.source_type)
     vectors = await sv.embed_all([t for t, _ in pieces]) if pieces else []
     n = sv.store.replace_lesson(r.tenant_id, r.course_id, r.lesson_id, [(t, v, m) for (t, m), v in zip(pieces, vectors)])
-    return S.IngestResponse(lesson_id=r.lesson_id, chunks_indexed=n, transcript_segments=len(segs) if r.source_type in ("video", "audio") else 0)
+    av = r.source_type in ("video", "audio")
+    cues = [S.TranscriptCue(start=float(s.start), end=float(s.end if s.end is not None else s.start), text=s.text) for s in segs if s.start is not None] if av else []
+    return S.IngestResponse(lesson_id=r.lesson_id, chunks_indexed=n, transcript_segments=len(segs) if av else 0, cues=cues)
 
 
 # ---- 2 tutor ----------------------------------------------------------------------------------------------------

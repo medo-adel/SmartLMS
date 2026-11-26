@@ -129,7 +129,7 @@ CREATE TABLE [dbo].[AspNetUserLogins] (
     [ProviderKey] nvarchar(128) NOT NULL,
     [ProviderDisplayName] nvarchar(max) NULL,
     [UserId] uniqueidentifier NOT NULL,
-    CONSTRAINT [PK_AspNetUserLogins] PRIMARY KEY ([LoginProvider], [ProviderKey])
+    CONSTRAINT [PK_AspNetUserLogins] PRIMARY KEY ([LoginProvider], [ProviderKey], [UserId])
 );
 GO
 CREATE TABLE [dbo].[UserTenantMemberships] (
@@ -1099,6 +1099,37 @@ CREATE TABLE [dbo].[DiscussionVotes] (
     CONSTRAINT [CK_DiscussionVotes_Rule1] CHECK (([ThreadId] IS NOT NULL AND [PostId] IS NULL) OR ([ThreadId] IS NULL AND [PostId] IS NOT NULL))
 );
 GO
+CREATE TABLE [dbo].[CourseReviews] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [CourseId] uniqueidentifier NOT NULL,
+    [Rating] int NOT NULL,
+    [Body] nvarchar(2000) NULL,
+    [Status] nvarchar(40) NOT NULL DEFAULT N'Published',
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_CourseReviews] PRIMARY KEY ([Id]),
+    CONSTRAINT [CK_CourseReviews_Status] CHECK ([Status] IN (N'Published',N'Hidden'))
+);
+GO
+CREATE TABLE [dbo].[CourseReviewReports] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [ReviewId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [Reason] nvarchar(1000) NOT NULL,
+    [Status] nvarchar(40) NOT NULL DEFAULT N'Open',
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_CourseReviewReports] PRIMARY KEY ([Id]),
+    CONSTRAINT [CK_CourseReviewReports_Status] CHECK ([Status] IN (N'Open',N'Dismissed',N'Actioned'))
+);
+GO
 CREATE TABLE [dbo].[ChatRooms] (
     [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
     [TenantId] uniqueidentifier NOT NULL,
@@ -1200,6 +1231,7 @@ CREATE TABLE [dbo].[LiveSessions] (
     [StartsAtUtc] datetime2(7) NOT NULL,
     [EndsAtUtc] datetime2(7) NULL,
     [Status] nvarchar(40) NOT NULL DEFAULT N'Scheduled',
+    [ReminderSentAtUtc] datetime2(7) NULL,
     [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     [CreatedBy] uniqueidentifier NULL,
     [UpdatedAtUtc] datetime2(7) NULL,
@@ -1438,6 +1470,18 @@ CREATE TABLE [dbo].[CartItems] (
     CONSTRAINT [PK_CartItems] PRIMARY KEY ([Id]),
     CONSTRAINT [CK_CartItems_ItemType] CHECK ([ItemType] IN (N'Course',N'Lesson',N'Bundle',N'Plan',N'Path')),
     CONSTRAINT [CK_CartItems_Rule1] CHECK ((CASE WHEN [CourseId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [LessonId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [BundleId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [PlanId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [LearningPathId] IS NULL THEN 0 ELSE 1 END) = 1)
+);
+GO
+CREATE TABLE [dbo].[WishlistItems] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [CourseId] uniqueidentifier NOT NULL,
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_WishlistItems] PRIMARY KEY ([Id])
 );
 GO
 CREATE TABLE [dbo].[Coupons] (
@@ -1927,6 +1971,20 @@ CREATE TABLE [dbo].[LessonIndexStates] (
     CONSTRAINT [CK_LessonIndexStates_Status] CHECK ([Status] IN (N'NotIndexed',N'Pending',N'Processing',N'Indexed',N'Failed'))
 );
 GO
+CREATE TABLE [dbo].[LessonTranscripts] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [LessonId] uniqueidentifier NOT NULL,
+    [CuesJson] nvarchar(max) NOT NULL,
+    [CueCount] int NOT NULL,
+    [GeneratedAtUtc] datetime2(7) NOT NULL,
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_LessonTranscripts] PRIMARY KEY ([Id])
+);
+GO
 CREATE TABLE [dbo].[AiUsageLogs] (
     [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
     [TenantId] uniqueidentifier NOT NULL,
@@ -1978,6 +2036,7 @@ ALTER TABLE [dbo].[Bundles] ADD CONSTRAINT [UQ_Bundles_TenantId_Id] UNIQUE ([Ten
 ALTER TABLE [dbo].[Categories] ADD CONSTRAINT [UQ_Categories_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[ChatRooms] ADD CONSTRAINT [UQ_ChatRooms_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[Coupons] ADD CONSTRAINT [UQ_Coupons_TenantId_Id] UNIQUE ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [UQ_CourseReviews_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[Courses] ADD CONSTRAINT [UQ_Courses_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[DiscussionPosts] ADD CONSTRAINT [UQ_DiscussionPosts_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[DiscussionThreads] ADD CONSTRAINT [UQ_DiscussionThreads_TenantId_Id] UNIQUE ([TenantId], [Id]);
@@ -2181,6 +2240,12 @@ ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_TenantId]
 ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
 ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_ThreadId] FOREIGN KEY ([TenantId], [ThreadId]) REFERENCES [dbo].[DiscussionThreads] ([TenantId], [Id]);
 ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_PostId] FOREIGN KEY ([TenantId], [PostId]) REFERENCES [dbo].[DiscussionPosts] ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [FK_CourseReviews_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [FK_CourseReviews_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [FK_CourseReviews_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviewReports] ADD CONSTRAINT [FK_CourseReviewReports_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[CourseReviewReports] ADD CONSTRAINT [FK_CourseReviewReports_ReviewId] FOREIGN KEY ([TenantId], [ReviewId]) REFERENCES [dbo].[CourseReviews] ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviewReports] ADD CONSTRAINT [FK_CourseReviewReports_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
 ALTER TABLE [dbo].[ChatRooms] ADD CONSTRAINT [FK_ChatRooms_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[ChatRooms] ADD CONSTRAINT [FK_ChatRooms_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
 ALTER TABLE [dbo].[ChatRoomMembers] ADD CONSTRAINT [FK_ChatRoomMembers_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
@@ -2241,6 +2306,9 @@ ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_LessonId] FOREIGN KEY
 ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_BundleId] FOREIGN KEY ([TenantId], [BundleId]) REFERENCES [dbo].[Bundles] ([TenantId], [Id]);
 ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_PlanId] FOREIGN KEY ([TenantId], [PlanId]) REFERENCES [dbo].[SubscriptionPlans] ([TenantId], [Id]);
 ALTER TABLE [dbo].[CartItems] ADD CONSTRAINT [FK_CartItems_LearningPathId] FOREIGN KEY ([TenantId], [LearningPathId]) REFERENCES [dbo].[LearningPaths] ([TenantId], [Id]);
+ALTER TABLE [dbo].[WishlistItems] ADD CONSTRAINT [FK_WishlistItems_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[WishlistItems] ADD CONSTRAINT [FK_WishlistItems_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
+ALTER TABLE [dbo].[WishlistItems] ADD CONSTRAINT [FK_WishlistItems_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
 ALTER TABLE [dbo].[Coupons] ADD CONSTRAINT [FK_Coupons_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[Coupons] ADD CONSTRAINT [FK_Coupons_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
 ALTER TABLE [dbo].[Orders] ADD CONSTRAINT [FK_Orders_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
@@ -2329,6 +2397,8 @@ ALTER TABLE [dbo].[WebhookDeliveries] ADD CONSTRAINT [FK_WebhookDeliveries_Webho
 ALTER TABLE [dbo].[WebhookDeliveries] ADD CONSTRAINT [FK_WebhookDeliveries_BackgroundJobId] FOREIGN KEY ([TenantId], [BackgroundJobId]) REFERENCES [dbo].[BackgroundJobs] ([TenantId], [Id]);
 ALTER TABLE [dbo].[LessonIndexStates] ADD CONSTRAINT [FK_LessonIndexStates_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[LessonIndexStates] ADD CONSTRAINT [FK_LessonIndexStates_LessonId] FOREIGN KEY ([TenantId], [LessonId]) REFERENCES [dbo].[Lessons] ([TenantId], [Id]);
+ALTER TABLE [dbo].[LessonTranscripts] ADD CONSTRAINT [FK_LessonTranscripts_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[LessonTranscripts] ADD CONSTRAINT [FK_LessonTranscripts_LessonId] FOREIGN KEY ([TenantId], [LessonId]) REFERENCES [dbo].[Lessons] ([TenantId], [Id]);
 ALTER TABLE [dbo].[AiUsageLogs] ADD CONSTRAINT [FK_AiUsageLogs_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[AiUsageLogs] ADD CONSTRAINT [FK_AiUsageLogs_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
 ALTER TABLE [dbo].[AiUsageLogs] ADD CONSTRAINT [FK_AiUsageLogs_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
@@ -2349,7 +2419,8 @@ CREATE UNIQUE INDEX [UX_AspNetUserRoles_UserId_RoleId] ON [dbo].[AspNetUserRoles
 CREATE INDEX [IX_AspNetUserRoles_RoleId] ON [dbo].[AspNetUserRoles] ([RoleId]);
 CREATE INDEX [IX_AspNetRoleClaims_RoleId] ON [dbo].[AspNetRoleClaims] ([RoleId]);
 CREATE INDEX [IX_AspNetUserClaims_UserId] ON [dbo].[AspNetUserClaims] ([UserId]);
-CREATE UNIQUE INDEX [UX_AspNetUserLogins_LoginProvider_ProviderKey] ON [dbo].[AspNetUserLogins] ([LoginProvider], [ProviderKey]);
+CREATE UNIQUE INDEX [UX_AspNetUserLogins_LoginProvider_ProviderKey_UserId] ON [dbo].[AspNetUserLogins] ([LoginProvider], [ProviderKey], [UserId]);
+CREATE INDEX [IX_AspNetUserLogins_LoginProvider_ProviderKey] ON [dbo].[AspNetUserLogins] ([LoginProvider], [ProviderKey]);
 CREATE INDEX [IX_AspNetUserLogins_UserId] ON [dbo].[AspNetUserLogins] ([UserId]);
 CREATE INDEX [IX_UserTenantMemberships_TenantId] ON [dbo].[UserTenantMemberships] ([TenantId]);
 CREATE INDEX [IX_UserTenantMemberships_UserId] ON [dbo].[UserTenantMemberships] ([UserId]);
@@ -2524,6 +2595,12 @@ CREATE INDEX [IX_DiscussionVotes_ThreadId_TenantId] ON [dbo].[DiscussionVotes] (
 CREATE INDEX [IX_DiscussionVotes_PostId_TenantId] ON [dbo].[DiscussionVotes] ([PostId], [TenantId]);
 CREATE UNIQUE INDEX [UX_DiscussionVotes_User_Thread] ON [dbo].[DiscussionVotes] ([UserId],[ThreadId]) WHERE [ThreadId] IS NOT NULL;
 CREATE UNIQUE INDEX [UX_DiscussionVotes_User_Post] ON [dbo].[DiscussionVotes] ([UserId],[PostId]) WHERE [PostId] IS NOT NULL;
+CREATE UNIQUE INDEX [UX_CourseReviews_TenantId_UserId_CourseId] ON [dbo].[CourseReviews] ([TenantId], [UserId], [CourseId]);
+CREATE INDEX [IX_CourseReviews_UserId_TenantId] ON [dbo].[CourseReviews] ([UserId], [TenantId]);
+CREATE INDEX [IX_CourseReviews_CourseId_TenantId] ON [dbo].[CourseReviews] ([CourseId], [TenantId]);
+CREATE UNIQUE INDEX [UX_CourseReviewReports_TenantId_ReviewId_UserId] ON [dbo].[CourseReviewReports] ([TenantId], [ReviewId], [UserId]);
+CREATE INDEX [IX_CourseReviewReports_ReviewId_TenantId] ON [dbo].[CourseReviewReports] ([ReviewId], [TenantId]);
+CREATE INDEX [IX_CourseReviewReports_UserId_TenantId] ON [dbo].[CourseReviewReports] ([UserId], [TenantId]);
 CREATE INDEX [IX_ChatRooms_TenantId] ON [dbo].[ChatRooms] ([TenantId]);
 CREATE INDEX [IX_ChatRooms_CourseId_TenantId] ON [dbo].[ChatRooms] ([CourseId], [TenantId]);
 CREATE UNIQUE INDEX [UX_ChatRoomMembers_ChatRoomId_UserId] ON [dbo].[ChatRoomMembers] ([ChatRoomId], [UserId]);
@@ -2585,6 +2662,9 @@ CREATE INDEX [IX_CartItems_LessonId_TenantId] ON [dbo].[CartItems] ([LessonId], 
 CREATE INDEX [IX_CartItems_BundleId_TenantId] ON [dbo].[CartItems] ([BundleId], [TenantId]);
 CREATE INDEX [IX_CartItems_PlanId_TenantId] ON [dbo].[CartItems] ([PlanId], [TenantId]);
 CREATE INDEX [IX_CartItems_LearningPathId_TenantId] ON [dbo].[CartItems] ([LearningPathId], [TenantId]);
+CREATE UNIQUE INDEX [UX_WishlistItems_TenantId_UserId_CourseId] ON [dbo].[WishlistItems] ([TenantId], [UserId], [CourseId]);
+CREATE INDEX [IX_WishlistItems_UserId_TenantId] ON [dbo].[WishlistItems] ([UserId], [TenantId]);
+CREATE INDEX [IX_WishlistItems_CourseId_TenantId] ON [dbo].[WishlistItems] ([CourseId], [TenantId]);
 CREATE UNIQUE INDEX [UX_Coupons_TenantId_Code] ON [dbo].[Coupons] ([TenantId], [Code]) WHERE [IsDeleted] = 0;
 CREATE INDEX [IX_Coupons_CourseId_TenantId] ON [dbo].[Coupons] ([CourseId], [TenantId]);
 CREATE INDEX [IX_Orders_UserId_Status] ON [dbo].[Orders] ([UserId], [Status]);
@@ -2680,6 +2760,8 @@ CREATE INDEX [IX_WebhookDeliveries_WebhookEndpointId_TenantId] ON [dbo].[Webhook
 CREATE INDEX [IX_WebhookDeliveries_BackgroundJobId_TenantId] ON [dbo].[WebhookDeliveries] ([BackgroundJobId], [TenantId]);
 CREATE UNIQUE INDEX [UX_LessonIndexStates_LessonId] ON [dbo].[LessonIndexStates] ([LessonId]);
 CREATE INDEX [IX_LessonIndexStates_TenantId] ON [dbo].[LessonIndexStates] ([TenantId]);
+CREATE UNIQUE INDEX [UX_LessonTranscripts_LessonId] ON [dbo].[LessonTranscripts] ([LessonId]);
+CREATE INDEX [IX_LessonTranscripts_TenantId] ON [dbo].[LessonTranscripts] ([TenantId]);
 CREATE INDEX [IX_AiUsageLogs_UserId_CreatedAtUtc] ON [dbo].[AiUsageLogs] ([UserId], [CreatedAtUtc]);
 CREATE INDEX [IX_AiUsageLogs_TenantId] ON [dbo].[AiUsageLogs] ([TenantId]);
 CREATE INDEX [IX_AiUsageLogs_CourseId_TenantId] ON [dbo].[AiUsageLogs] ([CourseId], [TenantId]);

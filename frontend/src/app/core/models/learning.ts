@@ -3,7 +3,7 @@ export interface Paged<T> { totalCount: number; page: number; pageSize: number; 
 export interface CourseListItem { id: string; title: string; slug: string; shortDescription: string | null; level: string; language: string | null; estimatedHours: number | null; pricingModel: string; price: number | null; currency: string | null; }
 export interface LessonOutline { id: string; title: string; lessonType: string; durationSeconds: number | null; sortOrder: number; isFreePreview: boolean; }
 export interface SectionOutline { id: string; title: string; description: string | null; sortOrder: number; lessons: LessonOutline[]; }
-export interface CourseDetail extends CourseListItem { description: string | null; status: string; sections: SectionOutline[]; }
+export interface CourseDetail extends CourseListItem { description: string | null; status: string; sections: SectionOutline[]; averageRating?: number | null; ratingsCount?: number; }
 export interface Lesson { id: string; courseId: string; sectionId: string; title: string; lessonType: string; contentMarkdown: string | null; externalUrl: string | null; durationSeconds: number | null; isFreePreview: boolean; }
 export interface Enrollment { id: string; courseId: string; title: string; status: string; progressPercent: number; expiresAtUtc: string | null; }
 export interface CourseProgress { courseId: string; progressPercent: number; status: string; lessons: { lessonId: string; status: string; lastPositionSeconds: number; watchedSeconds: number }[]; }
@@ -11,6 +11,7 @@ export interface PathListItem { id: string; title: string; slug: string; descrip
 export interface PathDetail { id: string; title: string; description: string | null; status: string; issuesCertificate: boolean; courses: { id: string; title: string; sortOrder: number; isMandatory: boolean }[]; }
 export interface PathRequest { title: string; description: string | null; status: string | null; issuesCertificate: boolean; courseIds: string[] | null; }
 export interface CartView { items: { id: string; itemType: string; itemId: string; description: string; price: number; currency: string; available: boolean }[]; subtotal: number; currency: string; }
+export interface WishlistItem { id: string; courseId: string; title: string; slug: string; shortDescription: string | null; thumbnailFileId: string | null; pricingModel: string; price: number; currency: string; createdAtUtc: string; }
 export interface CouponPreview { code: string; discount: number; subtotal: number; total: number; currency: string; }
 export interface WalletBalance { balance: number; currency: string; }
 export interface WalletTx { id: string; type: string; amount: number; balanceAfter: number; description: string | null; createdAtUtc: string; }
@@ -40,6 +41,8 @@ export interface VoucherBatch { id: string; name: string; prefix: string | null;
 export interface LessonNote { id: string; timestampSeconds: number | null; body: string; createdAtUtc: string; }
 export interface LessonBookmark { id: string; timestampSeconds: number; label: string | null; }
 export interface LessonChapter { id: string; title: string; startSeconds: number; source: string; }
+export interface TranscriptCue { start: number; end: number; text: string; }
+export interface LessonTranscript { cueCount: number; cues: TranscriptCue[]; generatedAtUtc: string; }
 export interface LessonSlide { id: string; sortOrder: number; content: { title?: string; body?: string; imageUrl?: string; [k: string]: unknown }; }
 export interface LessonResource { id: string; title: string; isDownloadable: boolean; contentType: string; sizeBytes: number; fileName: string; }
 export interface Bundle { id: string; name: string; description: string | null; price: number; currency: string; courses: { id: string; title: string }[]; }

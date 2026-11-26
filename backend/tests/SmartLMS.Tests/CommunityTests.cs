@@ -182,4 +182,99 @@ public sealed class CommunityTests : IClassFixture<ApiFactory>
         using var s = _f.Services.CreateScope(); var db = s.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         return await db.LearningPathEnrollments.IgnoreQueryFilters().CountAsync();
     }
+
+    [Fact]
+    public async Task Push_config_is_config_driven_and_logout_unregisters_only_the_callers_token()
+    {
+        var t = await NewTenant(); var a = await Student(t); var b = await Student(t);
+        var cfg = (await Get("/notifications/push-config", a, t)).Data;   // the test host carries a full Push:Web config
+        Assert.True(cfg.GetProperty("enabled").GetBoolean());
+        Assert.Equal("test-vapid-public", cfg.GetProperty("vapidPublicKey").GetString());
+        var fb = cfg.GetProperty("firebase");
+        Assert.Equal("test-api-key", fb.GetProperty("apiKey").GetString());
+        Assert.Equal("test-project", fb.GetProperty("projectId").GetString());
+        Assert.Equal("1234567890", fb.GetProperty("messagingSenderId").GetString());
+        Assert.Equal("1:123:web:abc", fb.GetProperty("appId").GetString());
+        Assert.Equal(401, (await _c.Get("/notifications/push-config")).Status);   // anonymous: no client config leak
+
+        Assert.Equal(200, (await Post("/notifications/push-token", new { fcmToken = "and-1", platform = "Android" }, a, t)).Status);
+        Assert.Equal(200, (await Post("/notifications/push-token", new { fcmToken = "web-1", platform = "Web" }, a, t)).Status);
+        Assert.Equal(200, (await Post("/notifications/push-token", new { fcmToken = "web-1", platform = "Web" }, b, t)).Status);   // same browser profile, second account
+        Assert.Equal(200, (await _c.Send(HttpMethod.Delete, "/notifications/push-token", new { fcmToken = "web-1" }, a.Token, t.Slug, a.Dev)).Status);
+        using var scope = _f.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SmartLMS.Infrastructure.Persistence.ApplicationDbContext>();
+        var tid = (await db.Tenants.IgnoreQueryFilters().FirstAsync(x => x.Slug == t.Slug)).Id;
+        scope.ServiceProvider.GetRequiredService<SmartLMS.Application.Interfaces.ITenantContext>().Set(tid, false);
+        Assert.Equal(new[] { "and-1" }, await db.PushTokens.Where(x => x.UserId == Guid.Parse(a.Id)).Select(x => x.FcmToken).ToArrayAsync());   // logout removed the web token only
+        Assert.Equal(1, await db.PushTokens.CountAsync(x => x.UserId == Guid.Parse(b.Id) && x.FcmToken == "web-1"));   // the other account's registration survives
+    }
+
+    [Fact]
+    public void Push_config_disabled_unless_every_required_value_is_present()
+    {
+        static Microsoft.Extensions.Configuration.IConfiguration Cfg(Dictionary<string, string?> v)
+        { var c = new Microsoft.Extensions.Configuration.ConfigurationManager(); foreach (var (k, x) in v) c[k] = x; return c; }
+        var baseCfg = new Dictionary<string, string?> { ["Push:Web:Enabled"] = "true", ["Push:Web:VapidPublicKey"] = "v", ["Push:Web:Firebase:ApiKey"] = "k", ["Push:Web:Firebase:ProjectId"] = "p", ["Push:Web:Firebase:MessagingSenderId"] = "s", ["Push:Web:Firebase:AppId"] = "a" };
+        Assert.False(SmartLMS.Infrastructure.Services.Lms.PushWebConfig.From(Cfg(new())).Enabled);   // nothing configured
+        var full = SmartLMS.Infrastructure.Services.Lms.PushWebConfig.From(Cfg(baseCfg));
+        Assert.True(full.Enabled); Assert.Equal("v", full.VapidPublicKey); Assert.Equal("k", full.Firebase!.ApiKey);
+        foreach (var missing in new[] { "Push:Web:Enabled", "Push:Web:VapidPublicKey", "Push:Web:Firebase:ApiKey", "Push:Web:Firebase:ProjectId", "Push:Web:Firebase:MessagingSenderId", "Push:Web:Firebase:AppId" })
+        {
+            var d = new Dictionary<string, string?>(baseCfg); d.Remove(missing);
+            Assert.False(SmartLMS.Infrastructure.Services.Lms.PushWebConfig.From(Cfg(d)).Enabled);   // any single missing value disables web push
+        }
+        var off = new Dictionary<string, string?>(baseCfg) { ["Push:Web:Enabled"] = "false" };
+        Assert.False(SmartLMS.Infrastructure.Services.Lms.PushWebConfig.From(Cfg(off)).Enabled);
+    }
+
+    private Task<Resp> Del(string p, Who w, T t) => _c.Send(HttpMethod.Delete, p, null, w.Token, t.Slug, w.Dev);
+
+    [Fact]
+    public async Task Reviews_enrollment_gate_aggregates_reporting_and_moderation()
+    {
+        var t = await NewTenant(); var inst = await Instructor(t); var (c, _, _) = await Course(t, inst, publish: true);
+        var st = await Student(t); var st2 = await Student(t);
+        // not enrolled yet: 403
+        Assert.Equal(403, (await Put($"/courses/{c}/review", new { rating = 5, body = "Great" }, st, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st2, t)).Status);
+        // invalid rating: 400
+        Assert.Equal(400, (await Put($"/courses/{c}/review", new { rating = 0 }, st, t)).Status);
+        // upsert own review; aggregate + myReview
+        var r1 = await Put($"/courses/{c}/review", new { rating = 5, body = "Great course" }, st, t); Assert.True(r1.Success, r1.Body.ToString());
+        var v = await Get($"/courses/{c}/reviews", st, t); Assert.True(v.Success, v.Body.ToString());
+        Assert.Equal(1, v.Data.GetProperty("count").GetInt32()); Assert.Equal(5.0, v.Data.GetProperty("average").GetDouble());
+        Assert.Equal(5, v.Data.GetProperty("myReview").GetProperty("rating").GetInt32());
+        // upsert again updates the same row
+        var r1b = await Put($"/courses/{c}/review", new { rating = 4, body = "Still good" }, st, t);
+        Assert.Equal(Id(r1), Id(r1b)); Assert.Equal(1, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("count").GetInt32());
+        // course detail carries the aggregate
+        var d = await Get($"/courses/{c}", st, t); Assert.Equal(4.0, d.Data.GetProperty("averageRating").GetDouble()); Assert.Equal(1, d.Data.GetProperty("ratingsCount").GetInt32());
+        // second student reviews: average recomputed
+        await Put($"/courses/{c}/review", new { rating = 2, body = "Not for me" }, st2, t);
+        Assert.Equal(3.0, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("average").GetDouble());
+        // st cannot report their own review; st2 reports st's review once (idempotent)
+        Assert.Equal(400, (await Post($"/reviews/{Id(r1)}/reports", new { reason = "spam" }, st, t)).Status);
+        var rep = await Post($"/reviews/{Id(r1)}/reports", new { reason = "spam link" }, st2, t); Assert.True(rep.Success, rep.Body.ToString());
+        Assert.Equal(Id(rep), Id(await Post($"/reviews/{Id(r1)}/reports", new { reason = "spam again" }, st2, t)));
+        // students cannot moderate
+        Assert.Equal(403, (await Get("/reviews/reported", st, t)).Status);
+        Assert.Equal(403, (await Post($"/reviews/{Id(r1)}/hide", null, st, t)).Status);
+        // admin sees the open report; an unrelated instructor does not
+        var mods = await Get("/reviews/reported", t.Admin, t);
+        Assert.Single(mods.Data.GetProperty("items").EnumerateArray());
+        var other = await Instructor(t); Assert.Empty((await Get("/reviews/reported", other, t)).Data.GetProperty("items").EnumerateArray());
+        // the course owner instructor can moderate: hide removes it from public list + aggregate, report is actioned
+        Assert.Equal(200, (await Post($"/reviews/{Id(r1)}/hide", null, inst, t)).Status);
+        var v2 = await Get($"/courses/{c}/reviews", st2, t);
+        Assert.Equal(1, v2.Data.GetProperty("count").GetInt32()); Assert.Equal(2.0, v2.Data.GetProperty("average").GetDouble());
+        Assert.Empty((await Get("/reviews/reported", t.Admin, t)).Data.GetProperty("items").EnumerateArray());
+        // the hidden author sees their own review status; unhide restores it
+        Assert.Equal("Hidden", (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("myReview").GetProperty("status").GetString());
+        Assert.Equal(200, (await Post($"/reviews/{Id(r1)}/unhide", null, t.Admin, t)).Status);
+        Assert.Equal(2, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("count").GetInt32());
+        // delete own review
+        Assert.Equal(200, (await Del($"/courses/{c}/review", st2, t)).Status);
+        Assert.Equal(1, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("count").GetInt32());
+    }
 }

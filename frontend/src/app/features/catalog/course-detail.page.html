@@ -7,8 +7,44 @@
       <div class="cover big" aria-hidden="true"><span>{{ course()!.title.charAt(0) }}</span></div>
       <div class="meta"><span class="tag">{{ course()!.level }}</span>@if (course()!.estimatedHours) { <span class="tag">{{ course()!.estimatedHours }} h</span> }</div>
       <h1>{{ course()!.title }}</h1>
+      @if (course()!.ratingsCount) { <p class="rating" data-testid="rating-summary"><span class="stars" aria-hidden="true">{{ stars(course()!.averageRating ?? 0) }}</span> {{ course()!.averageRating }} ({{ course()!.ratingsCount }})</p> }
       <p class="lead">{{ course()!.description || course()!.shortDescription }}</p>
     </header>
+    @if (reviews(); as rv) {
+    <section class="pn" data-testid="reviews">
+      <h2>{{ 'reviews.title' | t }} @if (rv.count) { <span class="mut">{{ rv.average }} · {{ rv.count }}</span> }</h2>
+      @if (enrolled()) {
+        <form class="stack" (ngSubmit)="submitReview()" data-testid="review-form">
+          <label class="mut">{{ rv.myReview ? ('reviews.yours' | t) : ('reviews.write' | t) }}</label>
+          <select class="fld" name="rr" [(ngModel)]="reviewRating">
+            <option [value]="5">5 ★</option><option [value]="4">4 ★</option><option [value]="3">3 ★</option><option [value]="2">2 ★</option><option [value]="1">1 ★</option>
+          </select>
+          <textarea class="fld" name="rb" rows="3" [(ngModel)]="reviewBody" [placeholder]="'reviews.placeholder' | t"></textarea>
+          <span class="row2">
+            <ion-button type="submit" [disabled]="reviewBusy()">{{ rv.myReview ? ('reviews.update' | t) : ('reviews.submit' | t) }}</ion-button>
+            @if (rv.myReview) { <ion-button type="button" fill="clear" color="danger" [disabled]="reviewBusy()" (click)="deleteReview()">{{ 'reviews.delete' | t }}</ion-button> }
+            @if (rv.myReview?.status === 'Hidden') { <span class="mut">{{ 'reviews.hidden' | t }}</span> }
+          </span>
+        </form>
+      }
+      @if (rv.items.length === 0) { <p class="mut">{{ 'reviews.empty' | t }}</p> }
+      @for (r of rv.items; track r.id) {
+        <div class="rev" data-testid="review-item">
+          <span class="row2"><b>{{ r.userName }}</b><span class="stars" aria-hidden="true">{{ stars(r.rating) }}</span></span>
+          @if (r.body) { <p>{{ r.body }}</p> }
+          @if (!r.mine) {
+            @if (reportOpen() === r.id) {
+              <form class="row2" (ngSubmit)="reportReview(r.id)">
+                <input class="fld" name="rep" [(ngModel)]="reportReason" [placeholder]="'reviews.reportReason' | t" />
+                <ion-button size="small" type="submit">{{ 'reviews.reportSend' | t }}</ion-button>
+                <ion-button size="small" fill="clear" type="button" (click)="reportOpen.set('')">{{ 'common.cancel' | t }}</ion-button>
+              </form>
+            } @else { <ion-button size="small" fill="clear" class="report" (click)="reportOpen.set(r.id)">{{ 'reviews.report' | t }}</ion-button> }
+          }
+        </div>
+      }
+    </section>
+    }
     <div class="layout2">
     <div class="main">
     <section class="pn">
@@ -55,6 +91,7 @@
         }
         @else if (isFree) { <ion-button (click)="enroll()">{{ 'course.enroll' | t }}</ion-button> }
         @else { <ion-button (click)="addToCart()">{{ 'course.addCart' | t }}</ion-button> <ion-button fill="outline" routerLink="/app/cart">{{ 'nav.cart' | t }}</ion-button> }
+        <ion-button fill="clear" class="heart" [class.on]="wishlisted()" [attr.aria-pressed]="wishlisted()" [attr.aria-label]="(wishlisted() ? 'wishlist.saved' : 'wishlist.save') | t" [title]="(wishlisted() ? 'wishlist.saved' : 'wishlist.save') | t" (click)="toggleWishlist()">{{ wishlisted() ? '♥' : '♡' }}</ion-button>
       </div>
       @if (message()) { <p class="ok">{{ message() | t }}</p> }
     </aside>

@@ -33,6 +33,10 @@ ion-button[type=submit][disabled] { opacity: .7; }
 .links a { color: var(--ion-color-primary); text-decoration: none; font-weight: 600; }
 .links a:hover { text-decoration: underline; }
 .plat-hint { margin: .35rem 0 0; font-size: .8rem; color: var(--app-muted); }
+.or { display: flex; align-items: center; gap: .8rem; margin-block-start: .25rem; color: var(--app-muted); font-size: .82rem; }
+.or::before, .or::after { content: ''; flex: 1; block-size: 1px; background: var(--app-border); }
+.gsi { display: flex; justify-content: center; min-block-size: 2.75rem; }
+.gsi.working { opacity: .55; pointer-events: none; }
 
 /* Stage: abstract product preview (decorative). Hidden on phones. */
 .stage { display: none; }

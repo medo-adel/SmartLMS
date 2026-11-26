@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SmartLMS.Application.Interfaces;
 using SmartLMS.Domain.Entities;
 using SmartLMS.Domain.Enums;
@@ -12,11 +13,32 @@ public sealed record NoteRequest(int? TimestampSeconds, string Body);
 public sealed record BookmarkRequest(int TimestampSeconds, string? Label);
 public sealed record StudySessionRequest(Guid? CourseId, Guid? LessonId, DateTime StartedAtUtc, int DurationSeconds);
 public sealed record PathRequest(string Title, string? Description, string? Status, bool IssuesCertificate, List<Guid>? CourseIds);
+public sealed record ReviewUpsertRequest(int Rating, string? Body);
+public sealed record ReviewReportRequest(string Reason);
 public sealed record ThreadRequest(string Title, string Body, Guid? LessonId);
 public sealed record PostRequest(string Body, Guid? ParentPostId);
 public sealed record AnnouncementRequest(Guid? CourseId, string Title, string Body);
 public sealed record ChatSendRequest(string Body);
 public sealed record PushTokenRequest(string FcmToken, string Platform);
+public sealed record PushTokenDeleteRequest(string FcmToken);
+public sealed record PushFirebaseConfig(string ApiKey, string? AuthDomain, string ProjectId, string MessagingSenderId, string AppId);
+public sealed record PushWebConfig(bool Enabled, string? VapidPublicKey, PushFirebaseConfig? Firebase)
+{
+    /// Web push is offered only when every Firebase web-client value AND the VAPID public key are configured;
+    /// anything missing means the app silently skips web registration (native is unaffected). These are
+    /// client-side values that are public by design (they ship in every web app using Firebase).
+    public static PushWebConfig From(Microsoft.Extensions.Configuration.IConfiguration cfg)
+    {
+        var vapid = cfg["Push:Web:VapidPublicKey"];
+        var apiKey = cfg["Push:Web:Firebase:ApiKey"]; var project = cfg["Push:Web:Firebase:ProjectId"];
+        var sender = cfg["Push:Web:Firebase:MessagingSenderId"]; var appId = cfg["Push:Web:Firebase:AppId"];
+        var on = cfg.GetValue<bool>("Push:Web:Enabled")
+            && !string.IsNullOrWhiteSpace(vapid) && !string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(project)
+            && !string.IsNullOrWhiteSpace(sender) && !string.IsNullOrWhiteSpace(appId);
+        return on ? new(true, vapid, new(apiKey!, Empty(cfg["Push:Web:Firebase:AuthDomain"]), project!, sender!, appId!)) : new(false, null, null);
+        static string? Empty(string? v) => string.IsNullOrWhiteSpace(v) ? null : v;
+    }
+}
 public sealed record LiveSessionRequest(string Title, string Provider, string JoinUrl, DateTime StartsAtUtc, DateTime? EndsAtUtc);
 
 /// <summary>
@@ -24,7 +46,7 @@ public sealed record LiveSessionRequest(string Title, string Provider, string Jo
 /// Course-scoped data is reachable only by the course owner, a TenantAdmin, or a student with a live enrollment. Personal data
 /// (notes, bookmarks, notifications) is always filtered by the caller's own user id. Not built: real-time delivery (SignalR hubs), FCM sending, Zoom/Meet APIs.
 /// </summary>
-public sealed class CommunityService(ApplicationDbContext db, ICurrentUser me, IRealtime rt, Notifier notifier)
+public sealed class CommunityService(ApplicationDbContext db, ICurrentUser me, IRealtime rt, Notifier notifier, Microsoft.Extensions.Configuration.IConfiguration cfg)
 {
     private static DateTime Now => DateTime.UtcNow;
     private Guid Uid => me.UserId ?? throw new UnauthorizedAppException();
@@ -273,6 +295,15 @@ public sealed class CommunityService(ApplicationDbContext db, ICurrentUser me, I
         try { await db.SaveChangesAsync(ct); } catch (DbUpdateException) { db.ChangeTracker.Clear(); } // a parallel registration of the same token won
     }
 
+    public PushWebConfig PushConfig() => PushWebConfig.From(cfg);
+
+    /// Logout cleanup: removes the caller's own token row only, so a shared browser keeps the other user's registration.
+    public async Task UnregisterPushTokenAsync(PushTokenDeleteRequest r, CancellationToken ct)
+    {
+        var token = Clean(r.FcmToken, 400, "FcmToken");
+        await db.PushTokens.Where(x => x.UserId == Uid && x.FcmToken == token).ExecuteDeleteAsync(ct);
+    }
+
     // ---- chat ------------------------------------------------------------------------------------------------------------
     public async Task<object> RoomsAsync(CancellationToken ct)
     {
@@ -363,4 +394,105 @@ public sealed class CommunityService(ApplicationDbContext db, ICurrentUser me, I
         var (_, staff) = await CourseAccessAsync(s.CourseId, ct); if (!staff) throw new NotFoundException("Live session not found.");
         return await (from a in db.LiveSessionAttendance join u in db.Users on a.UserId equals u.Id where a.LiveSessionId == id select new { a.UserId, u.FullName, a.JoinedAtUtc }).ToListAsync(ct);
     }
+    // ---- course reviews ----------------------------------------------------------------------------------------------
+    /// <summary>Published reviews for a course (newest first, capped), plus the aggregate every catalog card shows.</summary>
+    public async Task<object> ReviewsAsync(Guid courseId, CancellationToken ct)
+    {
+        var reviews = await db.CourseReviews.Where(r => r.CourseId == courseId && r.Status == CourseReviewStatus.Published).OrderByDescending(r => r.CreatedAtUtc).Take(50).ToListAsync(ct);
+        var names = await db.Users.Where(u => reviews.Select(r => r.UserId).Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName, ct);
+        var count = await db.CourseReviews.CountAsync(r => r.CourseId == courseId && r.Status == CourseReviewStatus.Published, ct);
+        double? avg = count == 0 ? null : await db.CourseReviews.Where(r => r.CourseId == courseId && r.Status == CourseReviewStatus.Published).AverageAsync(r => (double)r.Rating, ct);
+        CourseReview? mine = null;
+        if (me.UserId is { } u) mine = await db.CourseReviews.FirstOrDefaultAsync(r => r.CourseId == courseId && r.UserId == u, ct);
+        return new
+        {
+            items = reviews.Select(r => new { r.Id, userName = names.GetValueOrDefault(r.UserId, ""), r.Rating, r.Body, r.CreatedAtUtc, mine = r.UserId == me.UserId }),
+            count, average = avg is null ? (double?)null : Math.Round(avg.Value, 1),
+            myReview = mine is null ? null : new { mine.Id, mine.Rating, mine.Body, status = mine.Status.ToString() },
+        };
+    }
+
+    /// <summary>Creates or updates the caller's own review. Only a student with a live enrollment may review.</summary>
+    public async Task<Guid> UpsertReviewAsync(Guid courseId, ReviewUpsertRequest r, CancellationToken ct)
+    {
+        if (r.Rating is < 1 or > 5) throw new ValidationAppException("Rating must be between 1 and 5.");
+        var c = await db.Courses.FirstOrDefaultAsync(x => x.Id == courseId && x.Status == CourseStatus.Published, ct) ?? throw new NotFoundException("Course not found.");
+        var e = await db.Enrollments.FirstOrDefaultAsync(x => x.CourseId == courseId && x.UserId == Uid, ct);
+        if (e is null || e.Status is EnrollmentStatus.Revoked or EnrollmentStatus.Expired || (e.ExpiresAtUtc is { } x && x <= Now)) throw new ForbiddenAppException("NOT_ENROLLED", "Only enrolled students can review a course.");
+        var existing = await db.CourseReviews.FirstOrDefaultAsync(x => x.CourseId == courseId && x.UserId == Uid, ct);
+        if (existing is not null) { existing.Rating = r.Rating; existing.Body = r.Body; existing.Status = CourseReviewStatus.Published; await db.SaveChangesAsync(ct); return existing.Id; }
+        var review = new CourseReview { TenantId = c.TenantId, CourseId = courseId, UserId = Uid, Rating = r.Rating, Body = r.Body, Status = CourseReviewStatus.Published, CreatedAtUtc = Now };
+        db.CourseReviews.Add(review);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException) { db.Entry(review).State = EntityState.Detached; var again = await db.CourseReviews.FirstOrDefaultAsync(x => x.CourseId == courseId && x.UserId == Uid, ct); if (again is not null) return again.Id; throw; }
+        return review.Id;
+    }
+
+    public async Task DeleteReviewAsync(Guid courseId, CancellationToken ct)
+    {
+        var r = await db.CourseReviews.FirstOrDefaultAsync(x => x.CourseId == courseId && x.UserId == Uid, ct) ?? throw new NotFoundException("Review not found.");
+        db.CourseReviews.Remove(r); await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Flags a published review for moderation. One open report per user per review; you cannot report your own.</summary>
+    public async Task<Guid> ReportReviewAsync(Guid reviewId, ReviewReportRequest r, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(r.Reason)) throw new ValidationAppException("A reason is required.");
+        var review = await db.CourseReviews.FirstOrDefaultAsync(x => x.Id == reviewId && x.Status == CourseReviewStatus.Published, ct) ?? throw new NotFoundException("Review not found.");
+        if (review.UserId == Uid) throw new ValidationAppException("You cannot report your own review.");
+        var existing = await db.CourseReviewReports.FirstOrDefaultAsync(x => x.ReviewId == reviewId && x.UserId == Uid, ct);
+        if (existing is not null) return existing.Id;
+        var report = new CourseReviewReport { TenantId = review.TenantId, ReviewId = reviewId, UserId = Uid, Reason = r.Reason.Trim(), Status = CourseReviewReportStatus.Open, CreatedAtUtc = Now };
+        db.CourseReviewReports.Add(report);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException) { db.Entry(report).State = EntityState.Detached; var again = await db.CourseReviewReports.FirstOrDefaultAsync(x => x.ReviewId == reviewId && x.UserId == Uid, ct); if (again is not null) return again.Id; throw; }
+        return report.Id;
+    }
+
+    /// <summary>Open reports for moderation. Instructors see only their own courses; TenantAdmin sees the tenant.</summary>
+    public async Task<object> ReportedReviewsAsync(CancellationToken ct)
+    {
+        var access = new CourseAccess(db, me);
+        var reports = await db.CourseReviewReports.Where(r => r.Status == CourseReviewReportStatus.Open).OrderByDescending(r => r.CreatedAtUtc).Take(100).ToListAsync(ct);
+        var rows = new List<object>();
+        foreach (var r in reports)
+        {
+            var review = await db.CourseReviews.FirstOrDefaultAsync(x => x.Id == r.ReviewId, ct);
+            if (review is null) continue;
+            var c = await db.Courses.FirstOrDefaultAsync(x => x.Id == review.CourseId, ct);
+            if (c is null || !access.IsOwnerOrAdmin(c)) continue;
+            var reviewer = await db.Users.FirstOrDefaultAsync(u => u.Id == review.UserId, ct);
+            rows.Add(new { reportId = r.Id, r.Reason, reportedAtUtc = r.CreatedAtUtc, review = new { review.Id, courseId = c.Id, courseTitle = c.Title, userName = reviewer?.FullName ?? "", review.Rating, review.Body, status = review.Status.ToString() } });
+        }
+        return new { items = rows };
+    }
+
+    /// <summary>Hides a review (it stops counting in aggregates) and actions its open reports.</summary>
+    public async Task HideReviewAsync(Guid reviewId, CancellationToken ct)
+    {
+        var review = await db.CourseReviews.FirstOrDefaultAsync(x => x.Id == reviewId, ct) ?? throw new NotFoundException("Review not found.");
+        var c = await db.Courses.FirstOrDefaultAsync(x => x.Id == review.CourseId, ct) ?? throw new NotFoundException("Review not found.");
+        if (!new CourseAccess(db, me).IsOwnerOrAdmin(c)) throw new NotFoundException("Review not found.");
+        review.Status = CourseReviewStatus.Hidden;
+        foreach (var rep in await db.CourseReviewReports.Where(r => r.ReviewId == reviewId && r.Status == CourseReviewReportStatus.Open).ToListAsync(ct)) rep.Status = CourseReviewReportStatus.Actioned;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task UnhideReviewAsync(Guid reviewId, CancellationToken ct)
+    {
+        var review = await db.CourseReviews.FirstOrDefaultAsync(x => x.Id == reviewId, ct) ?? throw new NotFoundException("Review not found.");
+        var c = await db.Courses.FirstOrDefaultAsync(x => x.Id == review.CourseId, ct) ?? throw new NotFoundException("Review not found.");
+        if (!new CourseAccess(db, me).IsOwnerOrAdmin(c)) throw new NotFoundException("Review not found.");
+        review.Status = CourseReviewStatus.Published; await db.SaveChangesAsync(ct);
+    }
+
+    public async Task DismissReportAsync(Guid reportId, CancellationToken ct)
+    {
+        var report = await db.CourseReviewReports.FirstOrDefaultAsync(x => x.Id == reportId && x.Status == CourseReviewReportStatus.Open, ct) ?? throw new NotFoundException("Report not found.");
+        var review = await db.CourseReviews.FirstOrDefaultAsync(x => x.Id == report.ReviewId, ct) ?? throw new NotFoundException("Report not found.");
+        var c = await db.Courses.FirstOrDefaultAsync(x => x.Id == review.CourseId, ct) ?? throw new NotFoundException("Report not found.");
+        if (!new CourseAccess(db, me).IsOwnerOrAdmin(c)) throw new NotFoundException("Report not found.");
+        report.Status = CourseReviewReportStatus.Dismissed; await db.SaveChangesAsync(ct);
+    }
+
 }

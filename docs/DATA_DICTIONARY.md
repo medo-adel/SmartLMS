@@ -152,7 +152,7 @@ Flags: `-`
 
 ### AspNetUserLogins
 
-Flags: `-`. Social login hooks (Google, Facebook, Apple).
+Flags: `-`. Social login hooks (Google, Facebook, Apple). One row per user per external identity: the same provider account MAY be linked to per-tenant accounts of the same person in different academies, so uniqueness is per (provider, key, user), not global.
 
 | Column | Type | Null | Key / rule |
 |---|---|---|---|
@@ -161,7 +161,7 @@ Flags: `-`. Social login hooks (Google, Facebook, Apple).
 | ProviderDisplayName | nvarchar(max) | yes |  |
 | UserId | uniqueidentifier | no | FK (UserId) -> AspNetUsers(Id) |
 
-Indexes: unique (LoginProvider, ProviderKey).
+Indexes: unique (LoginProvider, ProviderKey, UserId); index (LoginProvider, ProviderKey).
 
 ### UserTenantMemberships
 
@@ -1315,6 +1315,45 @@ Flags: `TA`. CHECK: exactly one of ThreadId / PostId. Unique per user and target
 | UpdatedAtUtc | datetime2(7) | yes |  |
 | UpdatedBy | uniqueidentifier | yes |  |
 
+### CourseReviews
+
+Flags: `TA`. One review per student per course; only enrolled students may post. CHECK: Rating between 1 and 5. Hidden = removed by moderation.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| UserId | uniqueidentifier | no | FK (TenantId, UserId) -> UserTenantMemberships(TenantId, UserId) tenant-scoped |
+| CourseId | uniqueidentifier | no | FK (TenantId, CourseId) -> Courses(TenantId, Id) tenant-scoped |
+| Rating | int | no |  |
+| Body | nvarchar(2000) | yes |  |
+| Status | nvarchar(40) | no | one of: Published, Hidden; default Published |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (TenantId, UserId, CourseId).
+
+### CourseReviewReports
+
+Flags: `TA`. A user can report a review once; moderation resolves open reports.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| ReviewId | uniqueidentifier | no | FK (TenantId, ReviewId) -> CourseReviews(TenantId, Id) tenant-scoped |
+| UserId | uniqueidentifier | no | FK (TenantId, UserId) -> UserTenantMemberships(TenantId, UserId) tenant-scoped |
+| Reason | nvarchar(1000) | no |  |
+| Status | nvarchar(40) | no | one of: Open, Dismissed, Actioned; default Open |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (TenantId, ReviewId, UserId).
+
 ### ChatRooms
 
 Flags: `TA`
@@ -1444,6 +1483,7 @@ Flags: `TAS`
 | StartsAtUtc | datetime2(7) | no |  |
 | EndsAtUtc | datetime2(7) | yes |  |
 | Status | nvarchar(40) | no | one of: Scheduled, Live, Ended, Cancelled; default Scheduled |
+| ReminderSentAtUtc | datetime2(7) | yes |  |
 | CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
 | CreatedBy | uniqueidentifier | yes |  |
 | UpdatedAtUtc | datetime2(7) | yes |  |
@@ -1735,6 +1775,23 @@ Flags: `TA`. CHECK: exactly one target column matches ItemType.
 | CreatedBy | uniqueidentifier | yes |  |
 | UpdatedAtUtc | datetime2(7) | yes |  |
 | UpdatedBy | uniqueidentifier | yes |  |
+
+### WishlistItems
+
+Flags: `TA`. Student wishlist: courses saved for later, one row per student-course pair.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| UserId | uniqueidentifier | no | FK (TenantId, UserId) -> UserTenantMemberships(TenantId, UserId) tenant-scoped |
+| CourseId | uniqueidentifier | no | FK (TenantId, CourseId) -> Courses(TenantId, Id) tenant-scoped |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (TenantId, UserId, CourseId).
 
 ### Coupons
 
@@ -2322,6 +2379,25 @@ Flags: `TA`. Tracks what the AI service has embedded so ingest runs only when co
 | ChunkCount | int | yes |  |
 | IndexedAtUtc | datetime2(7) | yes |  |
 | LastError | nvarchar(1000) | yes |  |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (LessonId).
+
+### LessonTranscripts
+
+Flags: `TA`. Timed Whisper cues for player captions and transcript seek. Written by the AI ingest job for video/audio lessons; replaced on re-ingest.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| LessonId | uniqueidentifier | no | FK (TenantId, LessonId) -> Lessons(TenantId, Id) tenant-scoped |
+| CuesJson | nvarchar(max) | no |  |
+| CueCount | int | no |  |
+| GeneratedAtUtc | datetime2(7) | no |  |
 | CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
 | CreatedBy | uniqueidentifier | yes |  |
 | UpdatedAtUtc | datetime2(7) | yes |  |

@@ -22,7 +22,7 @@ public sealed record ProgressRequest(int LastPositionSeconds, int WatchedSeconds
 /// Lesson access: Students need an active enrollment, or the lesson must be a free preview of a published course. Drip rules and
 /// lesson prerequisites are enforced on the server. Co-instructors / teaching assistants are NOT built yet (CourseStaff has no endpoint).
 /// </summary>
-public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, GamificationService xp, CertificateService certs)
+public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, GamificationService xp, CertificateService certs, TransactionalMailer mail)
 {
     private static DateTime Now => DateTime.UtcNow;
     private Guid Uid => me.UserId ?? throw new UnauthorizedAppException();
@@ -90,11 +90,13 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
         if (c.Status != CourseStatus.Published && !privileged) throw new NotFoundException("Course not found.");
         var sections = await db.Sections.Where(s => s.CourseId == id).OrderBy(s => s.SortOrder).ToListAsync(ct);
         var lessons = await db.Lessons.Where(l => l.CourseId == id && (privileged || l.IsPublished)).OrderBy(l => l.SortOrder).ToListAsync(ct);
+        var ratingsCount = await db.CourseReviews.CountAsync(r => r.CourseId == id && r.Status == CourseReviewStatus.Published, ct);
+        double? averageRating = ratingsCount == 0 ? null : Math.Round(await db.CourseReviews.Where(r => r.CourseId == id && r.Status == CourseReviewStatus.Published).AverageAsync(r => (double)r.Rating, ct), 1);
         // The outline never carries lesson content or file ids. Content only comes from GET /lessons/{id}, which checks access.
         return new
         {
             c.Id, c.Title, c.Slug, c.ShortDescription, c.Description, Status = c.Status.ToString(), Level = c.Level.ToString(), c.Language, c.EstimatedHours,
-            PricingModel = c.PricingModel.ToString(), c.Price, c.Currency, c.OwnerInstructorId,
+            PricingModel = c.PricingModel.ToString(), c.Price, c.Currency, c.OwnerInstructorId, AverageRating = averageRating, RatingsCount = ratingsCount,
             Sections = sections.Select(s => new
             {
                 s.Id, s.Title, s.Description, s.SortOrder,
@@ -156,6 +158,7 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
         c.Status = approve ? CourseStatus.Published : CourseStatus.Rejected;
         if (approve) c.PublishedAtUtc = Now;
         await db.SaveChangesAsync(ct);
+        await mail.ApprovalResultAsync(c.OwnerInstructorId, c.Id, approve, comment, ct); // best-effort, never throws
     }
 
     // ---- sections and lessons ------------------------------------------------------------------------------------------
@@ -269,6 +272,7 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
             db.Entry(e).State = EntityState.Detached;
             return (await db.Enrollments.FirstAsync(x => x.CourseId == courseId && x.UserId == Uid, ct)).Id;
         }
+        await mail.EnrollmentAsync(Uid, courseId, ct); // best-effort, never throws
         return e.Id;
     }
 
@@ -410,6 +414,7 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
             {
                 await xp.AwardAsync(enr.TenantId, enr.UserId, GamificationService.CourseXp, "CourseCompleted", "Course", enr.CourseId, ct);
                 await certs.EnsureIssuedAsync(enr.TenantId, enr.UserId, enr.CourseId, ct);
+                await mail.CourseCompletedAsync(enr.UserId, enr.CourseId, ct); // best-effort, never throws
             }
         }
         return new { courseId = enr.CourseId, completedLessons = done, totalLessons = total, progressPercent = pct, status = status.ToString() };

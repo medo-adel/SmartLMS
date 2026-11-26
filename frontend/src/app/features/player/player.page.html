@@ -38,8 +38,9 @@
             @if (lesson()!.lessonType === 'Video') {
               <video #media [src]="src" controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline (timeupdate)="onTime()" (ended)="onEnded()"></video>
             } @else if (lesson()!.lessonType === 'Audio') {
-              <audio #media [src]="src" controls controlsList="nodownload" (ended)="onEnded()"></audio>
+              <audio #media [src]="src" controls controlsList="nodownload" (timeupdate)="onTime()" (ended)="onEnded()"></audio>
             } @else { <iframe [src]="safeUrl()" title="document"></iframe> }
+            @if (lesson()!.lessonType === 'Video' && ccOn() && activeCue(); as cue) { <div class="cc" data-testid="cc-overlay">{{ cue.text }}</div> }
             <div class="wm" [style.left.%]="wm().x" [style.top.%]="wm().y" aria-hidden="true">{{ wm().text }}</div>
             @if (hidden()) { <div class="privacy"><span>{{ 'player.privacy' | t }}</span></div> }
             @if (quiz(); as q) {
@@ -55,8 +56,21 @@
               <label>{{ 'player.speed' | t }}
                 <select class="fld sp" (change)="setSpeed($any($event.target).value)"><option value="0.75">0.75x</option><option value="1" selected>1x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></label>
             }
+            @if (cues().length) {
+              <ion-button size="small" [fill]="ccOn() ? 'solid' : 'outline'" data-testid="cc-toggle" [attr.aria-pressed]="ccOn()" (click)="ccOn.set(!ccOn())">{{ 'player.cc' | t }}</ion-button>
+              <ion-button size="small" [fill]="transcriptOpen() ? 'solid' : 'outline'" data-testid="transcript-toggle" [attr.aria-expanded]="transcriptOpen()" (click)="transcriptOpen.set(!transcriptOpen())">{{ 'player.transcript' | t }}</ion-button>
+            }
             <small class="mut">{{ 'player.limit' | t }}</small>
           </div>
+        }
+        @if (transcriptOpen() && cues().length) {
+          <section class="pn ts" data-testid="transcript-panel" [attr.aria-label]="'player.transcript' | t">
+            @for (cue of cues(); track cue.start) {
+              <button type="button" class="ts-cue" [class.on]="activeCue() === cue" (click)="seek(cue.start)">
+                <span class="ts-t">{{ dur(cue.start) }}</span><span class="ts-x">{{ cue.text }}</span>
+              </button>
+            }
+          </section>
         }
         @if (canDownload()) {
           <div class="row2 tools">

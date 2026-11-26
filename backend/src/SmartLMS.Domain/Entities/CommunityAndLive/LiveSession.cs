@@ -16,6 +16,7 @@ public class LiveSession : BaseEntity, ITenantEntity, IAuditableEntity, ISoftDel
     public DateTime StartsAtUtc { get; set; }
     public DateTime? EndsAtUtc { get; set; }
     public LiveSessionStatus Status { get; set; } = LiveSessionStatus.Scheduled;
+    public DateTime? ReminderSentAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }

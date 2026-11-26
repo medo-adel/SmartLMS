@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, InjectionToken, inject, signal, computed } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -11,6 +11,12 @@ import { TenantService } from './tenant.service';
 import { SKIP_TENANT } from '../interceptors/auth.interceptor';
 
 const KEY = 'session';
+
+/**
+ * Async cleanup hooks that run at the start of logout, while the session (and its bearer token) is still
+ * valid - e.g. PushService unregisters this device's push token. A failing hook never blocks logout.
+ */
+export const LOGOUT_HOOKS = new InjectionToken<((session: Session) => Promise<void>)[]>('LOGOUT_HOOKS', { providedIn: 'root', factory: () => [] });
 
 /** Which dashboard a set of roles gets. Highest privilege wins. */
 export function dashboardFor(roles: readonly string[]): DashboardKind {
@@ -29,6 +35,7 @@ export class AuthService {
   private readonly storage = inject(StorageService);
   private readonly device = inject(DeviceService);
   private readonly tenant = inject(TenantService);
+  private readonly logoutHooks = inject(LOGOUT_HOOKS);
   private readonly _session = signal<Session | null>(null);
   private refreshing: Promise<boolean> | null = null;
 
@@ -68,6 +75,20 @@ export class AuthService {
       if (!(err instanceof HttpErrorResponse) || err.status !== 401 || code !== 'INVALID_CREDENTIALS' || !this.tenant.tenantKey()) throw err;
       try { await this.loginWith(body, true); } catch { throw err; }
     }
+  }
+  /** Social providers the backend has configured (client ids are public, safe to expose). */
+  async externalProviders(): Promise<{ provider: string; clientId: string | null }[]> {
+    const res = await firstValueFrom(this.http.get<ApiResponse<{ providers: { provider: string; clientId: string | null }[] }>>(`${environment.apiBaseUrl}/auth/external-providers`));
+    return res.data?.providers ?? [];
+  }
+  /** Sign in with a provider ID token (Google GSI credential). Requires an academy, same as password login. */
+  async socialLogin(provider: string, idToken: string): Promise<void> {
+    const d = await this.device.init();
+    const body = { idToken, device: { fingerprint: d.fingerprint, deviceType: d.deviceType, platform: d.platform, deviceName: d.deviceName } };
+    const res = await firstValueFrom(this.http.post<ApiResponse<TokenResponse>>(`${environment.apiBaseUrl}/auth/social/${provider}`, body));
+    if (!res.success || !res.data) throw new Error(res.message ?? 'login failed');
+    await this.setSession(res.data);
+    await this.tenant.loadBranding();
   }
   private async loginWith(body: unknown, skipTenant: boolean): Promise<void> {
     const options = skipTenant ? { context: new HttpContext().set(SKIP_TENANT, true) } : {};
@@ -131,6 +152,7 @@ export class AuthService {
   }
   async logout(): Promise<void> {
     const cur = this._session();
+    if (cur) { for (const h of this.logoutHooks) { try { await h(cur); } catch { /* a hook never blocks logout */ } } }
     // /auth/logout requires the bearer token, so revoke on the server first, then clear locally.
     if (cur && this.unlocked()) { try { await firstValueFrom(this.http.post(`${environment.apiBaseUrl}/auth/logout`, { refreshToken: cur.refreshToken })); } catch { /* offline or expired: still sign out locally */ } }
     await this.clear();
