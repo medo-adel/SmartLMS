@@ -147,7 +147,7 @@ export class PlayerPage implements OnInit, OnDestroy {
       if ((lesson.lessonType === 'Video' || lesson.lessonType === 'Audio') && seq === this.loadSeq && !this.offlineMode()) {
         const tr = await this.api.transcript(this.lessonId).catch(() => null); // offline or old backend: no captions, the lesson still plays
         if (seq !== this.loadSeq) return;
-        if (tr?.cues.length) { this.cues.set(tr.cues); this.ccOn.set(true); }
+        if (tr?.cues?.length) { this.cues.set(tr.cues); this.ccOn.set(true); }
       }
       if (!this.timer) this.timer = setInterval(() => void this.flush(false), 15000);
     } catch (e) {

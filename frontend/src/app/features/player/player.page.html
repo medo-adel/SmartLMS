@@ -38,7 +38,7 @@
             @if (lesson()!.lessonType === 'Video') {
               <video #media [src]="src" controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline (timeupdate)="onTime()" (ended)="onEnded()"></video>
             } @else if (lesson()!.lessonType === 'Audio') {
-              <audio #media [src]="src" controls controlsList="nodownload" (ended)="onEnded()"></audio>
+              <audio #media [src]="src" controls controlsList="nodownload" (timeupdate)="onTime()" (ended)="onEnded()"></audio>
             } @else { <iframe [src]="safeUrl()" title="document"></iframe> }
             @if (lesson()!.lessonType === 'Video' && ccOn() && activeCue(); as cue) { <div class="cc" data-testid="cc-overlay">{{ cue.text }}</div> }
             <div class="wm" [style.left.%]="wm().x" [style.top.%]="wm().y" aria-hidden="true">{{ wm().text }}</div>
