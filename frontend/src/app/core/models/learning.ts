@@ -41,6 +41,8 @@ export interface VoucherBatch { id: string; name: string; prefix: string | null;
 export interface LessonNote { id: string; timestampSeconds: number | null; body: string; createdAtUtc: string; }
 export interface LessonBookmark { id: string; timestampSeconds: number; label: string | null; }
 export interface LessonChapter { id: string; title: string; startSeconds: number; source: string; }
+export interface TranscriptCue { start: number; end: number; text: string; }
+export interface LessonTranscript { cueCount: number; cues: TranscriptCue[]; generatedAtUtc: string; }
 export interface LessonSlide { id: string; sortOrder: number; content: { title?: string; body?: string; imageUrl?: string; [k: string]: unknown }; }
 export interface LessonResource { id: string; title: string; isDownloadable: boolean; contentType: string; sizeBytes: number; fileName: string; }
 export interface Bundle { id: string; name: string; description: string | null; price: number; currency: string; courses: { id: string; title: string }[]; }

@@ -101,7 +101,7 @@ Object.assign(EN, {
   'player.next': 'Next',
   'player.privacy': 'Playback hidden while this window is not in focus.',
   'player.notes': 'Lesson text',
-  'player.speed': 'Speed',
+  'player.speed': 'Speed', 'player.cc': 'CC', 'player.transcript': 'Transcript',
   'player.ask': 'Ask the AI tutor',
   'player.content': 'Course content',
   'player.lectures': 'lessons',

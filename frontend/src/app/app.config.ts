@@ -14,14 +14,15 @@ import { PushService } from './core/services/push.service';
 
 /** Startup order matters: device id and language first, then session, then branding (needs X-Tenant-Id / X-Device-Id). */
 async function bootstrap(): Promise<void> {
+  // NB: inject() only works before the first await (NG0203 past it). Instantiating PushService arms an
+  // effect: it registers the device for push whenever a session exists (cold start and later logins).
   const device = inject(DeviceService), i18n = inject(I18nService), tenant = inject(TenantService), auth = inject(AuthService), bio = inject(BiometricService);
+  inject(PushService);
   await device.init();
   await i18n.init(null);
   await auth.restore();
   await bio.init();
   await tenant.init();
-  // Instantiating the service arms an effect: it registers the device whenever a session exists.
-  inject(PushService);
 }
 
 export const appConfig: ApplicationConfig = {

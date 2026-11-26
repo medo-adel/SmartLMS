@@ -5,7 +5,7 @@ import { Subscription } from 'rxjs';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
 import { AuthService } from '../../core/services/auth.service';
-import { CourseDetail, CourseProgress, InteractiveQuiz, Lesson, LessonOutline, LessonResource } from '../../core/models/learning';
+import { CourseDetail, CourseProgress, InteractiveQuiz, Lesson, LessonOutline, LessonResource, TranscriptCue } from '../../core/models/learning';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { AiTutorDrawerComponent } from '../ai/ai-tutor-drawer.component';
 import { LessonExtrasComponent } from './lesson-extras.component';
@@ -47,6 +47,11 @@ export class PlayerPage implements OnInit, OnDestroy {
   readonly drawer = signal(false);
   readonly wm = signal({ x: 10, y: 10, text: '' });
   readonly quiz = signal<InteractiveQuiz | null>(null);
+  /** Timed transcript: captions overlay (CC) and the seek-on-click transcript panel. */
+  readonly cues = signal<TranscriptCue[]>([]);
+  readonly ccOn = signal(false);
+  readonly transcriptOpen = signal(false);
+  readonly now = signal(0);
   readonly quizMsg = signal('');
   /** Curriculum panel (course map): progress per lesson, downloadable files, manual lesson choice. */
   readonly progress = signal<CourseProgress | null>(null);
@@ -87,6 +92,7 @@ export class PlayerPage implements OnInit, OnDestroy {
     if (this.url) { URL.revokeObjectURL(this.url); this.url = null; }
     this.mediaUrl.set(null); this.safeUrl.set(null); this.lesson.set(null);
     this.slides.set([]); this.slideIx.set(0); this.quizzes = []; this.answered.clear(); this.quiz.set(null);
+    this.cues.set([]); this.ccOn.set(false); this.transcriptOpen.set(false); this.now.set(0);
     this.showUpNext.set(false); this.lastSaved = 0; this.dlMsg.set('');
   }
   ngOnDestroy(): void {
@@ -138,6 +144,11 @@ export class PlayerPage implements OnInit, OnDestroy {
       if (lesson.lessonType === 'Pdf' && pdfShown) void this.flush(true).then(() => this.refreshProgress());
       if (lesson.lessonType === 'InteractiveSlides') { this.slides.set(await this.api.slides(this.lessonId).catch(() => [])); this.slideIx.set(0); }
       if (lesson.lessonType === 'Video' && seq === this.loadSeq) { this.quizzes = this.offlineMode() ? [] : await this.api.interactiveQuizzes(this.lessonId).catch(() => []); }
+      if ((lesson.lessonType === 'Video' || lesson.lessonType === 'Audio') && seq === this.loadSeq && !this.offlineMode()) {
+        const tr = await this.api.transcript(this.lessonId).catch(() => null); // offline or old backend: no captions, the lesson still plays
+        if (seq !== this.loadSeq) return;
+        if (tr?.cues.length) { this.cues.set(tr.cues); this.ccOn.set(true); }
+      }
       if (!this.timer) this.timer = setInterval(() => void this.flush(false), 15000);
     } catch (e) {
       if (seq !== this.loadSeq) return;
@@ -205,8 +216,12 @@ export class PlayerPage implements OnInit, OnDestroy {
     const i = all.findIndex((l) => l.id === this.lessonId);
     return i >= 0 && i < all.length - 1 ? all[i + 1] : null;
   }
+  /** The cue under the playhead, for the captions overlay and the panel highlight. */
+  activeCue(): TranscriptCue | null { const t = this.now(); return this.cues().find((c) => t >= c.start && t < c.end) ?? null; }
   onTime(): void {
-    const el = this.media()?.nativeElement; if (!el || this.quiz()) return;
+    const el = this.media()?.nativeElement; if (!el) return;
+    this.now.set(el.currentTime);
+    if (this.quiz()) return;
     const due = this.quizzes.find((q) => !this.answered.has(q.id) && el.currentTime >= q.timestampSeconds);
     if (due) { el.pause(); this.quiz.set(due); }
   }

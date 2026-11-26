@@ -39,3 +39,14 @@ audio { inline-size: 100%; display: block; padding: 1rem; box-sizing: border-box
   :host-context([dir=rtl]) .layout.with-cur .cur { order: -1; }
   :host-context([dir=rtl]) .layout.with-cur.with-drawer { grid-template-columns: 21rem minmax(0, 1fr) 24rem; }
 }
+
+/* Transcript: captions overlay + seek-on-click panel */
+.cc { position: absolute; inset-inline: 8%; inset-block-end: 6%; z-index: 4; text-align: center; padding: .3rem .8rem; border-radius: 10px;
+  background: rgb(0 0 0 / 72%); color: #fff; font-size: clamp(.95rem, 2.5vw, 1.15rem); line-height: 1.5; pointer-events: none; }
+.ts { display: grid; gap: 2px; max-block-size: 18rem; overflow-y: auto; margin-block-start: .5rem; }
+.ts-cue { display: flex; gap: .8rem; align-items: baseline; border: 0; background: transparent; color: var(--app-text); font: inherit; text-align: start;
+  padding: .45rem .6rem; border-radius: 10px; cursor: pointer; min-block-size: 2.4rem; }
+.ts-cue:hover { background: var(--app-card-2); }
+.ts-cue.on { background: var(--app-tint); font-weight: 700; }
+.ts-t { flex: none; direction: ltr; font-variant-numeric: tabular-nums; color: var(--app-muted); font-size: .82rem; }
+.ts-x { min-inline-size: 0; }

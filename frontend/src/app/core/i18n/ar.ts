@@ -182,7 +182,7 @@ Object.assign(AR, {
   'player.next': 'التالي',
   'player.privacy': 'تم إخفاء التشغيل لأن النافذة ليست في المقدمة.',
   'player.notes': 'نص الدرس',
-  'player.speed': 'السرعة',
+  'player.speed': 'السرعة', 'player.cc': 'الترجمة', 'player.transcript': 'النص',
   'player.ask': 'اسأل المدرس الذكي',
   'player.content': "محتوى الكورس",
   'player.lectures': "دروس",
