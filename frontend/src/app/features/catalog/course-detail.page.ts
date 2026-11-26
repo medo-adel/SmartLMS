@@ -43,7 +43,7 @@ export class CourseDetailPage implements OnInit {
         this.progress.set(await this.api.courseProgress(this.id).catch(() => null)); // 404/403 -> no bar, never invented numbers
       }
       const wl = await this.api.wishlist().catch(() => null); // 403 for non-students -> hide the heart state
-      this.wishlisted.set(!!wl && wl.items.some((i) => i.courseId === this.id));
+      this.wishlisted.set(!!wl?.items && wl.items.some((i) => i.courseId === this.id));
       const rv = await this.community.reviews(this.id).catch(() => null);
       this.reviews.set(rv);
       if (rv?.myReview) { this.reviewRating = rv.myReview.rating; this.reviewBody = rv.myReview.body ?? ''; }
