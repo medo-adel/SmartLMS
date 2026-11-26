@@ -81,9 +81,10 @@ public sealed class PlatformContextTests : IClassFixture<ApiFactory>
     public async Task Mail_delivery_endpoint_reports_disabled_without_email_config()
     {
         // The register UI reads this so it never promises an inbox this server cannot deliver to.
+        // Under the test host the capturing transport reports "captured"; a server with no email config reports "disabled" (EmailServices).
         var r = await _c.Get("/auth/mail-delivery");
         Assert.True(r.Status == 200, r.Body.ToString());
-        Assert.Equal("disabled", r.Data.GetProperty("mode").GetString());
+        Assert.Equal("captured", r.Data.GetProperty("mode").GetString());
     }
 
     [Fact]

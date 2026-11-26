@@ -20,6 +20,8 @@ public sealed class EndpointAuthorizationTests : IClassFixture<ApiFactory>
         "api/v1/auth/register", "api/v1/auth/login", "api/v1/auth/refresh", "api/v1/auth/verify-email",
         "api/v1/auth/otp/request", "api/v1/auth/otp/verify", "api/v1/auth/forgot-password", "api/v1/auth/reset-password", "api/v1/auth/social/{provider}",
         "api/v1/auth/mail-delivery", // mode word only (mailbox/local-outbox/disabled), no addresses or config
+        "api/v1/auth/external-providers", // provider names + public OAuth client ids only, never secrets
+        "api/v1/courses/{id:guid}/reviews", // public course page shows approved reviews, like the public course details
         "api/v1/payments/gateways/{gateway}/webhook",
         "api/v1/bundles", "api/v1/subscription-plans", "api/v1/learning-paths", "api/v1/learning-paths/{id:guid}",
         "api/v1/courses", "api/v1/courses/{id:guid}", "api/v1/categories",

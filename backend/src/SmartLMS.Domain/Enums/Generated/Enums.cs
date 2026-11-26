@@ -259,6 +259,19 @@ public enum DiscussionThreadThreadType
     Forum,
 }
 
+public enum CourseReviewStatus
+{
+    Published,
+    Hidden,
+}
+
+public enum CourseReviewReportStatus
+{
+    Open,
+    Dismissed,
+    Actioned,
+}
+
 public enum ChatRoomRoomType
 {
     Course,

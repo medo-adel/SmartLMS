@@ -10,7 +10,7 @@ import { TenantService } from '../../core/services/tenant.service';
 import { LearningService } from '../../core/services/learning.service';
 import { CommunityService } from '../../core/services/community.service';
 import { Enrollment, MyCourse } from '../../core/models/learning';
-import { AnnouncementRow, ChatMessage, ChatRoom, LiveAttendanceRow, LiveSessionRow, ThreadDetail, ThreadRow } from '../../core/models/community';
+import { AnnouncementRow, ChatMessage, ChatRoom, LiveAttendanceRow, LiveSessionRow, ThreadDetail, ThreadRow, ReportedReview } from '../../core/models/community';
 
 /** Community: per-course discussion threads (all course members) and announcements (staff post, everyone reads). */
 @Component({ selector: 'app-community', imports: [DatePipe, FormsModule, RouterLink, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './community.page.html', styleUrl: './community.page.scss' })
@@ -31,7 +31,10 @@ export class CommunityPage implements OnInit {
     else fallback();
   }
 
-  readonly tab = signal<'threads' | 'announcements' | 'chat' | 'live'>('threads');
+  readonly tab = signal<'threads' | 'announcements' | 'chat' | 'live' | 'moderation'>('threads');
+  /** Reported reviews queue (TenantAdmin/Instructor only; backend scopes instructors to their own courses). */
+  readonly reported = signal<ReportedReview[]>([]);
+  readonly isMgr = computed(() => this.auth.hasRole('TenantAdmin', 'Instructor'));
   readonly courses = signal<{ id: string; title: string }[] | null>(null);
   readonly failed = signal(false);
   readonly threads = signal<ThreadRow[]>([]);
@@ -208,4 +211,11 @@ export class CommunityPage implements OnInit {
       this.announcements.set(await this.api.announcements());
     } catch { /* toast by interceptor */ }
   }
+  async showModeration(): Promise<void> {
+    this.tab.set('moderation');
+    try { this.reported.set((await this.api.reportedReviews()).items); } catch { this.reported.set([]); }
+  }
+  async hideReview(id: string): Promise<void> { try { await this.api.hideReview(id); await this.showModeration(); } catch { /* interceptor toast */ } }
+  async dismissReport(id: string): Promise<void> { try { await this.api.dismissReport(id); await this.showModeration(); } catch { /* interceptor toast */ } }
+
 }

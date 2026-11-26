@@ -30,10 +30,17 @@ class IngestRequest(Scope):
     text: str | None = Field(default=None, description="Lesson text sent inline for source_type=text; no file is read then.")
 
 
+class TranscriptCue(BaseModel):
+    start: float
+    end: float
+    text: str
+
+
 class IngestResponse(BaseModel):
     lesson_id: str
     chunks_indexed: int
     transcript_segments: int = 0
+    cues: list[TranscriptCue] = []  # timed Whisper cues, only for video/audio sources
 
 
 # 2. POST /ai/tutor/chat

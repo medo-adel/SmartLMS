@@ -168,6 +168,16 @@ public sealed class ContentService(ApplicationDbContext db, ICurrentUser me, Lms
         l.PayPerLessonPrice = r.Price is { } v ? decimal.Round(v, 2) : null;
         await db.SaveChangesAsync(ct);
     }
+    /// <summary>Timed transcript cues for the player (captions + seek). Same read guard as chapters.</summary>
+    public async Task<object> TranscriptAsync(Guid lessonId, CancellationToken ct)
+    {
+        await EnsureCanReadLessonAsync(lessonId, ct);
+        var t = await db.LessonTranscripts.AsNoTracking().FirstOrDefaultAsync(x => x.LessonId == lessonId, ct)
+            ?? throw new NotFoundException("This lesson has no transcript yet.");
+        var cues = System.Text.Json.JsonSerializer.Deserialize<List<SmartLMS.Application.Interfaces.AiTranscriptCue>>(t.CuesJson) ?? [];
+        return new { t.CueCount, Cues = cues.OrderBy(c => c.Start).Select(c => new { c.Start, c.End, c.Text }).ToList(), t.GeneratedAtUtc };
+    }
+
     public async Task<object> ChaptersAsync(Guid lessonId, CancellationToken ct)
     {
         await EnsureCanReadLessonAsync(lessonId, ct);

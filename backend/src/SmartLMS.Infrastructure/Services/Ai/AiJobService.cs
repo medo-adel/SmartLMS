@@ -74,6 +74,12 @@ public sealed class AiJobService(ApplicationDbContext db, IAiServiceClient ai, I
             state.LastError = r.ChunksIndexed > 0 ? null : "No text could be extracted from this lesson.";
             error = state.LastError;
             job.ResultJson = System.Text.Json.JsonSerializer.Serialize(new { r.ChunksIndexed, r.TranscriptSegments });
+            // Timed Whisper cues feed player captions + transcript seek. Re-ingest replaces them wholesale.
+            if (r.Cues is { Count: > 0 })
+            {
+                db.LessonTranscripts.RemoveRange(await db.LessonTranscripts.Where(x => x.LessonId == lessonId).ToListAsync(ct));
+                db.LessonTranscripts.Add(new LessonTranscript { TenantId = job.TenantId, LessonId = lessonId, CuesJson = System.Text.Json.JsonSerializer.Serialize(r.Cues), CueCount = r.Cues.Count, GeneratedAtUtc = Now, CreatedAtUtc = Now });
+            }
         }
         catch (Exception ex) when (ex is AppException or DomainException)
         {

@@ -24,6 +24,32 @@ public sealed class CapturingOtpSender : IOtpSender
     public string Last(string destination, string purpose) { lock (Codes) return Codes[$"{destination.ToLowerInvariant()}|{purpose}"]; }
 }
 
+public sealed class CapturingEmailTransport : IEmailTransport
+{
+    public bool IsEnabled => true;
+    public string DeliveryMode => "captured";
+    public readonly List<(string To, string Subject, string Body)> Sent = new();
+    public Task SendAsync(EmailMessage message, CancellationToken ct) { lock (Sent) Sent.Add((message.To, message.Subject, message.Body)); return Task.CompletedTask; }
+    public List<(string To, string Subject, string Body)> For(string to) { lock (Sent) return Sent.Where(m => m.To == to).ToList(); }
+}
+
+/// <summary>Hermetic Google sign-in: maps known fake id tokens to identities; anything else is an invalid token.</summary>
+public sealed class FakeExternalSignInVerifier : IExternalSignInVerifier
+{
+    public string Provider => "google";
+    public bool IsConfigured => true;
+    public string? ClientId => "test-google-client-id";
+    public readonly Dictionary<string, ExternalIdentity> Tokens = new()
+    {
+        ["valid-google-token"] = new ExternalIdentity("google", "g-sub-1", "social@mail.test", "Social User", true),
+        ["unverified-google-token"] = new ExternalIdentity("google", "g-sub-2", "unverified@mail.test", "No Verify", false),
+        // Same person, a different Google account: exercises the link-by-email path for an existing password account.
+        ["second-google-token"] = new ExternalIdentity("google", "g-sub-3", "social@mail.test", "Social User", true),
+    };
+    public Task<ExternalIdentity> VerifyAsync(string idToken, CancellationToken ct) =>
+        Task.FromResult(Tokens.TryGetValue(idToken, out var id) ? id : throw new SmartLMS.Domain.Exceptions.UnauthorizedAppException("INVALID_SOCIAL_TOKEN", "The Google sign-in token is not valid."));
+}
+
 /// <summary>Boots the real API on in-memory SQLite. SQLite approximates SQL Server; it is not a substitute for a run against SQL Server.</summary>
 public class ApiFactory : WebApplicationFactory<Program>
 {
@@ -33,6 +59,8 @@ public class ApiFactory : WebApplicationFactory<Program>
     private readonly string _dbFile = Path.Combine(Path.GetTempPath(), $"smartlms-test-{Guid.NewGuid():N}.db");
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), $"smartlms-storage-{Guid.NewGuid():N}");
     public CapturingOtpSender Otp { get; } = new();
+    public CapturingEmailTransport Mail { get; } = new();
+    public FakeExternalSignInVerifier Google { get; } = new();
 
     public ApiFactory()
     {
@@ -62,6 +90,12 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Payments:Gateways:Fawry:CheckoutUrlTemplate", "https://pay.example.test/checkout/{reference}?a={amount}&c={currency}");
         builder.UseSetting("RateLimiting:VoucherPermitsPerMinute", "100000");
         builder.UseSetting("Certificates:VerificationBaseUrl", "https://lms.example.test");
+        builder.UseSetting("Push:Web:Enabled", "true");   // full web-push config: push-config is exercised enabled; the disabled shape is unit-tested via PushWebConfig.From
+        builder.UseSetting("Push:Web:VapidPublicKey", "test-vapid-public");
+        builder.UseSetting("Push:Web:Firebase:ApiKey", "test-api-key");
+        builder.UseSetting("Push:Web:Firebase:ProjectId", "test-project");
+        builder.UseSetting("Push:Web:Firebase:MessagingSenderId", "1234567890");
+        builder.UseSetting("Push:Web:Firebase:AppId", "1:123:web:abc");
         builder.UseSetting("Seed:SuperAdminEmail", SaEmail);
         builder.UseSetting("Seed:SuperAdminPassword", Password);
         builder.ConfigureServices(s =>
@@ -77,6 +111,10 @@ public class ApiFactory : WebApplicationFactory<Program>
             s.AddHttpClient("paymob").ConfigurePrimaryHttpMessageHandler(() => new FakePaymobHandler());
             s.RemoveAll<IOtpSender>();
             s.AddSingleton<IOtpSender>(Otp);
+            s.RemoveAll<IEmailTransport>();
+            s.AddSingleton<IEmailTransport>(Mail);
+            s.RemoveAll<IExternalSignInVerifier>();
+            s.AddSingleton<IExternalSignInVerifier>(Google);
         });
     }
 

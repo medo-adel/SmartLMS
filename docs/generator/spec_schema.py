@@ -41,7 +41,8 @@ T("AspNetRoleClaims", G, ["RoleId g >AspNetRoles", "ClaimType t?", "ClaimValue t
 T("AspNetUserTokens", G, ["UserId g >AspNetUsers", "LoginProvider s:128", "Name s:128", "Value t?"], flags="", note="ASP.NET Core Identity token store (authenticator keys, recovery codes). Composite primary key.")
 T("AspNetUserClaims", G, ["UserId g >AspNetUsers", "ClaimType t?", "ClaimValue t?"], flags="")
 T("AspNetUserLogins", G, ["LoginProvider s:128", "ProviderKey s:128", "ProviderDisplayName t?", "UserId g >AspNetUsers"], flags="",
-  uniq=[("LoginProvider", "ProviderKey")], note="Social login hooks (Google, Facebook, Apple).")
+  uniq=[("LoginProvider", "ProviderKey", "UserId")], idx=[("LoginProvider", "ProviderKey")],
+  note="Social login hooks (Google, Facebook, Apple). One row per user per external identity: the same provider account MAY be linked to per-tenant accounts of the same person in different academies, so uniqueness is per (provider, key, user), not global.")
 T("UserTenantMemberships", G, [
     "UserId g >>AspNetUsers", "Kind e:Home|SupportAccess =Home", "GrantedBy g? >>AspNetUsers", "ExpiresAtUtc d?", "RevokedAtUtc d?",
 ], flags="TA", note="Tenant membership of a global identity. EVERY user-to-tenant-data reference points here as (TenantId, UserId), so a row can only reference a user who is a member of the same tenant. Each tenant user has one Home row; a SuperAdmin acts inside a tenant only through an explicit, audited SupportAccess row.")
@@ -217,6 +218,12 @@ T("DiscussionPosts", G, [
 ])
 T("DiscussionVotes", G, ["UserId g >AspNetUsers", "ThreadId g? >DiscussionThreads", "PostId g? >DiscussionPosts"], flags="TA",
   note="CHECK: exactly one of ThreadId / PostId. Unique per user and target.")
+T("CourseReviews", G, [
+    "UserId g >AspNetUsers", "CourseId g >Courses", "Rating i", "Body s:2000?", "Status e:Published|Hidden =Published",
+], flags="TA", uniq=[("TenantId", "UserId", "CourseId")], note="One review per student per course; only enrolled students may post. CHECK: Rating between 1 and 5. Hidden = removed by moderation.")
+T("CourseReviewReports", G, [
+    "ReviewId g >CourseReviews", "UserId g >AspNetUsers", "Reason s:1000", "Status e:Open|Dismissed|Actioned =Open",
+], flags="TA", uniq=[("TenantId", "ReviewId", "UserId")], note="A user can report a review once; moderation resolves open reports.")
 T("ChatRooms", G, ["CourseId g? >Courses", "RoomType e:Course|Direct|Group", "Name s:200?"], flags="TA")
 T("ChatRoomMembers", G, ["ChatRoomId g >ChatRooms", "UserId g >AspNetUsers", "JoinedAtUtc d", "LastReadAtUtc d?"], flags="TA", uniq=[("ChatRoomId", "UserId")])
 T("ChatMessages", G, ["ChatRoomId g >ChatRooms", "SenderId g >AspNetUsers", "Body s:4000", "SentAtUtc d"], flags="TS", idx=[("ChatRoomId", "SentAtUtc")])
@@ -227,7 +234,7 @@ T("Notifications", G, [
 T("PushTokens", G, ["UserId g >AspNetUsers", "DeviceId g? >UserDevices", "FcmToken s:500", "Platform e:Android|Ios|Web", "LastSeenAtUtc d"], flags="TA", uniq=[("UserId", "FcmToken")])
 T("LiveSessions", G, [
     "CourseId g >Courses", "HostId g >AspNetUsers", "Title s:250", "Provider e:Zoom|GoogleMeet|Jitsi|Other", "JoinUrl s:1000", "StartsAtUtc d", "EndsAtUtc d?",
-    "Status e:Scheduled|Live|Ended|Cancelled =Scheduled",
+    "Status e:Scheduled|Live|Ended|Cancelled =Scheduled", "ReminderSentAtUtc d?",
 ])
 T("LiveSessionAttendance", G, ["LiveSessionId g >LiveSessions", "UserId g >AspNetUsers", "JoinedAtUtc d", "LeftAtUtc d?", "DurationSeconds i?", "Source e:JoinLink|Provider|Manual =JoinLink"],
   flags="TA", uniq=[("LiveSessionId", "UserId")], note="JoinLink attendance means the student opened our join link, not that they stayed engaged.")
@@ -265,6 +272,9 @@ T("CartItems", G, [
     "UserId g >AspNetUsers", "ItemType e:Course|Lesson|Bundle|Plan|Path", "CourseId g? >Courses", "LessonId g? >Lessons", "BundleId g? >Bundles",
     "PlanId g? >SubscriptionPlans", "LearningPathId g? >LearningPaths",
 ], flags="TA", note="CHECK: exactly one target column matches ItemType.")
+T("WishlistItems", G, [
+    "UserId g >AspNetUsers", "CourseId g >Courses",
+], flags="TA", uniq=[("TenantId", "UserId", "CourseId")], note="Student wishlist: courses saved for later, one row per student-course pair.")
 T("Coupons", G, [
     "Code s:50", "DiscountType e:Percentage|Fixed", "Value m", "MaxRedemptions i?", "MaxPerUser i =1", "MinOrderAmount m?", "ExpiresAtUtc d?", "CourseId g? >Courses", "IsActive b =1",
 ], uniq=[("TenantId", "Code")])
@@ -334,6 +344,8 @@ T("WebhookDeliveries", G, [
 ], flags="TA", idx=[("Status", "NextAttemptAtUtc")])
 T("LessonIndexStates", G, ["LessonId g >Lessons", "Status e:NotIndexed|Pending|Processing|Indexed|Failed =NotIndexed", "ContentHash s:64?", "ChunkCount i?", "IndexedAtUtc d?", "LastError s:1000?"], flags="TA", uniq=[("LessonId",)],
   note="Tracks what the AI service has embedded so ingest runs only when content changed.")
+T("LessonTranscripts", G, ["LessonId g >Lessons", "CuesJson t", "CueCount i", "GeneratedAtUtc d"], flags="TA", uniq=[("LessonId",)],
+  note="Timed Whisper cues for player captions and transcript seek. Written by the AI ingest job for video/audio lessons; replaced on re-ingest.")
 T("AiUsageLogs", G, ["UserId g? >AspNetUsers", "Endpoint s:80", "CourseId g? >Courses", "Provider s:30?", "LatencyMs i?", "StatusCode i", "CreatedAtUtc d"], flags="T", idx=[("UserId", "CreatedAtUtc")],
   note="No prompt text stored. Used for rate limiting and cost review.")
 T("DropoutRiskScores", G, ["UserId g >AspNetUsers", "CourseId g >Courses", "Score f", "Level e:Low|Medium|High", "FeaturesJson j", "ComputedAtUtc d"], flags="T", idx=[("CourseId", "UserId", "ComputedAtUtc")])

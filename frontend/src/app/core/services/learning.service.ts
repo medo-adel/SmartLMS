@@ -6,9 +6,8 @@ import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response';
 import {
   AiMindMap, AiQuizDraft, AiSearchHit, AiStudyPlan, AiSummary, AiTutorResult, AiVoice, AnswerValue, AttemptResult, AttemptView, CartView, CheckoutOutcome, OrderRow, CouponPreview, CourseDetail, CourseListItem,
-  CourseProgress, Enrollment, ExamListItem, LessonNote, LessonBookmark, LessonChapter, LessonSlide, LessonResource, Bundle, Plan, AffiliateMe, QuestionBank, QuestionDto, QuestionInput, ExamInput, QuizPointDto, ReviewItem, VoucherBatch, InteractiveQuiz, Lesson, ManualPayment, MyCourse, Paged, PathDetail, PathListItem, PathRequest, WalletBalance, WalletTx,
-  CouponDto, CouponInput, ExamDetail, ExamAttemptRow, GradingView, CourseStaffRow, OrderDetail,
-} from '../models/learning';
+  CourseProgress, Enrollment, ExamListItem, LessonNote, LessonBookmark, LessonChapter, LessonSlide, LessonResource, Bundle, Plan, AffiliateMe, QuestionBank, QuestionDto, QuestionInput, ExamInput, QuizPointDto, ReviewItem, VoucherBatch, InteractiveQuiz, Lesson, LessonTranscript, ManualPayment, MyCourse, Paged, PathDetail, PathListItem, PathRequest, WalletBalance, WalletTx,
+  CouponDto, CouponInput, ExamDetail, ExamAttemptRow, GradingView, CourseStaffRow, OrderDetail, WishlistItem } from '../models/learning';
 
 /** Phase 7 calls. Everything goes to the .NET API; the AI service is only reached through /ai endpoints. */
 @Injectable({ providedIn: 'root' })
@@ -53,6 +52,11 @@ export class LearningService {
   /** Protected media: fetched with the bearer token (interceptor) and played from a blob URL, never a public link. */
   streamBlob(lessonId: string) { return firstValueFrom(this.http.get(`${this.base}/lessons/${this.id(lessonId)}/stream`, { responseType: 'blob' })); }
   interactiveQuizzes(lessonId: string) { return this.get<InteractiveQuiz[]>(`/lessons/${this.id(lessonId)}/interactive-quizzes`); }
+  /** Timed Whisper cues for captions + transcript seek. Null when the lesson has no transcript yet (404). */
+  async transcript(lessonId: string): Promise<LessonTranscript | null> {
+    try { return await this.get<LessonTranscript>(`/lessons/${this.id(lessonId)}/transcript`); }
+    catch (e) { if ((e as { status?: number }).status === 404) return null; throw e; }
+  }
   answerInteractiveQuiz(id: string, answer: AnswerValue) { return this.post<unknown>(`/interactive-quizzes/${this.id(id)}/answer`, { answer }); }
 
   // exams
@@ -68,6 +72,9 @@ export class LearningService {
   cart() { return this.get<CartView>('/cart'); }
   addToCart(itemType: string, itemId: string) { return this.post<unknown>('/cart/items', { itemType, itemId }); }
   removeFromCart(id: string) { return this.unwrap(firstValueFrom(this.http.delete<ApiResponse<unknown>>(`${this.base}/cart/items/${this.id(id)}`))); }
+  wishlist() { return this.get<{ items: WishlistItem[] }>('/wishlist'); }
+  addToWishlist(courseId: string) { return this.post<{ id: string }>(`/wishlist/${this.id(courseId)}`, {}); }
+  removeFromWishlist(courseId: string) { return this.unwrap(firstValueFrom(this.http.delete<ApiResponse<unknown>>(`${this.base}/wishlist/${this.id(courseId)}`))); }
   previewCoupon(code: string) { return this.post<CouponPreview>('/cart/coupon', { code }); }
   checkout(paymentMethod: string, couponCode: string | null, voucherCode: string | null, gateway: string | null = null, referralCode: string | null = null) { return this.post<CheckoutOutcome>('/orders/checkout', { paymentMethod, couponCode, voucherCode, gateway, referralCode }); }
   wallet() { return this.get<WalletBalance>('/wallet'); }

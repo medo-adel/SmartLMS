@@ -17,3 +17,7 @@ export interface LiveAttendanceRow { userId: string; fullName: string; joinedAtU
 export interface PathRow { id: string; title: string; slug: string; description: string | null; }
 export interface PathDetail { id: string; title: string; description: string | null; status: string; issuesCertificate: boolean; courses: { id: string; title: string; sortOrder: number; isMandatory: boolean }[]; }
 export interface PathRequest { title: string; description: string | null; status: string | null; issuesCertificate: boolean; courseIds: string[] | null; }
+
+export interface ReviewRow { id: string; userName: string; rating: number; body: string | null; createdAtUtc: string; mine: boolean; }
+export interface ReviewsView { items: ReviewRow[]; count: number; average: number | null; myReview: { id: string; rating: number; body: string | null; status: string } | null; }
+export interface ReportedReview { reportId: string; reason: string; reportedAtUtc: string; review: { id: string; courseId: string; courseTitle: string; userName: string; rating: number; body: string | null; status: string }; }

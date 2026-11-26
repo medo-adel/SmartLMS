@@ -13,6 +13,7 @@
     <button type="button" [class.on]="tab() === 'announcements'" (click)="tab.set('announcements')">{{ 'cm.announcements' | t }}</button>
     <button type="button" [class.on]="tab() === 'chat'" (click)="tab.set('chat')">{{ 'cm.chat' | t }}</button>
     <button type="button" [class.on]="tab() === 'live'" (click)="tab.set('live')">{{ 'cm.live' | t }}</button>
+    @if (isMgr()) { <button type="button" data-testid="moderation-tab" [class.on]="tab() === 'moderation'" (click)="showModeration()">{{ 'cm.moderation' | t }}</button> }
   </div>
 
   @if (msg()) { <p [class.ok]="msg() !== 'common.error'" [class.err]="msg() === 'common.error'">{{ msg() | t }}</p> }
@@ -207,6 +208,23 @@
     }
   }
 
+  }
+  @if (tab() === 'moderation') {
+    <section class="pn" data-testid="moderation">
+      <h2>{{ 'cm.moderation' | t }}</h2>
+      @if (reported().length === 0) { <p class="mut">{{ 'cm.noReports' | t }}</p> }
+      @for (r of reported(); track r.reportId) {
+        <div class="rev" data-testid="report-item">
+          <span class="row2"><b>{{ r.review.courseTitle }}</b><span class="mut">{{ r.review.userName }} · {{ r.review.rating }} ★</span></span>
+          @if (r.review.body) { <p>{{ r.review.body }}</p> }
+          <p class="mut">{{ 'cm.reportReason' | t }}: {{ r.reason }}</p>
+          <span class="row2">
+            <ion-button size="small" color="danger" (click)="hideReview(r.review.id)">{{ 'cm.hideReview' | t }}</ion-button>
+            <ion-button size="small" fill="outline" (click)="dismissReport(r.reportId)">{{ 'cm.dismissReport' | t }}</ion-button>
+          </span>
+        </div>
+      }
+    </section>
   }
 </div>
 </ion-content>

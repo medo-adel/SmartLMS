@@ -62,6 +62,8 @@ public partial class ApplicationDbContext
     public DbSet<DiscussionThread> DiscussionThreads => Set<DiscussionThread>();
     public DbSet<DiscussionPost> DiscussionPosts => Set<DiscussionPost>();
     public DbSet<DiscussionVote> DiscussionVotes => Set<DiscussionVote>();
+    public DbSet<CourseReview> CourseReviews => Set<CourseReview>();
+    public DbSet<CourseReviewReport> CourseReviewReports => Set<CourseReviewReport>();
     public DbSet<ChatRoom> ChatRooms => Set<ChatRoom>();
     public DbSet<ChatRoomMember> ChatRoomMembers => Set<ChatRoomMember>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
@@ -83,6 +85,7 @@ public partial class ApplicationDbContext
     public DbSet<SubscriptionPlanCourse> SubscriptionPlanCourses => Set<SubscriptionPlanCourse>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
@@ -111,6 +114,7 @@ public partial class ApplicationDbContext
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<LessonIndexState> LessonIndexStates => Set<LessonIndexState>();
+    public DbSet<LessonTranscript> LessonTranscripts => Set<LessonTranscript>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
     public DbSet<DropoutRiskScore> DropoutRiskScores => Set<DropoutRiskScore>();
     public DbSet<AnalyticsSnapshot> AnalyticsSnapshots => Set<AnalyticsSnapshot>();
