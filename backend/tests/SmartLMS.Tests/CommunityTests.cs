@@ -182,4 +182,55 @@ public sealed class CommunityTests : IClassFixture<ApiFactory>
         using var s = _f.Services.CreateScope(); var db = s.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         return await db.LearningPathEnrollments.IgnoreQueryFilters().CountAsync();
     }
+
+    private Task<Resp> Del(string p, Who w, T t) => _c.Send(HttpMethod.Delete, p, null, w.Token, t.Slug, w.Dev);
+
+    [Fact]
+    public async Task Reviews_enrollment_gate_aggregates_reporting_and_moderation()
+    {
+        var t = await NewTenant(); var inst = await Instructor(t); var (c, _, _) = await Course(t, inst, publish: true);
+        var st = await Student(t); var st2 = await Student(t);
+        // not enrolled yet: 403
+        Assert.Equal(403, (await Put($"/courses/{c}/review", new { rating = 5, body = "Great" }, st, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st, t)).Status);
+        Assert.Equal(200, (await Post($"/courses/{c}/enroll", null, st2, t)).Status);
+        // invalid rating: 400
+        Assert.Equal(400, (await Put($"/courses/{c}/review", new { rating = 0 }, st, t)).Status);
+        // upsert own review; aggregate + myReview
+        var r1 = await Put($"/courses/{c}/review", new { rating = 5, body = "Great course" }, st, t); Assert.True(r1.Success, r1.Body.ToString());
+        var v = await Get($"/courses/{c}/reviews", st, t); Assert.True(v.Success, v.Body.ToString());
+        Assert.Equal(1, v.Data.GetProperty("count").GetInt32()); Assert.Equal(5.0, v.Data.GetProperty("average").GetDouble());
+        Assert.Equal(5, v.Data.GetProperty("myReview").GetProperty("rating").GetInt32());
+        // upsert again updates the same row
+        var r1b = await Put($"/courses/{c}/review", new { rating = 4, body = "Still good" }, st, t);
+        Assert.Equal(Id(r1), Id(r1b)); Assert.Equal(1, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("count").GetInt32());
+        // course detail carries the aggregate
+        var d = await Get($"/courses/{c}", st, t); Assert.Equal(4.0, d.Data.GetProperty("averageRating").GetDouble()); Assert.Equal(1, d.Data.GetProperty("ratingsCount").GetInt32());
+        // second student reviews: average recomputed
+        await Put($"/courses/{c}/review", new { rating = 2, body = "Not for me" }, st2, t);
+        Assert.Equal(3.0, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("average").GetDouble());
+        // st cannot report their own review; st2 reports st's review once (idempotent)
+        Assert.Equal(400, (await Post($"/reviews/{Id(r1)}/reports", new { reason = "spam" }, st, t)).Status);
+        var rep = await Post($"/reviews/{Id(r1)}/reports", new { reason = "spam link" }, st2, t); Assert.True(rep.Success, rep.Body.ToString());
+        Assert.Equal(Id(rep), Id(await Post($"/reviews/{Id(r1)}/reports", new { reason = "spam again" }, st2, t)));
+        // students cannot moderate
+        Assert.Equal(403, (await Get("/reviews/reported", st, t)).Status);
+        Assert.Equal(403, (await Post($"/reviews/{Id(r1)}/hide", null, st, t)).Status);
+        // admin sees the open report; an unrelated instructor does not
+        var mods = await Get("/reviews/reported", t.Admin, t);
+        Assert.Single(mods.Data.GetProperty("items").EnumerateArray());
+        var other = await Instructor(t); Assert.Empty((await Get("/reviews/reported", other, t)).Data.GetProperty("items").EnumerateArray());
+        // the course owner instructor can moderate: hide removes it from public list + aggregate, report is actioned
+        Assert.Equal(200, (await Post($"/reviews/{Id(r1)}/hide", null, inst, t)).Status);
+        var v2 = await Get($"/courses/{c}/reviews", st2, t);
+        Assert.Equal(1, v2.Data.GetProperty("count").GetInt32()); Assert.Equal(2.0, v2.Data.GetProperty("average").GetDouble());
+        Assert.Empty((await Get("/reviews/reported", t.Admin, t)).Data.GetProperty("items").EnumerateArray());
+        // the hidden author sees their own review status; unhide restores it
+        Assert.Equal("Hidden", (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("myReview").GetProperty("status").GetString());
+        Assert.Equal(200, (await Post($"/reviews/{Id(r1)}/unhide", null, t.Admin, t)).Status);
+        Assert.Equal(2, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("count").GetInt32());
+        // delete own review
+        Assert.Equal(200, (await Del($"/courses/{c}/review", st2, t)).Status);
+        Assert.Equal(1, (await Get($"/courses/{c}/reviews", st, t)).Data.GetProperty("count").GetInt32());
+    }
 }

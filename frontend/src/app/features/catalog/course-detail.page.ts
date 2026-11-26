@@ -1,12 +1,15 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IonContent, IonButton, IonSpinner } from '@ionic/angular';
 import { LearningService } from '../../core/services/learning.service';
+import { CommunityService } from '../../core/services/community.service';
+import { ReviewsView } from '../../core/models/community';
 import { CartState } from '../../core/services/cart-state.service';
 import { CourseDetail, CourseProgress, ExamListItem } from '../../core/models/learning';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
-@Component({ selector: 'app-course-detail', imports: [RouterLink, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './course-detail.page.html', styleUrl: './course-detail.page.scss' })
+@Component({ selector: 'app-course-detail', imports: [RouterLink, FormsModule, IonContent, IonButton, IonSpinner, TranslatePipe], templateUrl: './course-detail.page.html', styleUrl: './course-detail.page.scss' })
 export class CourseDetailPage implements OnInit {
   private readonly api = inject(LearningService);
   private readonly cartState = inject(CartState);
@@ -20,6 +23,12 @@ export class CourseDetailPage implements OnInit {
   readonly message = signal('');
   /** True when the course is in the student's wishlist (server is the source of truth). */
   readonly wishlisted = signal(false);
+  private readonly community = inject(CommunityService);
+  /** Published reviews + aggregate; myReview is the caller's own row (any status). */
+  readonly reviews = signal<ReviewsView | null>(null);
+  reviewRating = 5;
+  reviewBody = '';
+  readonly reviewBusy = signal(false);
 
   ngOnInit(): void { void this.load(); }
   private get id(): string { return this.route.snapshot.paramMap.get('id') ?? ''; }
@@ -35,6 +44,9 @@ export class CourseDetailPage implements OnInit {
       }
       const wl = await this.api.wishlist().catch(() => null); // 403 for non-students -> hide the heart state
       this.wishlisted.set(!!wl && wl.items.some((i) => i.courseId === this.id));
+      const rv = await this.community.reviews(this.id).catch(() => null);
+      this.reviews.set(rv);
+      if (rv?.myReview) { this.reviewRating = rv.myReview.rating; this.reviewBody = rv.myReview.body ?? ''; }
     } catch { this.failed.set(true); }
   }
   get isFree(): boolean { const c = this.course(); return !c || c.pricingModel === 'Free' || !c.price; }
@@ -49,6 +61,23 @@ export class CourseDetailPage implements OnInit {
       if (this.wishlisted()) { await this.api.removeFromWishlist(this.id); this.wishlisted.set(false); this.message.set('wishlist.removed'); }
       else { await this.api.addToWishlist(this.id); this.wishlisted.set(true); this.message.set('wishlist.added'); }
     } catch { /* interceptor toast */ }
+  }
+  stars(n: number): string { return '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n)); }
+  async submitReview(): Promise<void> {
+    this.reviewBusy.set(true);
+    try { await this.community.upsertReview(this.id, this.reviewRating, this.reviewBody.trim() || null); this.reviews.set(await this.community.reviews(this.id)); this.message.set('reviews.thanks'); }
+    catch { /* interceptor toast */ } finally { this.reviewBusy.set(false); }
+  }
+  async deleteReview(): Promise<void> {
+    this.reviewBusy.set(true);
+    try { await this.community.deleteReview(this.id); this.reviewRating = 5; this.reviewBody = ''; this.reviews.set(await this.community.reviews(this.id)); }
+    catch { /* interceptor toast */ } finally { this.reviewBusy.set(false); }
+  }
+  readonly reportOpen = signal('');
+  reportReason = '';
+  async reportReview(reviewId: string): Promise<void> {
+    if (!this.reportReason.trim()) return;
+    try { await this.community.reportReview(reviewId, this.reportReason.trim()); this.reportOpen.set(''); this.reportReason = ''; this.message.set('reviews.reported'); } catch { /* interceptor toast */ }
   }
   minutes(s: number | null): string { return s ? `${Math.max(1, Math.round(s / 60))} min` : ''; }
   /** Lesson completion state and how far through the media the student is (0-1), from the persisted position. */

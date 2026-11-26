@@ -573,6 +573,16 @@ erDiagram
         uniqueidentifier ThreadId FK
         uniqueidentifier PostId FK
     }
+    CourseReviews {
+        uniqueidentifier Id PK
+        uniqueidentifier UserId FK
+        uniqueidentifier CourseId FK
+    }
+    CourseReviewReports {
+        uniqueidentifier Id PK
+        uniqueidentifier ReviewId FK
+        uniqueidentifier UserId FK
+    }
     ChatRooms {
         uniqueidentifier Id PK
         uniqueidentifier CourseId FK
@@ -625,8 +635,10 @@ erDiagram
     }
     ChatRooms ||--o{ ChatMessages : "ChatRoomId (tenant-scoped)"
     ChatRooms ||--o{ ChatRoomMembers : "ChatRoomId (tenant-scoped)"
+    CourseReviews ||--o{ CourseReviewReports : "ReviewId (tenant-scoped)"
     Courses |o--o{ Announcements : "CourseId (tenant-scoped)"
     Courses |o--o{ ChatRooms : "CourseId (tenant-scoped)"
+    Courses ||--o{ CourseReviews : "CourseId (tenant-scoped)"
     Courses ||--o{ DiscussionThreads : "CourseId (tenant-scoped)"
     Courses ||--o{ LiveSessions : "CourseId (tenant-scoped)"
     DiscussionPosts |o--o{ DiscussionPosts : "ParentPostId (tenant-scoped)"
@@ -639,6 +651,8 @@ erDiagram
     UserTenantMemberships ||--o{ Announcements : "AuthorId (tenant-scoped)"
     UserTenantMemberships ||--o{ ChatMessages : "SenderId (tenant-scoped)"
     UserTenantMemberships ||--o{ ChatRoomMembers : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ CourseReviewReports : "UserId (tenant-scoped)"
+    UserTenantMemberships ||--o{ CourseReviews : "UserId (tenant-scoped)"
     UserTenantMemberships ||--o{ DiscussionPosts : "AuthorId (tenant-scoped)"
     UserTenantMemberships ||--o{ DiscussionThreads : "AuthorId (tenant-scoped)"
     UserTenantMemberships ||--o{ DiscussionVotes : "UserId (tenant-scoped)"
@@ -649,6 +663,8 @@ erDiagram
 ```
 
 - **DiscussionVotes**: CHECK: exactly one of ThreadId / PostId. Unique per user and target.
+- **CourseReviews**: One review per student per course; only enrolled students may post. CHECK: Rating between 1 and 5. Hidden = removed by moderation.
+- **CourseReviewReports**: A user can report a review once; moderation resolves open reports.
 - **LiveSessionAttendance**: JoinLink attendance means the student opened our join link, not that they stayed engaged.
 
 ## Gamification, Parents & Certificates

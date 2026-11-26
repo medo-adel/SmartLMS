@@ -1315,6 +1315,45 @@ Flags: `TA`. CHECK: exactly one of ThreadId / PostId. Unique per user and target
 | UpdatedAtUtc | datetime2(7) | yes |  |
 | UpdatedBy | uniqueidentifier | yes |  |
 
+### CourseReviews
+
+Flags: `TA`. One review per student per course; only enrolled students may post. CHECK: Rating between 1 and 5. Hidden = removed by moderation.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| UserId | uniqueidentifier | no | FK (TenantId, UserId) -> UserTenantMemberships(TenantId, UserId) tenant-scoped |
+| CourseId | uniqueidentifier | no | FK (TenantId, CourseId) -> Courses(TenantId, Id) tenant-scoped |
+| Rating | int | no |  |
+| Body | nvarchar(2000) | yes |  |
+| Status | nvarchar(40) | no | one of: Published, Hidden; default Published |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (TenantId, UserId, CourseId).
+
+### CourseReviewReports
+
+Flags: `TA`. A user can report a review once; moderation resolves open reports.
+
+| Column | Type | Null | Key / rule |
+|---|---|---|---|
+| Id | uniqueidentifier | no | PK; default NEWSEQUENTIALID() |
+| TenantId | uniqueidentifier | no | FK (TenantId) -> Tenants(Id) |
+| ReviewId | uniqueidentifier | no | FK (TenantId, ReviewId) -> CourseReviews(TenantId, Id) tenant-scoped |
+| UserId | uniqueidentifier | no | FK (TenantId, UserId) -> UserTenantMemberships(TenantId, UserId) tenant-scoped |
+| Reason | nvarchar(1000) | no |  |
+| Status | nvarchar(40) | no | one of: Open, Dismissed, Actioned; default Open |
+| CreatedAtUtc | datetime2(7) | no | default SYSUTCDATETIME() |
+| CreatedBy | uniqueidentifier | yes |  |
+| UpdatedAtUtc | datetime2(7) | yes |  |
+| UpdatedBy | uniqueidentifier | yes |  |
+
+Indexes: unique (TenantId, ReviewId, UserId).
+
 ### ChatRooms
 
 Flags: `TA`

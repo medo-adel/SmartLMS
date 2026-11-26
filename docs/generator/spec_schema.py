@@ -217,6 +217,12 @@ T("DiscussionPosts", G, [
 ])
 T("DiscussionVotes", G, ["UserId g >AspNetUsers", "ThreadId g? >DiscussionThreads", "PostId g? >DiscussionPosts"], flags="TA",
   note="CHECK: exactly one of ThreadId / PostId. Unique per user and target.")
+T("CourseReviews", G, [
+    "UserId g >AspNetUsers", "CourseId g >Courses", "Rating i", "Body s:2000?", "Status e:Published|Hidden =Published",
+], flags="TA", uniq=[("TenantId", "UserId", "CourseId")], note="One review per student per course; only enrolled students may post. CHECK: Rating between 1 and 5. Hidden = removed by moderation.")
+T("CourseReviewReports", G, [
+    "ReviewId g >CourseReviews", "UserId g >AspNetUsers", "Reason s:1000", "Status e:Open|Dismissed|Actioned =Open",
+], flags="TA", uniq=[("TenantId", "ReviewId", "UserId")], note="A user can report a review once; moderation resolves open reports.")
 T("ChatRooms", G, ["CourseId g? >Courses", "RoomType e:Course|Direct|Group", "Name s:200?"], flags="TA")
 T("ChatRoomMembers", G, ["ChatRoomId g >ChatRooms", "UserId g >AspNetUsers", "JoinedAtUtc d", "LastReadAtUtc d?"], flags="TA", uniq=[("ChatRoomId", "UserId")])
 T("ChatMessages", G, ["ChatRoomId g >ChatRooms", "SenderId g >AspNetUsers", "Body s:4000", "SentAtUtc d"], flags="TS", idx=[("ChatRoomId", "SentAtUtc")])

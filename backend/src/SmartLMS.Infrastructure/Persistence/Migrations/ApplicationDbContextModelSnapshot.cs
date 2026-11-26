@@ -1670,6 +1670,108 @@ namespace SmartLMS.Infrastructure.Persistence.Migrations
                     b.ToTable("CoursePrerequisites", (string)null);
                 });
 
+            modelBuilder.Entity("SmartLMS.Domain.Entities.CourseReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Body")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CourseId");
+
+                    b.HasIndex("TenantId", "UserId", "CourseId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CourseReviews_TenantId_UserId_CourseId");
+
+                    b.ToTable("CourseReviews", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CourseReviews_Status", "[Status] IN ('Published','Hidden')");
+                        });
+                });
+
+            modelBuilder.Entity("SmartLMS.Domain.Entities.CourseReviewReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("ReviewId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "UserId");
+
+                    b.HasIndex("TenantId", "ReviewId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CourseReviewReports_TenantId_ReviewId_UserId");
+
+                    b.ToTable("CourseReviewReports", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CourseReviewReports_Status", "[Status] IN ('Open','Dismissed','Actioned')");
+                        });
+                });
+
             modelBuilder.Entity("SmartLMS.Domain.Entities.CourseStaff", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7108,6 +7210,52 @@ namespace SmartLMS.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId", "PrerequisiteCourseId")
                         .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartLMS.Domain.Entities.CourseReview", b =>
+                {
+                    b.HasOne("SmartLMS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SmartLMS.Domain.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CourseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SmartLMS.Domain.Entities.UserTenantMembership", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "UserId")
+                        .HasPrincipalKey("TenantId", "UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartLMS.Domain.Entities.CourseReviewReport", b =>
+                {
+                    b.HasOne("SmartLMS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SmartLMS.Domain.Entities.CourseReview", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReviewId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SmartLMS.Domain.Entities.UserTenantMembership", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "UserId")
+                        .HasPrincipalKey("TenantId", "UserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });

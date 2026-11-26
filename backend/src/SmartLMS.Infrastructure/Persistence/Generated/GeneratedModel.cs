@@ -984,6 +984,43 @@ public static class GeneratedModel
         });
     }
 
+    private static void MapCourseReview(ModelBuilder mb, bool sqlServer)
+    {
+        mb.Entity<CourseReview>(b =>
+        {
+        b.ToTable("CourseReviews", t =>
+        {
+            t.HasCheckConstraint("CK_CourseReviews_Status", "[Status] IN ('Published','Hidden')");
+        });
+        b.Property(e => e.Id).ValueGeneratedNever();
+        b.Property(e => e.Body).HasMaxLength(2000);
+        b.Property(e => e.Status).HasConversion<string>().HasMaxLength(40);
+        b.HasAlternateKey("TenantId", "Id");
+        b.HasIndex("TenantId", "UserId", "CourseId").IsUnique().HasDatabaseName("UX_CourseReviews_TenantId_UserId_CourseId");
+        b.HasOne<Tenant>().WithMany().HasForeignKey("TenantId").OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<UserTenantMembership>().WithMany().HasForeignKey("TenantId", "UserId").HasPrincipalKey("TenantId", "UserId").OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Course>().WithMany().HasForeignKey("TenantId", "CourseId").HasPrincipalKey("TenantId", "Id").OnDelete(DeleteBehavior.NoAction);
+        });
+    }
+
+    private static void MapCourseReviewReport(ModelBuilder mb, bool sqlServer)
+    {
+        mb.Entity<CourseReviewReport>(b =>
+        {
+        b.ToTable("CourseReviewReports", t =>
+        {
+            t.HasCheckConstraint("CK_CourseReviewReports_Status", "[Status] IN ('Open','Dismissed','Actioned')");
+        });
+        b.Property(e => e.Id).ValueGeneratedNever();
+        b.Property(e => e.Reason).HasMaxLength(1000);
+        b.Property(e => e.Status).HasConversion<string>().HasMaxLength(40);
+        b.HasIndex("TenantId", "ReviewId", "UserId").IsUnique().HasDatabaseName("UX_CourseReviewReports_TenantId_ReviewId_UserId");
+        b.HasOne<Tenant>().WithMany().HasForeignKey("TenantId").OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<CourseReview>().WithMany().HasForeignKey("TenantId", "ReviewId").HasPrincipalKey("TenantId", "Id").OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<UserTenantMembership>().WithMany().HasForeignKey("TenantId", "UserId").HasPrincipalKey("TenantId", "UserId").OnDelete(DeleteBehavior.NoAction);
+        });
+    }
+
     private static void MapChatRoom(ModelBuilder mb, bool sqlServer)
     {
         mb.Entity<ChatRoom>(b =>
@@ -2013,6 +2050,8 @@ public static class GeneratedModel
         MapDiscussionThread(mb, sqlServer);
         MapDiscussionPost(mb, sqlServer);
         MapDiscussionVote(mb, sqlServer);
+        MapCourseReview(mb, sqlServer);
+        MapCourseReviewReport(mb, sqlServer);
         MapChatRoom(mb, sqlServer);
         MapChatRoomMember(mb, sqlServer);
         MapChatMessage(mb, sqlServer);

@@ -1099,6 +1099,37 @@ CREATE TABLE [dbo].[DiscussionVotes] (
     CONSTRAINT [CK_DiscussionVotes_Rule1] CHECK (([ThreadId] IS NOT NULL AND [PostId] IS NULL) OR ([ThreadId] IS NULL AND [PostId] IS NOT NULL))
 );
 GO
+CREATE TABLE [dbo].[CourseReviews] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [CourseId] uniqueidentifier NOT NULL,
+    [Rating] int NOT NULL,
+    [Body] nvarchar(2000) NULL,
+    [Status] nvarchar(40) NOT NULL DEFAULT N'Published',
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_CourseReviews] PRIMARY KEY ([Id]),
+    CONSTRAINT [CK_CourseReviews_Status] CHECK ([Status] IN (N'Published',N'Hidden'))
+);
+GO
+CREATE TABLE [dbo].[CourseReviewReports] (
+    [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [TenantId] uniqueidentifier NOT NULL,
+    [ReviewId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [Reason] nvarchar(1000) NOT NULL,
+    [Status] nvarchar(40) NOT NULL DEFAULT N'Open',
+    [CreatedAtUtc] datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [CreatedBy] uniqueidentifier NULL,
+    [UpdatedAtUtc] datetime2(7) NULL,
+    [UpdatedBy] uniqueidentifier NULL,
+    CONSTRAINT [PK_CourseReviewReports] PRIMARY KEY ([Id]),
+    CONSTRAINT [CK_CourseReviewReports_Status] CHECK ([Status] IN (N'Open',N'Dismissed',N'Actioned'))
+);
+GO
 CREATE TABLE [dbo].[ChatRooms] (
     [Id] uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID(),
     [TenantId] uniqueidentifier NOT NULL,
@@ -1990,6 +2021,7 @@ ALTER TABLE [dbo].[Bundles] ADD CONSTRAINT [UQ_Bundles_TenantId_Id] UNIQUE ([Ten
 ALTER TABLE [dbo].[Categories] ADD CONSTRAINT [UQ_Categories_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[ChatRooms] ADD CONSTRAINT [UQ_ChatRooms_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[Coupons] ADD CONSTRAINT [UQ_Coupons_TenantId_Id] UNIQUE ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [UQ_CourseReviews_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[Courses] ADD CONSTRAINT [UQ_Courses_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[DiscussionPosts] ADD CONSTRAINT [UQ_DiscussionPosts_TenantId_Id] UNIQUE ([TenantId], [Id]);
 ALTER TABLE [dbo].[DiscussionThreads] ADD CONSTRAINT [UQ_DiscussionThreads_TenantId_Id] UNIQUE ([TenantId], [Id]);
@@ -2193,6 +2225,12 @@ ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_TenantId]
 ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
 ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_ThreadId] FOREIGN KEY ([TenantId], [ThreadId]) REFERENCES [dbo].[DiscussionThreads] ([TenantId], [Id]);
 ALTER TABLE [dbo].[DiscussionVotes] ADD CONSTRAINT [FK_DiscussionVotes_PostId] FOREIGN KEY ([TenantId], [PostId]) REFERENCES [dbo].[DiscussionPosts] ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [FK_CourseReviews_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [FK_CourseReviews_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
+ALTER TABLE [dbo].[CourseReviews] ADD CONSTRAINT [FK_CourseReviews_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviewReports] ADD CONSTRAINT [FK_CourseReviewReports_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
+ALTER TABLE [dbo].[CourseReviewReports] ADD CONSTRAINT [FK_CourseReviewReports_ReviewId] FOREIGN KEY ([TenantId], [ReviewId]) REFERENCES [dbo].[CourseReviews] ([TenantId], [Id]);
+ALTER TABLE [dbo].[CourseReviewReports] ADD CONSTRAINT [FK_CourseReviewReports_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [dbo].[UserTenantMemberships] ([TenantId], [UserId]);
 ALTER TABLE [dbo].[ChatRooms] ADD CONSTRAINT [FK_ChatRooms_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
 ALTER TABLE [dbo].[ChatRooms] ADD CONSTRAINT [FK_ChatRooms_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [dbo].[Courses] ([TenantId], [Id]);
 ALTER TABLE [dbo].[ChatRoomMembers] ADD CONSTRAINT [FK_ChatRoomMembers_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]);
@@ -2539,6 +2577,12 @@ CREATE INDEX [IX_DiscussionVotes_ThreadId_TenantId] ON [dbo].[DiscussionVotes] (
 CREATE INDEX [IX_DiscussionVotes_PostId_TenantId] ON [dbo].[DiscussionVotes] ([PostId], [TenantId]);
 CREATE UNIQUE INDEX [UX_DiscussionVotes_User_Thread] ON [dbo].[DiscussionVotes] ([UserId],[ThreadId]) WHERE [ThreadId] IS NOT NULL;
 CREATE UNIQUE INDEX [UX_DiscussionVotes_User_Post] ON [dbo].[DiscussionVotes] ([UserId],[PostId]) WHERE [PostId] IS NOT NULL;
+CREATE UNIQUE INDEX [UX_CourseReviews_TenantId_UserId_CourseId] ON [dbo].[CourseReviews] ([TenantId], [UserId], [CourseId]);
+CREATE INDEX [IX_CourseReviews_UserId_TenantId] ON [dbo].[CourseReviews] ([UserId], [TenantId]);
+CREATE INDEX [IX_CourseReviews_CourseId_TenantId] ON [dbo].[CourseReviews] ([CourseId], [TenantId]);
+CREATE UNIQUE INDEX [UX_CourseReviewReports_TenantId_ReviewId_UserId] ON [dbo].[CourseReviewReports] ([TenantId], [ReviewId], [UserId]);
+CREATE INDEX [IX_CourseReviewReports_ReviewId_TenantId] ON [dbo].[CourseReviewReports] ([ReviewId], [TenantId]);
+CREATE INDEX [IX_CourseReviewReports_UserId_TenantId] ON [dbo].[CourseReviewReports] ([UserId], [TenantId]);
 CREATE INDEX [IX_ChatRooms_TenantId] ON [dbo].[ChatRooms] ([TenantId]);
 CREATE INDEX [IX_ChatRooms_CourseId_TenantId] ON [dbo].[ChatRooms] ([CourseId], [TenantId]);
 CREATE UNIQUE INDEX [UX_ChatRoomMembers_ChatRoomId_UserId] ON [dbo].[ChatRoomMembers] ([ChatRoomId], [UserId]);

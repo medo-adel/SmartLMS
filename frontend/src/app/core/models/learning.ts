@@ -3,7 +3,7 @@ export interface Paged<T> { totalCount: number; page: number; pageSize: number; 
 export interface CourseListItem { id: string; title: string; slug: string; shortDescription: string | null; level: string; language: string | null; estimatedHours: number | null; pricingModel: string; price: number | null; currency: string | null; }
 export interface LessonOutline { id: string; title: string; lessonType: string; durationSeconds: number | null; sortOrder: number; isFreePreview: boolean; }
 export interface SectionOutline { id: string; title: string; description: string | null; sortOrder: number; lessons: LessonOutline[]; }
-export interface CourseDetail extends CourseListItem { description: string | null; status: string; sections: SectionOutline[]; }
+export interface CourseDetail extends CourseListItem { description: string | null; status: string; sections: SectionOutline[]; averageRating?: number | null; ratingsCount?: number; }
 export interface Lesson { id: string; courseId: string; sectionId: string; title: string; lessonType: string; contentMarkdown: string | null; externalUrl: string | null; durationSeconds: number | null; isFreePreview: boolean; }
 export interface Enrollment { id: string; courseId: string; title: string; status: string; progressPercent: number; expiresAtUtc: string | null; }
 export interface CourseProgress { courseId: string; progressPercent: number; status: string; lessons: { lessonId: string; status: string; lastPositionSeconds: number; watchedSeconds: number }[]; }

@@ -5708,3 +5708,98 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025940_CourseReviews'
+)
+BEGIN
+    CREATE TABLE [CourseReviews] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [UserId] uniqueidentifier NOT NULL,
+        [CourseId] uniqueidentifier NOT NULL,
+        [Rating] int NOT NULL,
+        [Body] nvarchar(2000) NULL,
+        [Status] nvarchar(40) NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [CreatedBy] uniqueidentifier NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [UpdatedBy] uniqueidentifier NULL,
+        CONSTRAINT [PK_CourseReviews] PRIMARY KEY ([Id]),
+        CONSTRAINT [AK_CourseReviews_TenantId_Id] UNIQUE ([TenantId], [Id]),
+        CONSTRAINT [CK_CourseReviews_Status] CHECK ([Status] IN ('Published','Hidden')),
+        CONSTRAINT [FK_CourseReviews_Courses_TenantId_CourseId] FOREIGN KEY ([TenantId], [CourseId]) REFERENCES [Courses] ([TenantId], [Id]),
+        CONSTRAINT [FK_CourseReviews_Tenants_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [Tenants] ([Id]),
+        CONSTRAINT [FK_CourseReviews_UserTenantMemberships_TenantId_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [UserTenantMemberships] ([TenantId], [UserId])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025940_CourseReviews'
+)
+BEGIN
+    CREATE TABLE [CourseReviewReports] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [ReviewId] uniqueidentifier NOT NULL,
+        [UserId] uniqueidentifier NOT NULL,
+        [Reason] nvarchar(1000) NOT NULL,
+        [Status] nvarchar(40) NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [CreatedBy] uniqueidentifier NULL,
+        [UpdatedAtUtc] datetime2 NULL,
+        [UpdatedBy] uniqueidentifier NULL,
+        CONSTRAINT [PK_CourseReviewReports] PRIMARY KEY ([Id]),
+        CONSTRAINT [CK_CourseReviewReports_Status] CHECK ([Status] IN ('Open','Dismissed','Actioned')),
+        CONSTRAINT [FK_CourseReviewReports_CourseReviews_TenantId_ReviewId] FOREIGN KEY ([TenantId], [ReviewId]) REFERENCES [CourseReviews] ([TenantId], [Id]),
+        CONSTRAINT [FK_CourseReviewReports_Tenants_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [Tenants] ([Id]),
+        CONSTRAINT [FK_CourseReviewReports_UserTenantMemberships_TenantId_UserId] FOREIGN KEY ([TenantId], [UserId]) REFERENCES [UserTenantMemberships] ([TenantId], [UserId])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025940_CourseReviews'
+)
+BEGIN
+    CREATE INDEX [IX_CourseReviewReports_TenantId_UserId] ON [CourseReviewReports] ([TenantId], [UserId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025940_CourseReviews'
+)
+BEGIN
+    CREATE UNIQUE INDEX [UX_CourseReviewReports_TenantId_ReviewId_UserId] ON [CourseReviewReports] ([TenantId], [ReviewId], [UserId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025940_CourseReviews'
+)
+BEGIN
+    CREATE INDEX [IX_CourseReviews_TenantId_CourseId] ON [CourseReviews] ([TenantId], [CourseId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025940_CourseReviews'
+)
+BEGIN
+    CREATE UNIQUE INDEX [UX_CourseReviews_TenantId_UserId_CourseId] ON [CourseReviews] ([TenantId], [UserId], [CourseId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126025940_CourseReviews'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261126025940_CourseReviews', N'10.0.15');
+END;
+
+COMMIT;
+GO
+

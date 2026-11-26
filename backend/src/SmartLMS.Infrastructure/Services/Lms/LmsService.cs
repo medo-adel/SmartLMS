@@ -90,11 +90,13 @@ public sealed class LmsService(ApplicationDbContext db, ICurrentUser me, Gamific
         if (c.Status != CourseStatus.Published && !privileged) throw new NotFoundException("Course not found.");
         var sections = await db.Sections.Where(s => s.CourseId == id).OrderBy(s => s.SortOrder).ToListAsync(ct);
         var lessons = await db.Lessons.Where(l => l.CourseId == id && (privileged || l.IsPublished)).OrderBy(l => l.SortOrder).ToListAsync(ct);
+        var ratingsCount = await db.CourseReviews.CountAsync(r => r.CourseId == id && r.Status == CourseReviewStatus.Published, ct);
+        double? averageRating = ratingsCount == 0 ? null : Math.Round(await db.CourseReviews.Where(r => r.CourseId == id && r.Status == CourseReviewStatus.Published).AverageAsync(r => (double)r.Rating, ct), 1);
         // The outline never carries lesson content or file ids. Content only comes from GET /lessons/{id}, which checks access.
         return new
         {
             c.Id, c.Title, c.Slug, c.ShortDescription, c.Description, Status = c.Status.ToString(), Level = c.Level.ToString(), c.Language, c.EstimatedHours,
-            PricingModel = c.PricingModel.ToString(), c.Price, c.Currency, c.OwnerInstructorId,
+            PricingModel = c.PricingModel.ToString(), c.Price, c.Currency, c.OwnerInstructorId, AverageRating = averageRating, RatingsCount = ratingsCount,
             Sections = sections.Select(s => new
             {
                 s.Id, s.Title, s.Description, s.SortOrder,

@@ -11,3 +11,10 @@ h3 { font-size: .95rem; margin: .9rem 0 .3rem; }
 .course-prog .bar { block-size: .4rem; background: var(--ion-color-step-150, #e5e7eb); border-radius: 999px; overflow: hidden; margin-block-end: .3rem; }
 .course-prog .bar span { display: block; block-size: 100%; background: var(--ion-color-primary, #0f766e); border-radius: 999px; }
 .heart { font-size: 1.25rem; } .heart.on { color: var(--ion-color-danger, #dc2626); }
+.stars { color: var(--ion-color-warning, #f59e0b); letter-spacing: .05em; }
+.rating { margin: .25rem 0 0; }
+.rev { padding: .5rem 0; border-bottom: 1px solid var(--ion-color-step-150, #e5e7eb); }
+.rev:last-child { border-bottom: 0; }
+.stack { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .75rem; }
+.fld { border: 1px solid var(--ion-color-step-300, #d1d5db); border-radius: 8px; padding: .5rem; background: transparent; color: inherit; }
+.report { margin-inline-start: 0; }

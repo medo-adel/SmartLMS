@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response';
-import { AnnouncementRequest, AnnouncementRow, ChatMessagesPage, ChatRoom, ChatSendRequest, LiveAttendanceRow, PathDetail, PathRequest, PathRow, LiveSessionRequest, LiveSessionRow, PostRequest, ThreadDetail, ThreadRequest, ThreadRow } from '../models/community';
+import { AnnouncementRequest, ReportedReview, ReviewsView, AnnouncementRow, ChatMessagesPage, ChatRoom, ChatSendRequest, LiveAttendanceRow, PathDetail, PathRequest, PathRow, LiveSessionRequest, LiveSessionRow, PostRequest, ThreadDetail, ThreadRequest, ThreadRow } from '../models/community';
 
 /** Discussion threads, announcements (CommunityController). The API enforces roles: post/reply/upvote = Student/Instructor/TA, pin = +TenantAdmin, announcements = staff. */
 @Injectable({ providedIn: 'root' })
@@ -32,6 +32,16 @@ export class CommunityService {
   pinThread(id: string) { return this.post<unknown>(`/threads/${this.id(id)}/pin`); }
 
   announcements() { return this.get<AnnouncementRow[]>('/announcements'); }
+
+  // ---- course reviews (student writes, staff moderates) ----
+  reviews(courseId: string) { return this.get<ReviewsView>(`/courses/${this.id(courseId)}/reviews`); }
+  upsertReview(courseId: string, rating: number, body: string | null) { return this.unwrap(firstValueFrom(this.http.put<ApiResponse<{ id: string }>>(`${this.base}/courses/${this.id(courseId)}/review`, { rating, body }))); }
+  deleteReview(courseId: string) { return this.unwrap(firstValueFrom(this.http.delete<ApiResponse<unknown>>(`${this.base}/courses/${this.id(courseId)}/review`))); }
+  reportReview(reviewId: string, reason: string) { return this.post<{ id: string }>(`/reviews/${this.id(reviewId)}/reports`, { reason }); }
+  reportedReviews() { return this.get<{ items: ReportedReview[] }>('/reviews/reported'); }
+  hideReview(id: string) { return this.post<unknown>(`/reviews/${this.id(id)}/hide`); }
+  unhideReview(id: string) { return this.post<unknown>(`/reviews/${this.id(id)}/unhide`); }
+  dismissReport(id: string) { return this.post<unknown>(`/review-reports/${this.id(id)}/dismiss`); }
 
   // ---- chat (all signed-in roles; backend scopes rooms to the caller's courses) ----
   rooms() { return this.get<ChatRoom[]>('/chat/rooms'); }
