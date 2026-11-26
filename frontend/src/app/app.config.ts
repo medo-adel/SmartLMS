@@ -10,6 +10,7 @@ import { I18nService } from './core/services/i18n.service';
 import { TenantService } from './core/services/tenant.service';
 import { AuthService } from './core/services/auth.service';
 import { BiometricService } from './core/services/biometric.service';
+import { PushService } from './core/services/push.service';
 
 /** Startup order matters: device id and language first, then session, then branding (needs X-Tenant-Id / X-Device-Id). */
 async function bootstrap(): Promise<void> {
@@ -19,6 +20,8 @@ async function bootstrap(): Promise<void> {
   await auth.restore();
   await bio.init();
   await tenant.init();
+  // Instantiating the service arms an effect: it registers the device whenever a session exists.
+  inject(PushService);
 }
 
 export const appConfig: ApplicationConfig = {
